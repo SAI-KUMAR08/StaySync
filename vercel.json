@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd client && npm ci && npm run build",
-  "outputDirectory": "client/dist",
+  "buildCommand": "cd client && npm ci && npm run build && cp -r dist ../dist",
+  "outputDirectory": "dist",
   "installCommand": "cd client && npm ci",
   "framework": "vite",
   "nodeVersion": "20.x"
