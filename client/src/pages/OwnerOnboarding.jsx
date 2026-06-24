@@ -31,27 +31,27 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1.5">
-          <label className="form-label">Hostel Name</label>
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Hostel Name</label>
           <input type="text" className="field-input" placeholder="e.g. Sri Rama Hostel"
             value={formData.hostelName} onChange={(e) => setFormData({ ...formData, hostelName: e.target.value })} />
         </div>
         <div className="space-y-1.5">
-          <label className="form-label">Owner Name</label>
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Owner Name</label>
           <input type="text" className="field-input" placeholder="Your Full Name"
             value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
         </div>
         <div className="space-y-1.5">
-          <label className="form-label">Work Email</label>
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Work Email</label>
           <input type="email" className="field-input" placeholder="owner@example.com"
             value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
         </div>
         <div className="space-y-1.5">
-          <label className="form-label">Contact Phone</label>
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Contact Phone</label>
           <input type="tel" className="field-input" placeholder="10-digit Mobile"
             value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
         </div>
         <div className="space-y-1.5">
-          <label className="form-label">Hostel Type</label>
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Hostel Type</label>
           <div className="grid grid-cols-3 gap-3">
             {['Boys', 'Girls', 'Co-living'].map(type => (
               <button key={type} type="button" onClick={() => setFormData({ ...formData, hostelType: type })}
@@ -64,7 +64,7 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
           </div>
         </div>
         <div className="space-y-1.5 relative">
-          <label className="form-label">Account Password</label>
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Account Password</label>
           <div className="relative">
             <input type={showPassword ? "text" : "password"} className="field-input pr-12" placeholder="Min 8 chars, 1 uppercase, 1 special"
               value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
@@ -76,11 +76,11 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
             <p className="text-[9px] text-rose-500 font-bold mt-1 ml-1">Requires 8+ chars, uppercase, lowercase, number & special char.</p>
           )}
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <label className="form-label">Physical Address</label>
-        <textarea className="form-textarea h-24" placeholder="Complete physical location details..."
-          value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}></textarea>
+        <div className="md:col-span-2 space-y-1.5">
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Physical Address</label>
+          <textarea className="field-input" placeholder="Complete physical location details..."
+            value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })}></textarea>
+        </div>
       </div>
     </div>
     <div className="space-y-5">
@@ -327,7 +327,15 @@ const OwnerOnboarding = () => {
       }
       startCooldown();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to send verification OTP");
+      const msg = error.response?.data?.message || error.message || "Failed to send OTP";
+      const details = error.response?.data?.errors?.fieldErrors;
+      if (details) {
+        const fieldMsgs = Object.values(details).flat().join(", ");
+        toast.error(`${msg}: ${fieldMsgs}`, { duration: 6000 });
+      } else {
+        toast.error(msg, { duration: 5000 });
+      }
+      console.error("Send OTP error:", error.response?.data || error.message);
     } finally {
       setOtpLoading(false);
     }
@@ -363,7 +371,7 @@ const OwnerOnboarding = () => {
       }
       startCooldown();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to resend code");
+      toast.error(error.response?.data?.message || error.message || "Failed to resend code");
     } finally {
       setOtpLoading(false);
     }
