@@ -266,7 +266,7 @@ const RoomManagement = () => {
                     setSetupFloors(newFloors);
                     setSetupStep(2);
                   }}
-                  className="premium-button px-8 flex items-center gap-2"
+                  className="btn-primary px-8 flex items-center gap-2"
                 >
                   Configure Rooms <MdChevronRight size={18} />
                 </button>
@@ -363,7 +363,7 @@ const RoomManagement = () => {
                 <button onClick={() => setSetupStep(1)} className="btn-secondary w-1/4 flex items-center justify-center gap-2">
                   <MdChevronLeft size={20} /> Back
                 </button>
-                <button disabled={setupLoading || setupFloors.length === 0} onClick={handleSetupSubmit} className="premium-button flex-1 py-4 flex items-center justify-center gap-3">
+                <button disabled={setupLoading || setupFloors.length === 0} onClick={handleSetupSubmit} className="btn-primary flex-1 py-4 flex items-center justify-center gap-3">
                   {setupLoading ? "Initializing..." : "Finalize & Launch"} <MdCheckCircle size={20} />
                 </button>
               </div>
@@ -376,7 +376,7 @@ const RoomManagement = () => {
             </div>
             <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Empty Inventory</h3>
             <p className="text-text-secondary font-medium max-w-xs mt-3 mb-6">Start by running the setup wizard to define your hostel's floors and rooms.</p>
-            <button onClick={startSetupWizard} className="premium-button px-8 flex items-center gap-2">
+            <button onClick={startSetupWizard} className="btn-primary px-8 flex items-center gap-2">
               Configure floors and beds <MdChevronRight size={18} />
             </button>
           </div>
@@ -403,7 +403,7 @@ const RoomManagement = () => {
                         <div className="space-y-1">
                           <h4 className="text-xl font-black font-sans text-text-primary tracking-tight">Room {room.number}</h4>
                           <div className="flex items-center gap-2">
-                            <span className={`badge ${room.type === 'AC' ? 'badge-ac' : 'badge-non-ac'}`}>
+                            <span className={`badge ${room.type === 'AC' ? 'badge-primary' : 'badge-slate'}`}>
                               {room.type}
                             </span>
                             <span className="text-[8px] font-bold text-text-secondary/50 uppercase tracking-wider">{room.sharingType} Bed</span>
@@ -524,7 +524,7 @@ const RoomManagement = () => {
                 <input type="text" disabled value={`${formData.sharingType} Bed Unit`} className="field-input opacity-50" />
               </div>
 
-              <button type="submit" className="premium-button w-full py-4 text-sm">
+              <button type="submit" className="btn-primary w-full py-4 text-sm">
                 {editingRoom ? "Save Configuration" : "Save"}
               </button>
             </form>

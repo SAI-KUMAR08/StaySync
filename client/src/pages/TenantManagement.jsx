@@ -398,7 +398,7 @@ const TenantManagement = () => {
                   <p className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">Monthly</p>
                 </td>
                 <td>
-                  <span className={`badge ${tenant.status === "active" ? "badge-active" : "badge-inactive"}`}>
+                  <span className={`badge ${tenant.status === "active" ? "badge-emerald" : "badge-slate"}`}>
                     {tenant.status}
                   </span>
                 </td>
@@ -607,7 +607,7 @@ const TenantManagement = () => {
                     {availableRooms.map(room => (
                       <button key={room._id} onClick={() => handleRoomSelect(room)} className="p-5 rounded-3xl border-2 border-border/50 hover:border-primary/40 hover:bg-primary/[0.02] transition-all text-left">
                         <div className="flex justify-between items-start mb-2">
-                          <span className="badge-ac">ROOM {room.number}</span>
+                          <span className="badge-primary">ROOM {room.number}</span>
                           <span className="text-[9px] font-medium text-text-secondary uppercase">Floor {room.floorNumber}</span>
                         </div>
                         <p className="text-lg font-bold text-text-primary tracking-tight">₹{room.price}/mo</p>

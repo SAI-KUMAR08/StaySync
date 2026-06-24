@@ -207,8 +207,8 @@ const Complaints = () => {
             <div className="bento-card p-6 flex flex-col group h-full">
               <div className="flex justify-between items-start mb-5">
                 <span className={`badge ${
-                  c.status === 'pending' ? 'badge-pending' :
-                  ['assigned', 'in_progress'].includes(c.status) ? 'badge-in-progress' : 'badge-resolved'
+                  c.status === 'pending' ? 'badge-amber' :
+                  ['assigned', 'in_progress'].includes(c.status) ? 'badge-primary' : 'badge-emerald'
                 }`}>
                   {c.status?.replace("_", " ")}
                 </span>

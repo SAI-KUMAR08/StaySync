@@ -186,8 +186,8 @@ const AdminPayments = () => {
                 <td>
                   <div className="flex items-center gap-2">
                     <span className={`badge ${
-                      p.status === 'paid' ? 'badge-paid' :
-                      p.status === 'overdue' ? 'badge-overdue' : 'badge-unpaid'
+                      p.status === 'paid' ? 'badge-emerald' :
+                      p.status === 'overdue' ? 'badge-rose' : 'badge-amber'
                     }`}>
                       {p.status}
                     </span>

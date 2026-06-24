@@ -248,7 +248,7 @@ const TenantPayments = () => {
                     <p className="text-sm text-text-secondary">₹{(p.amount + (p.fine || 0)).toLocaleString()}</p>
                   </div>
                 </div>
-                <span className="badge-paid text-[9px]">Paid</span>
+                <span className="badge-emerald text-[9px]">Paid</span>
               </div>
             ))}
           </div>

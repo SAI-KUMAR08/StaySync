@@ -19,7 +19,7 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
         )}
       </div>
       <span className={`badge ${
-        variant === "overdue" ? "badge-overdue" : "badge-unpaid"
+        variant === "overdue" ? "badge-rose" : "badge-amber"
       }`}>
         {variant === "overdue" ? "overdue" : "unpaid"}
       </span>

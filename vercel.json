@@ -1,15 +1,6 @@
 {
-  "git": {
-    "deploymentEnabled": {
-      "main": true
-    }
-  },
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
-  "devCommand": "cd client && npm run dev",
   "installCommand": "cd client && npm install",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  "framework": "vite"
 }
