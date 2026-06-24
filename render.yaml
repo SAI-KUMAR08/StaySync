@@ -1,0 +1,20 @@
+# Render Blueprint — Web Service (Node)
+# Dashboard: set env vars, then deploy from main branch / server folder
+
+services:
+  - type: web
+    name: hostel-backend
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
