@@ -21,7 +21,6 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.0",
     "morgan": "^1.10.0",
-    "MyHostel": "file:..",
     "node-cron": "^4.2.1",
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.3",

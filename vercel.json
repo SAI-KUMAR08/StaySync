@@ -1,9 +1,10 @@
 {
-  "buildCommand": "cd client && npm ci && npx vite build && mkdir -p ../dist && cp -r dist/* ../dist/",
-  "outputDirectory": "dist",
-  "installCommand": "cd client && npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm ci",
   "framework": null,
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
