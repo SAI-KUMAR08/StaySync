@@ -3,7 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "cd client && npm ci",
   "framework": null,
-  "nodeVersion": "20.x",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
