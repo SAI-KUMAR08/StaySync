@@ -32,7 +32,11 @@ const tenantSchema = new mongoose.Schema(
     idProof: { type: String, trim: true },
     isActive: { type: Boolean, default: true },
     isTemporary: { type: Boolean, default: false },
+    isPasswordSet: { type: Boolean, default: false },
     preferredSharing: { type: Number, default: null },
+    // ── Account lockout (tenant password login) ──────────
+    loginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -63,6 +67,25 @@ tenantSchema.pre("save", async function hashPassword() {
 
 tenantSchema.methods.comparePassword = function compare(candidate) {
   return bcrypt.compare(candidate, this.personalInfo?.password || "");
+};
+
+// ── Account lockout methods ──────────────────────────────
+tenantSchema.methods.isLocked = function isLocked() {
+  return this.lockUntil && this.lockUntil > new Date();
+};
+
+tenantSchema.methods.incrementLoginAttempts = async function incrementLoginAttempts() {
+  this.loginAttempts = (this.loginAttempts || 0) + 1;
+  if (this.loginAttempts >= 5) {
+    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+  }
+  await this.save();
+};
+
+tenantSchema.methods.resetLoginAttempts = async function resetLoginAttempts() {
+  this.loginAttempts = 0;
+  this.lockUntil = null;
+  await this.save();
 };
 
 export const Tenant = mongoose.model("Tenant", tenantSchema);

@@ -90,7 +90,7 @@ const TenantPayments = () => {
         key,
         amount: order.amount,
         currency: order.currency || "INR",
-        name: "Hostel StaySync",
+        name: "Sri Rama Hostel",
         description: `${payment.month} ${payment.year} rent`,
         order_id: order.id,
         handler: async (response) => {
@@ -145,14 +145,14 @@ const TenantPayments = () => {
         </div>
         <h3 className="section-title">Rent & <span>Dues</span></h3>
         <p className="text-text-secondary font-medium max-w-md mx-auto text-sm">
-          <strong className="text-rose-600">Overdue</strong> = past months unpaid.{" "}
-          <strong className="text-amber-600">Unpaid</strong> = this month not paid yet.
+          <strong className="text-[#C62828]">Overdue</strong> = past months unpaid.{" "}
+          <strong className="text-[#8D6E2A]">Unpaid</strong> = this month not paid yet.
         </p>
       </div>
 
       {overdue.length > 0 && (
         <section className="space-y-4">
-          <h4 className="text-[9px] font-black text-rose-600 uppercase tracking-wider pl-3 flex items-center gap-2">
+          <h4 className="text-[9px] font-black text-[#C62828] uppercase tracking-wider pl-3 flex items-center gap-2">
             <MdWarning size={14} /> Overdue ({overdue.length})
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -165,7 +165,7 @@ const TenantPayments = () => {
 
       {unpaid.length > 0 && (
         <section className="space-y-4">
-          <h4 className="text-[9px] font-black text-amber-600 uppercase tracking-wider pl-3">
+          <h4 className="text-[9px] font-black text-[#8D6E2A] uppercase tracking-wider pl-3">
             Unpaid ({unpaid.length})
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -177,9 +177,9 @@ const TenantPayments = () => {
       )}
 
       {overdue.length === 0 && unpaid.length === 0 && (
-        <div className="text-center py-14 bg-emerald-50/50 rounded-[2.5rem] border border-emerald-100/60">
-          <MdCheckCircle className="text-4xl text-emerald-400 mx-auto mb-3" />
-          <p className="text-emerald-700 font-bold">All caught up — no pending rent.</p>
+        <div className="text-center py-14 bg-green-500/5 rounded-xl border border-emerald-500/10">
+          <MdCheckCircle className="text-4xl text-[#2E7D32] mx-auto mb-3" />
+          <p className="text-[#2E7D32] font-bold">All caught up — no pending rent.</p>
         </div>
       )}
 
@@ -188,7 +188,7 @@ const TenantPayments = () => {
         <h4 className="text-[9px] font-black text-text-secondary uppercase tracking-wider pl-3 flex items-center gap-2">
           <MdLock size={14} /> Online Payment
         </h4>
-        <div className="bento-card overflow-hidden bg-gradient-to-br from-card to-zinc-50">
+        <div className="bento-card overflow-hidden bg-surface">
           <div className="p-6 md:p-8 text-center">
             <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
               <MdPayment className="text-4xl text-primary" />
@@ -240,7 +240,7 @@ const TenantPayments = () => {
             {paid.map((p, i) => (
               <div key={p._id} className={`flex items-center justify-between p-6 ${i < paid.length - 1 ? "border-b border-border/50" : ""}`}>
                 <div className="flex items-center gap-5">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-[#2E7D32] flex items-center justify-center">
                     <MdCheckCircle size={22} />
                   </div>
                   <div>

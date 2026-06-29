@@ -213,8 +213,10 @@ export const updateRoom = asyncHandler(async (req, res) => {
   const room = await Room.findOne({ _id: req.validated.params.id, ...f });
   if (!room) throw new AppError("Room not found", 404);
 
-  const { monthlyRent, amenities } = req.validated.body;
+  const { monthlyRent, sharingType, type, amenities } = req.validated.body;
   if (monthlyRent !== undefined) room.monthlyRent = monthlyRent;
+  if (sharingType !== undefined) room.capacity = sharingType;
+  if (type !== undefined) room.roomType = type;
   if (amenities !== undefined) room.amenities = amenities;
   await room.save();
   await occupancyService.syncBedsForRoom(room);

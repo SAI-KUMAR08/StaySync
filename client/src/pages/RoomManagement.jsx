@@ -122,8 +122,16 @@ const RoomManagement = () => {
     e.preventDefault();
     try {
       if (editingRoom) {
-        await api.patch(`/owner/rooms/${editingRoom._id}`, { monthlyRent: formData.price });
-        toast.success("Unit pricing updated");
+        const payload = { monthlyRent: formData.price };
+        // Only send sharingType/type if they changed
+        if (formData.sharingType !== editingRoom.sharingType) {
+          payload.sharingType = formData.sharingType;
+        }
+        if (formData.type !== editingRoom.type) {
+          payload.type = formData.type;
+        }
+        await api.patch(`/owner/rooms/${editingRoom._id}`, payload);
+        toast.success("Room updated successfully");
       }
       setShowModal(false);
       setEditingRoom(null);
@@ -223,7 +231,7 @@ const RoomManagement = () => {
                     <button
                       onClick={removeSetupFloor}
                       disabled={setupFloors.length <= 1}
-                      className="px-4 py-2 bg-[#F5F5F4] hover:bg-background disabled:opacity-50 text-text-secondary text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                      className="px-4 py-2 bg-surface hover:bg-background disabled:opacity-50 text-text-secondary text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
                     >
                       Remove Floor
                     </button>
@@ -276,7 +284,7 @@ const RoomManagement = () => {
             <div className="space-y-8 animate-slide-up">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center bento-card p-7 gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                  <div className="w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center">
                     <MdLayers size={22} />
                   </div>
                   <div>
@@ -299,17 +307,17 @@ const RoomManagement = () => {
                         </span>
                         <h4 className="font-bold text-text-primary">Floor Details</h4>
                       </div>
-                      <button onClick={() => addSetupRoom(fIdx)} className="ghost-button flex items-center gap-1.5">
+                      <button onClick={() => addSetupRoom(fIdx)} className="btn-ghost flex items-center gap-1.5">
                         <MdAdd size={16} /> New Room
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                       {floor.rooms.map((room, rIdx) => (
-                        <div key={rIdx} className="p-5 rounded-2xl border border-border/50 bg-[#FAFAF9] space-y-4 relative group hover:bg-card hover:shadow-lg transition-all">
+                        <div key={rIdx} className="p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all">
                           <button
                             onClick={() => removeSetupRoom(fIdx, rIdx)}
-                            className="absolute top-3 right-3 text-text-secondary/30 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                            className="absolute top-3 right-3 text-text-secondary/30 hover:text-[#C62828] opacity-0 group-hover:opacity-100 transition-all"
                           >
                             <MdDelete size={18} />
                           </button>
@@ -371,7 +379,7 @@ const RoomManagement = () => {
           )
         ) : (
           <div className="bento-card p-16 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-3xl bg-[#F5F5F4] flex items-center justify-center mb-6">
+            <div className="w-20 h-20 rounded-3xl bg-surface flex items-center justify-center mb-6">
               <MdMeetingRoom className="text-4xl text-text-secondary/30" />
             </div>
             <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Empty Inventory</h3>
@@ -385,7 +393,7 @@ const RoomManagement = () => {
         structure.map((floor) => (
           <section key={floor._id} className="space-y-6 animate-slide-up">
             <div className="flex items-center gap-5 px-2">
-              <div className="bg-text-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-black font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10">
+              <div className="bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-black font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10">
                 Floor {floor.number}
               </div>
               <div className="h-[1px] flex-1 bg-border/80 rounded-full"></div>
@@ -427,10 +435,10 @@ const RoomManagement = () => {
                     </div>
 
                     {/* Occupancy Bar */}
-                    <div className="grid grid-cols-2 px-6 py-5 bg-[#FAFAF9] border-y border-border/40">
+                    <div className="grid grid-cols-2 px-6 py-5 bg-surface border-y border-border/40">
                       <div className="space-y-0.5">
                         <p className="text-[8px] font-bold text-text-secondary uppercase tracking-wider">Occupied</p>
-                        <p className="text-xl font-black text-rose-500">{room.occupiedBeds}</p>
+                        <p className="text-xl font-black text-[#C62828]">{room.occupiedBeds}</p>
                       </div>
                       <div className="space-y-0.5 border-l border-border/40 pl-6">
                         <p className="text-[8px] font-bold text-text-secondary uppercase tracking-wider">Vacant</p>
@@ -454,8 +462,8 @@ const RoomManagement = () => {
                             onDoubleClick={() => handleBedDoubleClick(bed)}
                             className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${
                               isOccupied
-                                ? "bg-rose-500 text-white shadow-[0_4px_12px_rgba(244,63,94,0.35)] cursor-pointer hover:scale-105"
-                                : "bg-emerald-500 text-white shadow-[0_4px_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-300/40"
+                                ? "bg-[#C62828] text-white shadow-[0_2px_8px_rgba(198,40,40,0.3)] cursor-pointer hover:scale-105"
+                                : "bg-[#2E7D32] text-white shadow-[0_2px_8px_rgba(46,125,50,0.3)]"
                             }`}
                           >
                             {isOccupied ? (
@@ -492,7 +500,7 @@ const RoomManagement = () => {
                 </h3>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Room Pricing</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center bg-[#F5F5F4] text-text-secondary/50 hover:text-text-primary rounded-xl transition-all">
+              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-xl transition-all">
                 <MdClose size={18} />
               </button>
             </div>
@@ -505,7 +513,12 @@ const RoomManagement = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="form-label">AC Type</label>
-                  <input type="text" disabled value={formData.type} className="field-input opacity-50" />
+                  <select value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                    className="field-select">
+                    <option value="Non-AC">Non-AC</option>
+                    <option value="AC">AC</option>
+                  </select>
                 </div>
               </div>
 
@@ -521,7 +534,13 @@ const RoomManagement = () => {
 
               <div className="space-y-1.5">
                 <label className="form-label">Sharing Capacity</label>
-                <input type="text" disabled value={`${formData.sharingType} Bed Unit`} className="field-input opacity-50" />
+                <select value={formData.sharingType}
+                  onChange={(e) => setFormData({ ...formData, sharingType: parseInt(e.target.value) })}
+                  className="field-select">
+                  {[1, 2, 3, 4, 6].map(n => (
+                    <option key={n} value={n}>{n} Bed{ n > 1 ? 's' : '' }</option>
+                  ))}
+                </select>
               </div>
 
               <button type="submit" className="btn-primary w-full py-4 text-sm">
@@ -536,12 +555,12 @@ const RoomManagement = () => {
       {selectedTenant && (
         <div className="modal-overlay" onClick={() => setSelectedTenant(null)}>
           <div className="bento-card max-w-sm w-full p-8 border border-border/60 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedTenant(null)} className="absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-[#F5F5F4] text-text-secondary/50 hover:text-text-primary rounded-2xl transition-all">
+            <button onClick={() => setSelectedTenant(null)} className="absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-2xl transition-all">
               <MdClose size={18} />
             </button>
 
             <div className="flex flex-col items-center text-center space-y-4 mb-6">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-accent p-0.5 shadow-lg shadow-primary/20">
+              <div className="w-20 h-20 rounded-full bg-primary p-0.5 shadow-md">
                 <div className="w-full h-full rounded-full bg-card flex items-center justify-center text-2xl font-black text-text-primary">
                   {selectedTenant.name?.[0]?.toUpperCase()}
                 </div>
@@ -552,7 +571,7 @@ const RoomManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-3 bg-[#FAFAF9] p-5 rounded-2xl border border-border/50">
+            <div className="space-y-3 bg-surface p-5 rounded-2xl border border-border/50">
               {[
                 { label: "Mobile", value: selectedTenant.phone },
                 { label: "Room", value: selectedTenant.roomId?.roomNumber || "—" },

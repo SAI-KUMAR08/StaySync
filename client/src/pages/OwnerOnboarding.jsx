@@ -73,7 +73,7 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
             </button>
           </div>
           {formData.password && !isPasswordValid(formData.password) && (
-            <p className="text-[9px] text-rose-500 font-bold mt-1 ml-1">Requires 8+ chars, uppercase, lowercase, number & special char.</p>
+            <p className="text-[9px] text-accent font-bold mt-1 ml-1">Requires 8+ chars, uppercase, lowercase, number & special char.</p>
           )}
         </div>
         <div className="md:col-span-2 space-y-1.5">
@@ -216,8 +216,8 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {floor.rooms.map((room, rIdx) => (
-                <div key={rIdx} className="p-5 rounded-2xl border border-border/50 bg-[#FAFAF9] space-y-4 relative group hover:bg-card hover:shadow-lg transition-all">
-                  <button onClick={() => removeRoom(fIdx, rIdx)} className="absolute top-3 right-3 text-text-secondary/30 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                <div key={rIdx} className="p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all">
+                  <button onClick={() => removeRoom(fIdx, rIdx)} className="absolute top-3 right-3 text-text-secondary/30 hover:text-accent opacity-0 group-hover:opacity-100 transition-all">
                     <MdDelete size={18} />
                   </button>
                   <div className="grid grid-cols-2 gap-4">
@@ -392,7 +392,7 @@ const OwnerOnboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFBF7] py-12 px-6 relative overflow-hidden">
+    <div className="min-h-screen bg-background py-12 px-6 relative overflow-hidden">
       {/* Decorative */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-32 -right-32 w-[600px] h-[600px] bg-primary/[0.04] rounded-full blur-[120px]"></div>
@@ -454,7 +454,7 @@ const OwnerOnboarding = () => {
             <div className="space-y-4">
               <input type="text" maxLength="6" placeholder="000000" value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                className="w-full bg-[#F5F5F4] border border-transparent p-5 rounded-2xl outline-none focus:bg-card focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all font-black text-center text-text-primary tracking-[1em] text-lg" />
+                className="w-full bg-surface border border-transparent p-5 rounded-2xl outline-none focus:bg-card focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all font-black text-center text-text-primary tracking-[1em] text-lg" />
 
               <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider pl-1">
                 <button type="button" onClick={handleResendOtp} disabled={cooldown > 0 || otpLoading}

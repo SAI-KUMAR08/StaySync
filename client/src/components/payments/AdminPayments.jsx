@@ -108,7 +108,7 @@ const AdminPayments = () => {
   return (
     <div className="space-y-10 pb-20">
       {/* Header & Stats */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
           <div className="section-tag mb-3">
             <MdPayment /> Collections
@@ -117,9 +117,9 @@ const AdminPayments = () => {
           <p className="section-sub">Operational billing and collection overview</p>
         </div>
         <div className="flex gap-3">
-          <SummaryCard title="Collected (this month)" value={`₹${stats.total.toLocaleString()}`} icon={MdAttachMoney} color="bg-emerald-600" />
-          <SummaryCard title="Overdue bills" value={stats.overdue} icon={MdError} color="bg-rose-600" />
-          <SummaryCard title="Unpaid (this month)" value={stats.pending} icon={MdAttachMoney} color="bg-amber-600" />
+          <SummaryCard title="Collected (this month)" value={`₹${stats.total.toLocaleString()}`} icon={MdAttachMoney} color="bg-[#2E7D32]" />
+          <SummaryCard title="Overdue bills" value={stats.overdue} icon={MdError} color="bg-primary" />
+          <SummaryCard title="Unpaid (this month)" value={stats.pending} icon={MdAttachMoney} color="bg-[#8D6E2A]" />
         </div>
       </div>
 
@@ -128,7 +128,7 @@ const AdminPayments = () => {
         <div className="flex-1 relative">
           <MdSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary/40 text-lg" />
           <input type="text" placeholder="Search by tenant name..."
-            className="form-input pl-12"
+            className="field-input pl-12"
             value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2">
@@ -174,7 +174,7 @@ const AdminPayments = () => {
                 <td>
                   <div className="space-y-0.5">
                     <p className="font-bold text-text-primary text-base tracking-tight">₹{(p.amount + (p.fine || 0)).toLocaleString()}</p>
-                    {p.fine > 0 && <p className="text-[9px] text-rose-500 font-bold tracking-wider uppercase">+ ₹{p.fine} Fine</p>}
+                    {p.fine > 0 && <p className="text-[9px] text-[#C62828] font-bold tracking-wider uppercase">+ ₹{p.fine} Fine</p>}
                   </div>
                 </td>
                 <td>
@@ -187,12 +187,12 @@ const AdminPayments = () => {
                   <div className="flex items-center gap-2">
                     <span className={`badge ${
                       p.status === 'paid' ? 'badge-emerald' :
-                      p.status === 'overdue' ? 'badge-rose' : 'badge-amber'
+                      p.status === 'overdue' ? 'badge-accent' : 'badge-amber'
                     }`}>
                       {p.status}
                     </span>
                     {p.status === "paid" && (
-                      <span className="badge bg-[#F5F5F4] text-text-secondary border-border/50">
+                      <span className="badge bg-surface text-text-secondary border-border/50">
                         {(p.paymentMethod || "upi").includes("cash") ? "Cash" : "UPI"}
                       </span>
                     )}
@@ -203,11 +203,11 @@ const AdminPayments = () => {
                     {p.status !== 'paid' && (
                       <>
                         <button onClick={() => handleStatusUpdate(p._id, "paid")}
-                          className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all">
+                          className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl hover:bg-emerald-500 hover:text-white transition-all">
                           <MdCheckCircle size={18} />
                         </button>
                         <button onClick={() => { setSelectedPayment(p); setFineAmount(p.fine || 0); setShowFineModal(true); }}
-                          className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all">
+                          className="p-2.5 bg-primary-light text-primary rounded-xl hover:bg-primary-hover hover:text-white transition-all">
                           <MdAddCircleOutline size={18} />
                         </button>
                       </>
@@ -234,7 +234,7 @@ const AdminPayments = () => {
           <div className="modal-card max-w-sm border border-border/50">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
               <h4 className="text-lg font-black font-sans text-text-primary tracking-tight uppercase">Apply Fine</h4>
-              <button onClick={() => setShowFineModal(false)} className="text-text-secondary/40 hover:text-rose-500 transition-colors">
+              <button onClick={() => setShowFineModal(false)} className="text-text-secondary/40 hover:text-accent transition-colors">
                 <MdClose size={22} />
               </button>
             </div>
@@ -242,7 +242,7 @@ const AdminPayments = () => {
               <div className="space-y-2 text-center">
                 <label className="form-label">Fine Amount (₹)</label>
                 <input type="number" required autoFocus min="0"
-                  className="w-full py-5 rounded-3xl border border-transparent bg-[#F5F5F4] outline-none font-black text-3xl text-center text-rose-500 focus:bg-card focus:border-rose-100 focus:ring-4 focus:ring-rose-50 transition-all tracking-tighter"
+                  className="w-full py-5 rounded-3xl border border-transparent bg-surface outline-none font-black text-3xl text-center text-[#C62828] focus:bg-card focus:border-rose-100 focus:ring-4 focus:ring-rose-50 transition-all tracking-tighter"
                   value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} />
               </div>
               <p className="text-[9px] text-text-secondary/60 text-center font-medium uppercase tracking-wider">

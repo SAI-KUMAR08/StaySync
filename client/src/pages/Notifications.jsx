@@ -114,7 +114,7 @@ const Notifications = () => {
           <div className="section-tag mb-3">
             <MdAnnouncement /> Notices
           </div>
-          <h2 className="section-title">Hostel <span>Notices</span></h2>
+          <h2 className="section-title">Hostel <span className="highlight">Notices</span></h2>
           <p className="section-sub">
             {user?.role === "owner"
               ? "Send updates to residents (water, maintenance, etc.)"
@@ -146,7 +146,7 @@ const Notifications = () => {
                     <h3 className="text-lg font-black font-sans text-text-primary mt-1">{n.title}</h3>
                   </div>
                   {user?.role === "owner" && (
-                    <button type="button" onClick={() => handleDelete(n._id)} className="text-text-secondary/30 hover:text-rose-500 p-1.5 transition-colors">
+                    <button type="button" onClick={() => handleDelete(n._id)} className="text-text-secondary/30 hover:text-accent p-1.5 transition-colors">
                       <MdClose size={20} />
                     </button>
                   )}
@@ -170,19 +170,19 @@ const Notifications = () => {
                 <h4 className="text-lg font-black font-sans text-text-primary tracking-tight">Post Notice</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Broadcast to residents</p>
               </div>
-              <button type="button" onClick={() => setShowForm(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-rose-500 hover:bg-rose-50 transition-all">
+              <button type="button" onClick={() => setShowForm(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all">
                 <MdClose size={20} />
               </button>
             </div>
             <input required placeholder="Title (e.g. Washing machine not working)" className="field-input"
               value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <select className="form-select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            <select className="field-select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
               <option value="general">General</option>
               <option value="maintenance">Maintenance</option>
               <option value="water_shutdown">Water problem</option>
               <option value="emergency">Emergency</option>
             </select>
-            <textarea required rows={4} placeholder="Message for all residents..." className="form-textarea"
+            <textarea required rows={4} placeholder="Message for all residents..." className="field-textarea"
               value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
             <button type="submit" className="btn-primary w-full">
               Broadcast to Residents

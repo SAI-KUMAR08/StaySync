@@ -10,10 +10,10 @@ import toast from "react-hot-toast";
 
 const PriorityBadge = ({ priority }) => {
   const colors = {
-    high: "bg-rose-50 text-rose-700 border-rose-200/50",
-    emergency: "bg-rose-50 text-rose-700 border-rose-200/50",
-    medium: "bg-orange-50 text-orange-700 border-orange-200/50",
-    low: "bg-blue-50 text-blue-700 border-blue-200/50",
+    high: "bg-primary-light text-primary border-primary/20",
+    emergency: "bg-primary-light text-primary border-primary/20",
+    medium: "bg-primary-light text-primary border-primary/20",
+    low: "bg-primary-light text-primary border-primary/20",
   };
   const key = (priority || "medium").toLowerCase();
   return (
@@ -160,12 +160,12 @@ const Complaints = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
           <div className="section-tag mb-3">
             <MdReportProblem /> Support
           </div>
-          <h2 className="section-title">Support <span>Desk</span></h2>
+          <h2 className="section-title">Support <span className="highlight">Desk</span></h2>
           <p className="section-sub">Monitor and resolve resident issues</p>
         </div>
         {user?.role === "tenant" && (
@@ -183,7 +183,7 @@ const Complaints = () => {
             className="field-input pl-11"
             value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label="Filter by status">
           {[
             { id: "", label: "All" },
             { id: "pending", label: "Pending" },
@@ -191,10 +191,15 @@ const Complaints = () => {
             { id: "resolved", label: "Resolved" },
           ].map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setStatusFilter(id)}
-              className={`px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-wider transition-all ${
-                (statusFilter === id) ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-card text-text-secondary/60 border border-border/60 hover:border-primary/30'
+              className={`relative px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-wider transition-all duration-300 ${
+                (statusFilter === id)
+                  ? 'text-primary border border-primary/30 scale-105 shadow-sm shadow-primary/5'
+                  : 'bg-card text-text-secondary/60 border border-border/60 hover:border-primary/30 hover:text-text-primary/80'
               }`}>
               {label}
+              {statusFilter === id && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] h-[3px] bg-primary/30 rounded-full" />
+              )}
             </button>
           ))}
         </div>
@@ -204,7 +209,10 @@ const Complaints = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {complaints?.map((c, i) => (
           <div key={c._id} className="stagger-enter" style={{ animationDelay: `${i * 0.05}s` }}>
-            <div className="bento-card p-6 flex flex-col group h-full">
+            <div className={`bento-card p-6 flex flex-col group h-full relative overflow-hidden border-l-[3px] ${
+              c.priority === 'high' || c.priority === 'emergency' ? 'border-l-primary' :
+              c.priority === 'low' ? 'border-l-primary/60' : 'border-l-primary'
+            }`}>
               <div className="flex justify-between items-start mb-5">
                 <span className={`badge ${
                   c.status === 'pending' ? 'badge-amber' :
@@ -226,7 +234,7 @@ const Complaints = () => {
 
               <div className="mt-5 pt-4 border-t border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#F5F5F4] flex items-center justify-center font-bold text-text-secondary/50 border border-border/50">
+                  <div className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center font-bold text-text-secondary/50 border border-border/50">
                     {c.tenantId?.name?.[0]?.toUpperCase() || c.tenantId?.personalInfo?.name?.[0]?.toUpperCase() || 'T'}
                   </div>
                   <div>
@@ -238,10 +246,10 @@ const Complaints = () => {
                 {user.role === "owner" && (
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {c.status === 'pending' && (
-                      <button onClick={() => handleStatusUpdate(c._id, "in_progress")} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-500 hover:text-white transition-all"><MdHourglassEmpty size={16} /></button>
+                      <button onClick={() => handleStatusUpdate(c._id, "in_progress")} className="p-2 bg-primary-light text-primary rounded-xl hover:bg-secondary hover:text-white transition-all"><MdHourglassEmpty size={16} /></button>
                     )}
                     {c.status !== 'resolved' && (
-                      <button onClick={() => handleStatusUpdate(c._id, "resolved")} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><MdCheckCircle size={16} /></button>
+                      <button onClick={() => handleStatusUpdate(c._id, "resolved")} className="p-2 bg-green-500/10 text-green-700 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><MdCheckCircle size={16} /></button>
                     )}
                   </div>
                 )}
@@ -250,8 +258,41 @@ const Complaints = () => {
           </div>
         ))}
         {(!complaints || complaints.length === 0) && (
-          <div className="col-span-full py-20 text-center">
-            <p className="font-medium text-text-secondary/60 uppercase tracking-wider text-[10px]">No tickets found matching your criteria</p>
+          <div className="col-span-full py-24 text-center relative overflow-hidden">
+            {/* Playful floating icon arrangement */}
+            <div className="relative inline-block mb-8">
+              {/* Background soft glow */}
+              <div className="absolute -inset-10 bg-primary/5 rounded-full blur-2xl" />
+
+              {/* Main center icon — the ticket/report */}
+              <div className="relative z-10 w-24 h-24 rounded-[28px] bg-surface border border-border/30 flex items-center justify-center shadow-xl">
+                <MdReportProblem className="text-4xl text-primary/35" />
+              </div>
+
+              {/* Floating satellite icons */}
+              <div className="absolute -top-5 -left-9 w-11 h-11 rounded-xl bg-primary-light flex items-center justify-center border border-accent/10" style={{ animationDuration: '4s' }}>
+                <MdFlag className="text-lg text-accent/40" />
+              </div>
+              <div className="absolute -bottom-5 -right-7 w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center border border-secondary/10" style={{ animationDuration: '5s', animationDelay: '0.6s' }}>
+                <MdCheckCircle className="text-base text-secondary/40" />
+              </div>
+              <div className="absolute top-1 -right-14 w-9 h-9 rounded-xl bg-primary-light flex items-center justify-center border border-primary/10" style={{ animationDuration: '3.5s', animationDelay: '1.2s' }}>
+                <MdHourglassEmpty className="text-base text-primary/40" />
+              </div>
+              <div className="absolute -bottom-3 -left-11 w-8 h-8 rounded-xl bg-card flex items-center justify-center border border-border/50" style={{ animationDuration: '4.5s', animationDelay: '0.3s' }}>
+                <MdAdd className="text-sm text-text-tertiary/40" />
+              </div>
+            </div>
+
+            <p className="text-xl font-black font-sans text-text-primary/45 tracking-tight mb-2">
+              {statusFilter || search ? 'No matching tickets' : 'No tickets yet'}
+            </p>
+            <p className="text-[10px] font-medium text-text-secondary/40 uppercase tracking-[0.2em]">
+              {statusFilter || search ? 'Try adjusting your filters or search terms' : 'All issues have been resolved'}
+            </p>
+
+            {/* Decorative bottom gradient line */}
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-48 h-px bg-black/5" />
           </div>
         )}
       </div>
@@ -265,7 +306,7 @@ const Complaints = () => {
                 <h4 className="text-lg font-black font-sans text-text-primary tracking-tight">Report Issue</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Support Ticket</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-rose-500 hover:bg-rose-50 transition-all">
+              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all">
                 <MdClose size={20} />
               </button>
             </div>

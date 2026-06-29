@@ -18,13 +18,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#FDFDFF] flex flex-col items-center justify-center p-6 text-center space-y-6">
-          <div className="w-24 h-24 bg-rose-50 rounded-[2.5rem] flex items-center justify-center text-rose-500 shadow-inner">
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+          <div className="w-24 h-24 bg-accent-soft rounded-[2.5rem] flex items-center justify-center text-accent shadow-inner">
             <MdErrorOutline size={48} />
           </div>
           <div className="max-w-md">
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter mb-2">Something went wrong</h1>
-            <p className="text-slate-500 font-medium mb-8">
+            <h1 className="text-3xl font-black text-text-primary tracking-tighter mb-2">Something went wrong</h1>
+            <p className="text-text-secondary font-medium mb-8">
               A runtime error occurred. The technical team has been notified. Please refresh the page to continue operations.
             </p>
             <button 
@@ -35,7 +35,7 @@ class ErrorBoundary extends React.Component {
             </button>
           </div>
           {import.meta.env.MODE !== 'production' && (
-            <div className="mt-8 p-6 bg-slate-900 rounded-3xl text-left max-w-2xl w-full overflow-auto">
+            <div className="mt-8 p-6 bg-card rounded-3xl text-left max-w-2xl w-full overflow-auto">
               <p className="text-rose-400 font-mono text-sm">{this.state.error?.toString()}</p>
             </div>
           )}

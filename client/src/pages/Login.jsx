@@ -2,23 +2,53 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  MdEmail, MdLock, MdLogin, MdPhone,
+  MdEmail, MdLock,
   MdVpnKey, MdPerson, MdBusiness, MdArrowForward,
-  MdVisibility, MdVisibilityOff, MdHome
+  MdVisibility, MdVisibilityOff, MdHome, MdArrowBack
 } from "react-icons/md";
 import toast from "react-hot-toast";
 
 const Login = () => {
+  const COUNTRY_CODES = [
+    { code: "+91", label: "IN", flag: "🇮🇳" },
+    { code: "+1", label: "US", flag: "🇺🇸" },
+    { code: "+44", label: "UK", flag: "🇬🇧" },
+    { code: "+61", label: "AU", flag: "🇦🇺" },
+    { code: "+971", label: "UAE", flag: "🇦🇪" },
+    { code: "+65", label: "SG", flag: "🇸🇬" },
+    { code: "+1", label: "CA", flag: "🇨🇦" },
+  ];
+
   const [role, setRole] = useState("owner");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Tenant auth state
+  const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [tenantFlow, setTenantFlow] = useState("phone"); // "phone" | "password" | "set-password" | "forgot-password"
+  const [tenantPassword, setTenantPassword] = useState("");
+  const [showTenantPassword, setShowTenantPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { login, sendOTP, tenantLogin } = useAuth();
+  const { login, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword: setPwd, sendForgotOtp, resetTenantPassword } = useAuth();
   const navigate = useNavigate();
+
+  const handlePhoneChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhone(raw);
+    if (raw.length > 0 && raw.length !== 10) {
+      setPhoneError("Must be exactly 10 digits");
+    } else {
+      setPhoneError("");
+    }
+  };
 
   const handleOwnerSubmit = async (e) => {
     e.preventDefault();
@@ -34,176 +64,550 @@ const Login = () => {
     }
   };
 
-  const handleSendOTP = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await sendOTP(phone);
-      setOtpSent(true);
-      if (res?.otp) {
-        setOtp(res.otp);
-        toast.success(`Use OTP: ${res.otp}`, { icon: "🧪" });
-      }
-    } catch {} finally {
-      setLoading(false);
-    }
-  };
+  const fullPhone = () => countryCode + phone;
 
-  const handleTenantLogin = async (e) => {
+  // Step 1: Check tenant status
+  const handleCheckPhone = async (e) => {
     e.preventDefault();
+    if (phone.length !== 10) { setPhoneError("Must be exactly 10 digits"); return; }
     setLoading(true);
     try {
-      await tenantLogin(phone, otp);
-      toast.success("Welcome to your digital home!");
-      navigate("/tenant/dashboard");
-    } catch (error) {
-      toast.error("Invalid OTP");
+      const status = await checkTenantStatus(fullPhone());
+      if (!status.exists) {
+        toast.error("No resident found with this number");
+        return;
+      }
+      if (status.hasPassword) {
+        setTenantFlow("password");
+      } else {
+        // First time — go straight to password setup
+        setTenantFlow("set-password");
+      }
+    } catch (err) {
+      toast.error("Something went wrong. Please try again.");
+      console.error("Check phone error:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Password login
+  const handlePasswordLogin = async (e) => {
+    e.preventDefault();
+    if (!tenantPassword) return;
+    setLoading(true);
+    try {
+      await tenantPasswordLogin(fullPhone(), tenantPassword);
+      navigate("/tenant/dashboard");
+    } catch {
+      // toast handled in context
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Set password directly (no OTP)
+  const handleSetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+    setLoading(true);
+    try {
+      await setPwd(fullPhone(), "", newPassword);
+      navigate("/tenant/dashboard");
+    } catch {
+      // toast handled in context
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Send forgot password OTP to email
+  const handleSendForgotOtp = async (e) => {
+    e.preventDefault();
+    if (phone.length !== 10) { setPhoneError("Must be exactly 10 digits"); return; }
+    setLoading(true);
+    try {
+      const res = await sendForgotOtp(fullPhone());
+      setOtpSent(true);
+      if (res?.otp) {
+        setOtp(res.otp);
+        toast.success(`Use OTP: ${res.otp}`, { icon: "🧪" });
+      }
+    } catch { } finally { setLoading(false); }
+  };
+
+  // Reset password after forgot OTP
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (newPassword !== confirmPassword) { toast.error("Passwords do not match"); return; }
+    setLoading(true);
+    try {
+      await resetTenantPassword(fullPhone(), otp, newPassword);
+      navigate("/tenant/dashboard");
+    } catch {
+      // toast handled in context
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetTenantState = () => {
+    setTenantFlow("phone");
+    setTenantPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setOtp("");
+    setOtpSent(false);
+    setPhone("");
+    setPhoneError("");
+  };
+
+  const passwordStrength = (pwd) => {
+    const checks = [/[a-z]/, /[A-Z]/, /[0-9]/, /[@$!%*?&]/, pwd.length >= 8];
+    return checks.filter(Boolean).length; // simplified
+  };
+
   return (
-    <div className="min-h-screen flex">
-      {/* LEFT — Creative Brand Panel */}
-      <div className="hidden lg:flex lg:w-[55%] bg-gradient-to-br from-[#09090B] via-[#1C0A2B] to-[#2D0A3E] relative overflow-hidden items-center justify-center p-16">
-        {/* Animated geometric decorations */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-[10%] left-[10%] w-80 h-80 rounded-full bg-primary/[0.08] blur-[100px] animate-pulse-soft" />
-          <div className="absolute bottom-[15%] right-[5%] w-96 h-96 rounded-full bg-accent/[0.06] blur-[120px] animate-pulse-soft" style={{ animationDelay: '1.5s' }} />
-          <div className="absolute top-[45%] right-[20%] w-56 h-56 rounded-full bg-cyan-500/[0.04] blur-[80px] animate-pulse-soft" style={{ animationDelay: '3s' }} />
+    <div className="min-h-screen flex bg-background overflow-hidden relative">
 
-          {/* Floating geometric shapes — creative set */}
-          <svg className="absolute top-[18%] left-[8%] w-20 h-20 text-primary/15 animate-float" viewBox="0 0 100 100">
-            <polygon points="50,0 100,50 50,100 0,50" fill="currentColor" />
-          </svg>
-          <svg className="absolute bottom-[20%] right-[12%] w-24 h-24 text-accent/12 animate-float-delayed" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="45" fill="currentColor" opacity="0.4" />
-          </svg>
-          <svg className="absolute top-[55%] left-[15%] w-14 h-14 text-cyan-500/15 animate-drift" viewBox="0 0 100 100">
-            <rect x="10" y="10" width="80" height="80" rx="18" fill="currentColor" />
-          </svg>
-          <svg className="absolute top-[28%] right-[22%] w-16 h-16 text-violet-400/15 animate-float" viewBox="0 0 100 100" style={{ animationDelay: '2s' }}>
-            <polygon points="50,5 95,35 80,90 20,90 5,35" fill="currentColor" />
-          </svg>
-          {/* Extra floating dots */}
-          <div className="absolute top-[35%] left-[30%] w-2 h-2 rounded-full bg-white/30 animate-breathe" />
-          <div className="absolute top-[65%] right-[35%] w-1.5 h-1.5 rounded-full bg-accent/40 animate-breathe" style={{ animationDelay: '1.2s' }} />
-          <div className="absolute top-[20%] right-[40%] w-3 h-3 rounded-full bg-primary/30 animate-breathe" style={{ animationDelay: '2.4s' }} />
-        </div>
+      {/* ═══ BRAND PANEL — Warm, grounded ═══ */}
+      <div
+        className="hidden lg:flex lg:w-[55%] relative overflow-hidden items-center justify-center p-16"
+        style={{
+          background: `
+            radial-gradient(ellipse 90% 70% at 30% 30%, rgba(92, 61, 46, 0.06) 0%, transparent 80%),
+            var(--color-background-deep)
+          `
+        }}
+      >
+        {/* Single organic accent — subtle, static */}
+        <div
+          className="absolute w-[400px] h-[400px] -top-24 -left-24 opacity-[0.04]"
+          style={{
+            background: 'radial-gradient(circle at 40% 40%, #5C3D2E, transparent 70%)',
+          }}
+        />
+        <div
+          className="absolute w-[320px] h-[320px] -bottom-16 -right-16 opacity-[0.03]"
+          style={{
+            background: 'radial-gradient(circle at 60% 60%, #5C3D2E, transparent 70%)',
+          }}
+        />
 
-        <div className="relative z-10 max-w-lg">
-          <div className="glass-dark rounded-[3rem] p-10 backdrop-blur-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-8 shadow-2xl shadow-primary/30">
-              <MdHome className="text-3xl text-white" />
+        {/* Content */}
+        <div className="relative z-10 max-w-md w-full">
+          <div className="bg-white rounded-2xl p-10 shadow-card-md border border-border">
+            {/* Logo — simple, no glow */}
+            <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center mb-8">
+              <MdHome className="text-2xl text-white" />
             </div>
-            <h1 className="text-5xl font-black font-sans text-white tracking-tight leading-[1.1] mb-4">
-              <span className="bg-gradient-to-r from-violet-400 to-rose-400 bg-clip-text text-transparent">Stay</span>Sync
+
+            <h1 className="text-4xl font-black font-sans text-text-primary tracking-tight leading-[1.08] mb-2">
+              Sri Rama
             </h1>
-            <p className="text-lg text-white/60 font-medium mb-6 leading-relaxed">
-              Complete hostel management platform — from room allocation to rent collection, all in one place.
+            <p className="text-sm text-text-secondary font-medium mb-7 leading-relaxed">
+              Hostel management for real life — rent tracking, maintenance requests, and resident records under one roof.
             </p>
-            <div className="flex flex-wrap gap-3">
-              {["Smart Billing", "Real-time Reports", "Digital Rent Collection"].map(f => (
-                <span key={f} className="px-3 py-1.5 rounded-xl bg-white/[0.06] text-white/50 text-[10px] font-bold uppercase tracking-wider border border-white/[0.06]">
-                  {f}
-                </span>
-              ))}
+
+            <div className="space-y-3.5">
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary/60 mt-2 shrink-0" />
+                <div>
+                  <p className="text-[13px] font-semibold text-text-primary">Rent & billing</p>
+                  <p className="text-xs text-text-secondary/70">Monthly invoices, due reminders, payment history.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary/60 mt-2 shrink-0" />
+                <div>
+                  <p className="text-[13px] font-semibold text-text-primary">Maintenance</p>
+                  <p className="text-xs text-text-secondary/70">Residents submit requests; you track and close them.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary/60 mt-2 shrink-0" />
+                <div>
+                  <p className="text-[13px] font-semibold text-text-primary">Resident records</p>
+                  <p className="text-xs text-text-secondary/70">Room assignments, contact info, move-in dates.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-border">
+              <p className="text-xs text-text-secondary/50 font-medium text-center">
+                Built for hostel owners, by people who run hostels.
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* RIGHT — Login Form */}
-      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 md:p-10 bg-[#FAFAFA]">
-        <div className="w-full max-w-sm animate-slide-up">
-          {/* Mobile brand (shown on small screens) */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-xl shadow-primary/20">
+      {/* ═══ LOGIN FORM ═══ */}
+      <div className="w-full lg:w-[45%] flex items-center justify-center p-6 md:p-12 relative z-10">
+        <div className="w-full max-w-sm animate-tilt-in">
+
+          {/* Mobile brand */}
+          <div className="lg:hidden text-center mb-12">
+            <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-md">
               <MdHome className="text-2xl text-white" />
             </div>
             <h1 className="text-3xl font-black font-sans text-text-primary tracking-tight">
-              <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Stay</span>Sync
+              Sri Rama
             </h1>
-            <p className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.15em] mt-1">Smart Hostel Management Platform</p>
+            <p className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.15em] mt-1">
+              Hostel Management
+            </p>
           </div>
 
-          <div className="space-y-7">
-            {/* Role Switcher — Creative pill tabs */}
-            <div className="flex bg-zinc-100/80 p-1 rounded-2xl gap-1">
-              <button onClick={() => { setRole("owner"); setOtpSent(false); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
-                  role === 'owner' ? 'bg-card text-primary shadow-sm shadow-zinc-200/50' : 'text-text-secondary/50 hover:text-text-secondary'
-                }`}>
-                <MdBusiness size={15} /> Owner
-              </button>
-              <button onClick={() => { setRole("tenant"); setOtpSent(false); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
-                  role === 'tenant' ? 'bg-card text-primary shadow-sm shadow-zinc-200/50' : 'text-text-secondary/50 hover:text-text-secondary'
-                }`}>
-                <MdPerson size={15} /> Resident
-              </button>
+          {/* Desktop title */}
+          <div className="hidden lg:block mb-10">
+            <h2 className="text-[1.75rem] font-black font-sans tracking-tight mb-1 text-text-primary leading-[1.08]">Sign in</h2>
+            <p className="text-sm text-text-secondary">to your hostel dashboard</p>
+          </div>
+
+          <div className="space-y-8">
+
+            {/* Role switcher */}
+            <div className="flex bg-surface p-1 rounded-[14px] gap-1 border border-border">
+              {[
+                { key: "owner", label: "Owner", icon: MdBusiness },
+                { key: "tenant", label: "Resident", icon: MdPerson },
+              ].map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => { setRole(key); setOtpSent(false); }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all ${
+                    role === key
+                      ? 'bg-primary text-white shadow-lg shadow-primary/25'
+                      : 'text-text-secondary/50 hover:text-text-secondary'
+                  }`}
+                >
+                  <Icon size={15} /> {label}
+                </button>
+              ))}
             </div>
 
             {role === "owner" ? (
               <form onSubmit={handleOwnerSubmit} className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Work Email</label>
+                  <label className="form-label">Work Email</label>
                   <div className="relative">
-                    <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/30 text-lg" />
-                    <input required type="email" className="field-input pl-11" placeholder="name@company.com"
-                      value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                    <input
+                      required
+                      type="email"
+                      className="field-input pl-11"
+                      placeholder="name@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Password</label>
+                  <label className="form-label">Password</label>
                   <div className="relative">
-                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/30 text-lg" />
-                    <input required type={showPassword ? "text" : "password"} autoComplete="current-password"
-                      className="field-input pl-11 pr-11" placeholder="Enter your password"
-                      value={password} onChange={(e) => setPassword(e.target.value)} />
-                    <button type="button" onClick={() => setShowPassword(v => !v)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary/30 hover:text-text-secondary transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}>
+                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                    <input
+                      required
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      className="field-input pl-11 pr-11"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
                       {showPassword ? <MdVisibilityOff size={17} /> : <MdVisibility size={17} />}
                     </button>
                   </div>
                 </div>
-                <button disabled={loading} type="submit" className="btn-primary w-full py-4 text-sm">
+                <button
+                  disabled={loading}
+                  type="submit"
+                  className="btn-primary w-full py-4 text-sm"
+                >
                   {loading ? "Signing in..." : "Access Dashboard"}
                 </button>
               </form>
-            ) : (
-              <form onSubmit={otpSent ? handleTenantLogin : handleSendOTP} className="space-y-5">
+            ) : tenantFlow === "phone" ? (
+              /* ═══ Step 1: Phone input ═══ */
+              <form onSubmit={handleCheckPhone} className="space-y-5">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Mobile Number</label>
+                  <label className="form-label">Mobile Number</label>
+                  <div className="flex gap-2">
+                    <div className="relative shrink-0">
+                      <select
+                        value={countryCode}
+                        onChange={(e) => setCountryCode(e.target.value)}
+                        className="field-select !pr-7 !pl-3 !w-[88px] text-center font-bold text-sm"
+                      >
+                        {COUNTRY_CODES.map((cc) => (
+                          <option key={`${cc.code}-${cc.label}`} value={cc.code}>
+                            {cc.flag} {cc.code}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        required
+                        type="tel"
+                        inputMode="numeric"
+                        className="field-input font-mono tracking-wider text-center text-lg"
+                        placeholder="0000000000"
+                        value={phone}
+                        onChange={handlePhoneChange}
+                      />
+                    </div>
+                  </div>
+                  {phoneError && (
+                    <p className="text-[10px] text-danger font-semibold mt-1 ml-1">{phoneError}</p>
+                  )}
+                </div>
+                <button
+                  disabled={loading || phone.length !== 10}
+                  type="submit"
+                  className="btn-primary w-full py-4 text-sm"
+                >
+                  {loading ? "Checking..." : "Continue"}
+                </button>
+              </form>
+
+            ) : tenantFlow === "password" ? (
+              /* ═══ Step 2a: Password login ═══ */
+              <form onSubmit={handlePasswordLogin} className="space-y-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setTenantFlow("phone"); setTenantPassword(""); }}
+                    className="text-text-tertiary hover:text-text-primary transition-colors"
+                  >
+                    <MdArrowBack size={18} />
+                  </button>
+                  <p className="text-xs text-text-secondary font-medium">
+                    {countryCode} {phone}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="form-label">Password</label>
                   <div className="relative">
-                    <MdPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/30 text-lg" />
-                    <input required disabled={otpSent} type="tel" className="field-input pl-11 disabled:opacity-50"
-                      placeholder="+91 00000 00000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                    <input
+                      required
+                      type={showTenantPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      className="field-input pl-11 pr-11"
+                      placeholder="Enter your password"
+                      value={tenantPassword}
+                      onChange={(e) => setTenantPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTenantPassword((v) => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
+                    >
+                      {showTenantPassword ? <MdVisibilityOff size={17} /> : <MdVisibility size={17} />}
+                    </button>
                   </div>
                 </div>
-                {otpSent && (
-                  <div className="space-y-1.5 animate-slide-up">
-                    <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Verification Code</label>
-                    <div className="relative">
-                      <MdVpnKey className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/30 text-lg" />
-                      <input required type="text" maxLength="6" className="field-input pl-11 tracking-[0.5em] text-center font-bold"
-                        placeholder="000000" value={otp} onChange={(e) => setOtp(e.target.value)} />
-                    </div>
-                    <button type="button" onClick={() => setOtpSent(false)} className="text-[9px] text-primary font-semibold hover:underline mt-1 ml-1">Change number?</button>
-                  </div>
-                )}
-                <button disabled={loading} type="submit" className="btn-primary w-full py-4 text-sm">
-                  {loading ? "Please wait..." : otpSent ? "Verify & Enter" : "Get Verification Code"}
+                <button
+                  disabled={loading || !tenantPassword}
+                  type="submit"
+                  className="btn-primary w-full py-4 text-sm"
+                >
+                  {loading ? "Signing in..." : "Login"}
                 </button>
+                <div className="flex justify-between text-xs">
+                  <button
+                    type="button"
+                    onClick={() => { setTenantFlow("forgot-password"); setOtp(""); setOtpSent(false); setNewPassword(""); setConfirmPassword(""); }}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setTenantFlow("phone"); resetTenantState(); }}
+                    className="text-text-secondary/50 hover:text-text-secondary"
+                  >
+                    Use OTP instead
+                  </button>
+                </div>
+              </form>
+
+            ) : tenantFlow === "set-password" ? (
+              /* ═══ Step 2b: First-time set password ═══ */
+              <form onSubmit={handleSetPassword} className="space-y-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setTenantFlow("phone"); resetTenantState(); }}
+                    className="text-text-tertiary hover:text-text-primary transition-colors"
+                  >
+                    <MdArrowBack size={18} />
+                  </button>
+                  <div>
+                    <p className="text-sm font-bold font-sans text-text-primary">Set your password</p>
+                    <p className="text-[10px] text-text-secondary">{countryCode} {phone}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="form-label">New Password</label>
+                  <div className="relative">
+                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                    <input
+                      required
+                      type={showNewPassword ? "text" : "password"}
+                      className="field-input pl-11 pr-11"
+                      placeholder="Min 8 chars, upper, lower, number"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword((v) => !v)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                    >
+                      {showNewPassword ? <MdVisibilityOff size={17} /> : <MdVisibility size={17} />}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="form-label">Confirm Password</label>
+                  <input
+                    required
+                    type="password"
+                    className="field-input"
+                    placeholder="Re-enter password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                  {confirmPassword && newPassword !== confirmPassword && (
+                    <p className="text-[10px] text-danger font-semibold mt-1">Passwords do not match</p>
+                  )}
+                </div>
+                <button
+                  disabled={loading || !newPassword || newPassword !== confirmPassword}
+                  type="submit"
+                  className="btn-primary w-full py-4 text-sm"
+                >
+                  {loading ? "Setting up..." : "Set Password & Login"}
+                </button>
+              </form>
+
+            ) : (
+              /* ═══ Step 2c: Forgot password ═══ */
+              <form onSubmit={otpSent ? handleResetPassword : handleSendForgotOtp} className="space-y-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setTenantFlow("password"); setOtpSent(false); setOtp(""); setNewPassword(""); setConfirmPassword(""); }}
+                    className="text-text-tertiary hover:text-text-primary transition-colors"
+                  >
+                    <MdArrowBack size={18} />
+                  </button>
+                  <p className="text-xs text-text-secondary font-medium">
+                    Reset password for {countryCode} {phone}
+                  </p>
+                </div>
+
+                {!otpSent ? (
+                  <>
+                    <p className="text-sm text-text-secondary">An OTP will be sent to your registered email address.</p>
+                    <button
+                      disabled={loading}
+                      type="submit"
+                      className="btn-primary w-full py-4 text-sm"
+                    >
+                      {loading ? "Sending..." : "Send OTP to Email"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Verification Code</label>
+                      <div className="relative">
+                        <MdVpnKey className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                        <input
+                          required
+                          type="text"
+                          maxLength="6"
+                          className="field-input pl-11 tracking-[0.5em] text-center font-bold"
+                          placeholder="000000"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setOtpSent(false); setOtp(""); handleSendForgotOtp(); }}
+                        className="text-[10px] text-primary font-semibold hover:underline mt-1"
+                      >
+                        Resend OTP
+                      </button>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">New Password</label>
+                      <div className="relative">
+                        <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                        <input
+                          required
+                          type={showNewPassword ? "text" : "password"}
+                          className="field-input pl-11 pr-11"
+                          placeholder="Min 8 chars, upper, lower, number"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword((v) => !v)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                        >
+                          {showNewPassword ? <MdVisibilityOff size={17} /> : <MdVisibility size={17} />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Confirm Password</label>
+                      <input
+                        required
+                        type="password"
+                        className="field-input"
+                        placeholder="Re-enter password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                      {confirmPassword && newPassword !== confirmPassword && (
+                        <p className="text-[10px] text-danger font-semibold mt-1">Passwords do not match</p>
+                      )}
+                    </div>
+                    <button
+                      disabled={loading || otp.length !== 6 || !newPassword || newPassword !== confirmPassword}
+                      type="submit"
+                      className="btn-primary w-full py-4 text-sm"
+                    >
+                      {loading ? "Resetting..." : "Reset Password & Login"}
+                    </button>
+                  </>
+                )}
               </form>
             )}
 
-            <div className="text-center pt-3 border-t border-border/50">
+            <div className="text-center pt-4 border-t border-border/50">
               <p className="text-xs text-text-secondary/50 font-medium">
                 Own a hostel?{" "}
-                <Link to="/onboarding" className="text-primary font-bold hover:text-primary-hover inline-flex items-center gap-1 transition-colors">
+                <Link
+                  to="/onboarding"
+                  className="text-primary font-bold hover:text-primary-hover inline-flex items-center gap-1 transition-colors"
+                >
                   Register here <MdArrowForward size={13} />
                 </Link>
               </p>

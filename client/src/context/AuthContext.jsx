@@ -7,21 +7,16 @@ const defaultAuth = {
   user: null,
   loading: true,
   hostels: [],
-  login: async () => {
-    throw new Error("AuthProvider is missing");
-  },
-  registerOwner: async () => {
-    throw new Error("AuthProvider is missing");
-  },
-  sendOTP: async () => {
-    throw new Error("AuthProvider is missing");
-  },
-  tenantLogin: async () => {
-    throw new Error("AuthProvider is missing");
-  },
-  switchHostel: async () => {
-    throw new Error("AuthProvider is missing");
-  },
+  login: async () => { throw new Error("AuthProvider is missing"); },
+  registerOwner: async () => { throw new Error("AuthProvider is missing"); },
+  sendOTP: async () => { throw new Error("AuthProvider is missing"); },
+  tenantLogin: async () => { throw new Error("AuthProvider is missing"); },
+  checkTenantStatus: async () => ({ exists: false, hasPassword: false }),
+  tenantPasswordLogin: async () => { throw new Error("AuthProvider is missing"); },
+  setTenantPassword: async () => { throw new Error("AuthProvider is missing"); },
+  sendForgotOtp: async () => { throw new Error("AuthProvider is missing"); },
+  resetTenantPassword: async () => { throw new Error("AuthProvider is missing"); },
+  switchHostel: async () => { throw new Error("AuthProvider is missing"); },
   loginVerifiedOwner: () => {},
   logout: () => {},
 };
@@ -153,6 +148,68 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const checkTenantStatus = async (phone) => {
+    try {
+      const res = await api.post("/auth/tenant/check-status", { phone });
+      return res.data.data;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const tenantPasswordLogin = async (phone, password) => {
+    try {
+      const res = await api.post("/auth/tenant/login", { phone, password });
+      sessionStorage.setItem("token", res.data.data.accessToken);
+      setUser(res.data.data.user);
+      setHostels([]);
+      toast.success("Welcome back!");
+      return res.data.data.user;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Login failed");
+      throw error;
+    }
+  };
+
+  const setTenantPassword = async (phone, otp, password) => {
+    try {
+      const res = await api.post("/auth/tenant/set-password", { phone, otp, password });
+      sessionStorage.setItem("token", res.data.data.accessToken);
+      setUser(res.data.data.user);
+      setHostels([]);
+      toast.success("Password set successfully!");
+      return res.data.data.user;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to set password");
+      throw error;
+    }
+  };
+
+  const sendForgotOtp = async (phone) => {
+    try {
+      const res = await api.post("/auth/tenant/forgot-password", { phone });
+      toast.success("OTP sent to your registered email!");
+      return res.data.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to send OTP");
+      throw error;
+    }
+  };
+
+  const resetTenantPassword = async (phone, otp, newPassword) => {
+    try {
+      const res = await api.post("/auth/tenant/reset-password", { phone, otp, newPassword });
+      sessionStorage.setItem("token", res.data.data.accessToken);
+      setUser(res.data.data.user);
+      setHostels([]);
+      toast.success("Password reset successfully!");
+      return res.data.data.user;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to reset password");
+      throw error;
+    }
+  };
+
   const logout = async () => {
     try {
       await api.post("/auth/logout");
@@ -168,7 +225,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, hostels, loading, login, sendOTP, tenantLogin, registerOwner, loginVerifiedOwner, switchHostel, logout }}
+      value={{ user, hostels, loading, login, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
     >
       {children}
     </AuthContext.Provider>

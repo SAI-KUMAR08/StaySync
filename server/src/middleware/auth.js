@@ -1,5 +1,6 @@
 import { verifyAccessToken } from "../utils/tokens.js";
 import { AppError } from "./error.middleware.js";
+import { hasPermission } from "../config/permissions.js";
 
 export function authenticate(req, res, next) {
   const header = req.headers.authorization;
@@ -24,10 +25,31 @@ export function authenticate(req, res, next) {
   }
 }
 
+/**
+ * Role-based authorization gate.
+ * Checks that the authenticated user has one of the allowed roles.
+ */
 export function authorize(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return next(new AppError("Forbidden", 403));
+    }
+    next();
+  };
+}
+
+/**
+ * Permission-based authorization gate.
+ * Checks that the authenticated user's role grants the specified permission.
+ *
+ * Usage:
+ *   router.get("/tenants", requirePermission("read:tenants"), handler);
+ *   router.delete("/expenses/:id", requirePermission("delete:expenses"), handler);
+ */
+export function requirePermission(permission) {
+  return (req, res, next) => {
+    if (!req.user || !hasPermission(req.user.role, permission)) {
+      return next(new AppError("Forbidden: insufficient permissions", 403));
     }
     next();
   };

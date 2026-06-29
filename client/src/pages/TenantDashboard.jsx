@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   MdMeetingRoom, MdAttachMoney, MdNotifications,
   MdReportProblem, MdBed, MdChevronRight, MdHistory,
-  MdAssignment, MdEvent, MdShield
+  MdAssignment, MdEvent, MdShield, MdCheckCircle
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
@@ -12,8 +12,7 @@ import toast from "react-hot-toast";
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => (
   <div className="bento-card p-6 md:p-7 group relative overflow-hidden">
-    <div className={`absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-${color}/[0.04] to-transparent rounded-full -mr-16 -mt-16 pointer-events-none`} />
-    <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 shadow-lg`}>
+    <div className={`w-12 h-12 rounded-[16px] ${color} flex items-center justify-center mb-5 transition-all duration-300 shadow-lg`}>
       <Icon className="text-2xl text-white" />
     </div>
     <h3 className="text-text-secondary text-[8px] font-bold font-sans uppercase tracking-[0.15em] mb-1.5">{label}</h3>
@@ -30,80 +29,77 @@ const TenantDashboard = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchData(); }, []);
-  useEffect(() => {
-    if (!socket) return;
-    const onNotice = (notice) => {
-      setNotifications((prev) => [notice, ...prev.filter((n) => n._id !== notice._id)]);
-      toast.success("New hostel notice", { icon: "📢" });
-    };
-    socket.on("notice_created", onNotice);
-    return () => socket.off("notice_created", onNotice);
-  }, [socket]);
+  const overdueDues = payments.reduce((sum, p) => sum + (p.status === "overdue" ? p.amount : 0), 0);
+  const unpaidDues = payments.reduce((sum, p) => sum + (p.status !== "paid" && p.status !== "overdue" ? p.amount : 0), 0);
 
   const fetchData = async () => {
     try {
       const [notifRes, compRes, payRes] = await Promise.all([
-        api.get("/tenant/notices"), api.get("/tenant/complaints"), api.get("/tenant/payments")
+        api.get("/tenant/notifications?limit=5"),
+        api.get("/tenant/complaints"),
+        api.get("/tenant/payments"),
       ]);
-      setNotifications(notifRes.data?.data || []);
-      setComplaints((compRes.data?.data || []).slice(0, 3));
-      const payData = payRes.data.data ?? {};
-      const payList = [...(payData.grouped?.overdue ?? []), ...(payData.grouped?.unpaid ?? []), ...(payData.payments ?? []).filter((p) => p.status === "paid")];
-      setPayments(payList.slice(0, 8).map((p) => ({ ...p, fine: p.fineAmount ?? 0 })));
-    } catch (error) { console.error(error);
+      setNotifications(notifRes.data.data || []);
+      setComplaints(compRes.data.data || []);
+      setPayments(payRes.data.data?.payments || []);
+    } catch (err) { console.error(err);
     } finally { setLoading(false); }
   };
 
-  const handleMarkAsRead = async (noticeId) => {
-    try {
-      await api.post(`/tenant/notices/${noticeId}/read`);
-      setNotifications((prev) => prev.map((n) => n._id === noticeId ? { ...n, readBy: [...(n.readBy || []), user.id] } : n));
-    } catch (error) { console.error(error); }
-  };
+  useEffect(() => { fetchData(); }, []);
 
-  const overdueDues = payments.filter((p) => p.status === "overdue").reduce((s, p) => s + p.amount + (p.fine || 0), 0);
-  const unpaidDues = payments.filter((p) => p.status === "unpaid").reduce((s, p) => s + p.amount + (p.fine || 0), 0);
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("payment_completed", () => fetchData());
+    socket.on("complaint_updated", () => fetchData());
+    socket.on("new_notification", () => fetchData());
+    return () => {
+      ["payment_completed", "complaint_updated", "new_notification"].forEach(e => socket.off(e));
+    };
+  }, [socket]);
 
   if (loading) return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="bento-card p-7 space-y-4">
-          <div className="shimmer w-12 h-12 rounded-2xl" />
-          <div className="shimmer h-3 w-20" />
-          <div className="shimmer h-7 w-24 mt-1" />
-        </div>
-      ))}
+    <div className="space-y-5">
+      <div className="shimmer h-24 w-full rounded-2xl" />
+      <div className="grid grid-cols-5 gap-5">
+        {[...Array(5)].map((_, i) => <div key={i} className="shimmer h-40 rounded-2xl" />)}
+      </div>
     </div>
   );
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Hello Section */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
-        <div>
-          <h2 className="section-title">Hi, {user?.name?.split?.(" ")?.[0] || "Resident"}! 👋</h2>
-          <p className="section-sub">Your stay at <span className="font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">{user?.hostelName || "your hostel"}</span> is managed here.</p>
-        </div>
-        <div className="flex items-center gap-3 bg-card p-2 pr-5 rounded-full border border-border/50 shadow-sm">
-          <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white"><MdShield size={18} /></div>
+    <div className="space-y-8 pb-16">
+      {/* Profile header */}
+      <header className="bento-card p-7 md:p-9 animate-slide-up-big relative overflow-hidden">
+        <div className="flex items-center gap-5 relative">
+          <div className="w-16 h-16 rounded-[18px] bg-primary flex items-center justify-center text-white font-black text-2xl shadow-md">
+            {user?.name?.[0]?.toUpperCase()}
+          </div>
           <div>
-            <p className="text-[8px] font-medium text-text-secondary uppercase tracking-wider leading-none mb-0.5">Status</p>
-            <p className="text-xs font-bold text-emerald-600">Verified Resident</p>
+            <h1 className="text-2xl font-black font-sans text-text-primary tracking-tight">
+              {user?.name}
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-text-secondary">{user?.phone}</span>
+              <span className="w-1 h-1 rounded-full bg-text-tertiary" />
+              <span className="text-[8px] font-bold uppercase tracking-wider text-success bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/10">
+                Verified Resident
+              </span>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Stats — 3 + 2 bento */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+      {/* Stats - staggered */}
+      <div className="stagger-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
         {[
-          { label: "Assigned Unit", value: `Room ${user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-gradient-to-br from-primary to-violet-600" },
+          { label: "Assigned Unit", value: `Room ${user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-primary" },
           { label: "Base Rent", value: `₹${user?.rentAmount?.toLocaleString() || 0}`, sub: "Monthly cycle", icon: MdAttachMoney, color: "bg-emerald-600" },
-          { label: "Overdue", value: `₹${overdueDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status === "overdue").length} month(s)`, icon: MdAssignment, color: "bg-rose-600" },
-          { label: "Unpaid", value: `₹${unpaidDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status === "unpaid").length} bill(s)`, icon: MdAttachMoney, color: "bg-amber-600" },
+          { label: "Overdue", value: `₹${overdueDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status === "overdue").length} month(s)`, icon: MdAssignment, color: "bg-accent" },
+          { label: "Unpaid", value: `₹${unpaidDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status !== "paid" && p.status !== "overdue").length} bill(s)`, icon: MdAttachMoney, color: "bg-amber-600" },
           { label: "Support", value: complaints.filter(c => c.status !== 'resolved').length, sub: "Active tickets", icon: MdReportProblem, color: "bg-zinc-600" },
         ].map((card, i) => (
-          <div key={card.label} className="stagger-enter" style={{ animationDelay: `${i * 0.08}s` }}>
+          <div key={card.label} className={i % 2 === 0 ? 'stagger-left' : 'stagger-right'} style={{ animationDelay: `${i * 0.08}s` }}>
             <StatCard {...card} />
           </div>
         ))}
@@ -113,113 +109,146 @@ const TenantDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* Invoices */}
-          <div className="bento-card p-6 md:p-7">
+          <div className="bento-card p-6 md:p-7 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Financials</h3>
-                <p className="text-base font-black font-sans text-text-primary tracking-tight">Recent Invoices</p>
+                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                  Financials
+                </h3>
+                <p className="text-base font-black font-sans text-text-primary tracking-tight">
+                  Recent Invoices
+                </p>
               </div>
-              <div className="p-2.5 rounded-xl bg-zinc-50 text-text-secondary/50"><MdHistory size={20} /></div>
+              <div className="p-2.5 rounded-xl bg-primary-light text-primary"><MdHistory size={20} /></div>
             </div>
             <div className="space-y-2">
-              {payments.map((p, i) => (
-                <div key={p._id} className="stagger-enter" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-[#FAFAFA] hover:bg-white border border-transparent hover:border-border/50 hover:shadow-sm transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${p.status === 'paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                        <MdAttachMoney />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-text-primary text-sm leading-none mb-1">{p.month} {p.year}</p>
-                        <p className="text-[8px] font-medium text-text-secondary uppercase tracking-wider">
-                          {p.status === 'paid' ? `Paid on ${new Date(p.paidDate || p.updatedAt).toLocaleDateString()}` : `${p.status} — due ${new Date(p.dueDate).toLocaleDateString()}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-base font-black text-text-primary">₹{(p.amount + (p.fine || 0)).toLocaleString()}</p>
-                      <span className={`badge ${p.status === 'paid' ? 'badge-emerald' : 'badge-amber'}`}>{p.status}</span>
+              {payments.length === 0 ? (
+                <div className="py-14 text-center relative">
+                  {/* Floating decorative coin arrangement */}
+                  <div className="relative inline-block mb-5">
+                    <div className="w-20 h-20 rounded-[24px] bg-amber-500/10 flex items-center justify-center border border-amber-500/10">
+                      <MdAttachMoney className="text-4xl text-amber-400/40" />
                     </div>
                   </div>
+                  <p className="text-lg font-black font-sans text-text-primary/50 tracking-tight mb-1">No invoices yet</p>
+                  <p className="text-[10px] font-medium text-text-secondary/40 uppercase tracking-[0.15em]">Your billing history will appear here</p>
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-px bg-black/5" />
                 </div>
-              ))}
-              {payments.length === 0 && <div className="py-12 text-center text-text-secondary/40 font-medium italic">No financial history yet.</div>}
+              ) : (
+                payments.map((p, i) => (
+                  <div key={p._id} className="stagger-enter" style={{ animationDelay: `${i * 0.05}s` }}>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-surface hover:bg-surface-hover border border-transparent hover:border-border/50 transition-all group">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center text-lg ${p.status === 'paid' ? 'bg-emerald-500/10 text-success' : 'bg-accent-soft text-primary'}`}>
+                          <MdAttachMoney />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-text-primary text-sm leading-none mb-1">{p.month} {p.year}</p>
+                          <p className="text-[8px] font-medium text-text-secondary uppercase tracking-wider">
+                            {p.status === 'paid' ? `Paid on ${new Date(p.paidDate || p.updatedAt).toLocaleDateString()}` : `${p.status} — due ${new Date(p.dueDate).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black font-sans text-text-primary text-sm">₹{p.amount?.toLocaleString()}</p>
+                        <span className={`badge mt-1 !text-[7px] ${
+                          p.status === 'paid' ? 'badge-emerald' : p.status === 'overdue' ? 'badge-accent' : 'badge-amber'
+                        }`}>
+                          {p.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
           {/* Complaints */}
-          <div className="bento-card p-6 md:p-7">
+          <div className="bento-card p-6 md:p-7 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Support Desk</h3>
-                <p className="text-base font-black font-sans text-text-primary tracking-tight">Active Tickets</p>
+                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Support</h3>
+                <p className="text-base font-black font-sans text-text-primary tracking-tight">My Tickets</p>
               </div>
-              <Link to="/tenant/complaints" className="w-9 h-9 rounded-xl bg-primary/8 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all">
-                <MdChevronRight size={20} />
+              <Link to="/tenant/complaints" className="btn-ghost inline-flex items-center gap-1 text-xs p-2">
+                View All <MdChevronRight size={14} />
               </Link>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {complaints.map((c, i) => (
-                <div key={c._id} className="stagger-enter" style={{ animationDelay: `${i * 0.07}s` }}>
-                  <div className="p-5 rounded-2xl border border-border/50 bg-[#FAFAFA] hover:bg-white hover:border-border hover:shadow-sm transition-all duration-300">
-                    <div className="flex justify-between items-start mb-3">
-                      <span className="text-[8px] font-bold uppercase tracking-wider text-primary bg-primary-light px-2 py-1 rounded-lg">{c.category}</span>
-                      <span className={`badge ${c.status === 'resolved' ? 'badge-emerald' : c.status === 'in_progress' ? 'badge-primary' : 'badge-amber'}`}>
+            <div className="space-y-2">
+              {complaints.length === 0 ? (
+                <div className="py-12 text-center relative">
+                  {/* Playful clear-state illustration */}
+                  <div className="relative inline-block mb-4">
+                    <div className="w-16 h-16 rounded-[20px] bg-primary-light flex items-center justify-center border border-accent/10">
+                      <MdReportProblem className="text-3xl text-accent/35" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold font-sans text-text-primary/50 tracking-tight mb-0.5">All clear!</p>
+                  <p className="text-[9px] font-medium text-text-secondary/40 uppercase tracking-[0.12em]">No support tickets raised</p>
+                </div>
+              ) : (
+                complaints.slice(0, 4).map((c, i) => (
+                  <div key={c._id} className="stagger-enter" style={{ animationDelay: `${i * 0.06}s` }}>
+                    <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface hover:bg-surface-hover transition-all group border border-transparent hover:border-border/50">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base ${
+                        c.status === 'resolved' ? 'bg-emerald-500/10 text-success' :
+                        c.status === 'in_progress' ? 'bg-secondary-light text-secondary' :
+                        'bg-accent-soft text-primary'
+                      }`}>
+                        <MdReportProblem />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-text-primary text-sm truncate">{c.description}</p>
+                        <p className="text-[8px] text-text-secondary font-medium uppercase tracking-wider mt-0.5">{c.category}</p>
+                      </div>
+                      <span className={`badge ${
+                        c.status === 'resolved' ? 'badge-emerald' :
+                        c.status === 'in_progress' ? 'badge-secondary' :
+                        c.status === 'pending' ? 'badge-amber' : 'badge-accent'
+                      }`}>
                         {c.status?.replace("_", " ")}
                       </span>
                     </div>
-                    <p className="text-sm font-medium text-text-primary line-clamp-2 mb-3 min-h-[2.5rem] leading-relaxed">{c.description}</p>
-                    <div className="flex items-center justify-between text-[8px] text-text-secondary font-medium uppercase tracking-wider pt-3 border-t border-border/40">
-                      <span className="flex items-center gap-1"><MdEvent size={10} /> {new Date(c.createdAt).toLocaleDateString()}</span>
-                      <span>#{c._id.slice(-6).toUpperCase()}</span>
-                    </div>
                   </div>
-                </div>
-              ))}
-              {complaints.length === 0 && <div className="col-span-2 py-12 text-center text-text-secondary/40 font-medium italic">All quiet — no active issues.</div>}
+                ))
+              )}
             </div>
           </div>
         </div>
 
-        {/* Notices Panel */}
+        {/* Right column */}
         <div className="space-y-6">
-          <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-800 p-6 md:p-7 rounded-3xl border border-white/5 shadow-xl relative overflow-hidden h-full">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-primary/[0.04] rounded-full -mr-20 -mt-20 pointer-events-none" />
-            <div className="flex justify-between items-center mb-8 relative z-10">
-              <div>
-                <h3 className="text-[8px] font-bold text-white/40 uppercase tracking-[0.2em]">Notices</h3>
-                <p className="text-base font-black font-sans text-white tracking-tight">From management</p>
-              </div>
-              <Link to="/tenant/notifications" className="w-9 h-9 rounded-xl bg-white/8 text-white/40 flex items-center justify-center hover:bg-white/15 hover:text-white transition-all">
-                <MdNotifications size={18} />
-              </Link>
+          {/* Notifications */}
+          <div className="bento-card p-6 md:p-7 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Activity</h3>
+              <MdNotifications className="text-text-tertiary" size={18} />
             </div>
-            <div className="space-y-6 relative z-10">
-              {notifications.map((n, i) => {
-                const isUnread = !n.readBy?.includes(user?.id);
-                return (
-                  <div key={n._id} onClick={() => isUnread && handleMarkAsRead(n._id)}
-                    className="stagger-enter" style={{ animationDelay: `${i * 0.07}s` }}>
-                    <div className={`relative pl-5 pb-2 border-l-2 border-white/[0.08] last:pb-0 ${isUnread ? 'cursor-pointer' : ''} group transition-all`}>
-                      <div className={`absolute -left-[7px] top-0 w-3.5 h-3.5 rounded-full border-[3px] transition-all ${
-                        isUnread ? 'bg-accent border-zinc-900 shadow-[0_0_12px_rgba(244,63,94,0.5)]' : 'bg-white/20 border-zinc-900'
-                      }`} />
-                      <div className="pt-0.5">
-                        <p className={`text-sm font-semibold mb-1 transition-colors ${isUnread ? 'text-white' : 'text-white/50 group-hover:text-white/70'}`}>{n.title}</p>
-                        <p className={`text-sm font-normal mb-2 leading-relaxed transition-colors ${isUnread ? 'text-white/70' : 'text-white/40 group-hover:text-white/50'}`}>{n.message}</p>
-                        <p className="text-[7px] text-white/30 font-medium uppercase tracking-wider">
-                          {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
+            <div className="space-y-3">
+              {notifications.length === 0 ? (
+                <div className="text-center py-10 relative">
+                  <div className="relative w-[68px] h-[68px] mx-auto mb-4">
+                    <div className="absolute inset-0 rounded-full bg-emerald-500/5 animate-ripple" />
+                    <div className="relative w-[68px] h-[68px] rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/10">
+                      <MdCheckCircle className="text-3xl text-success/40" />
                     </div>
                   </div>
-                );
-              })}
-              {notifications.length === 0 && (
-                <div className="text-center py-16 opacity-30">
-                  <MdNotifications size={52} className="mx-auto mb-3 opacity-20" />
-                  <p className="text-[8px] font-bold uppercase tracking-wider text-white/40">Inbox is clear</p>
+                  <p className="text-sm font-bold font-sans text-text-primary/50 tracking-tight">All caught up!</p>
+                  <p className="text-[8px] text-text-secondary/30 font-medium uppercase tracking-[0.15em] mt-0.5">No new notifications</p>
                 </div>
+              ) : (
+                notifications.map((n, i) => (
+                  <div key={n._id} className="flex gap-3 items-start stagger-enter" style={{ animationDelay: `${i * 0.07}s` }}>
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0 shadow-[0_0_4px_rgba(245,158,11,0.4)]" />
+                    <div>
+                      <p className="text-sm font-medium text-text-primary leading-snug">{n.message || n.title}</p>
+                      <p className="text-[8px] text-text-secondary font-medium uppercase tracking-wider mt-0.5">
+                        {new Date(n.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>

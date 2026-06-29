@@ -6,6 +6,17 @@ import { AppError } from "../middleware/error.middleware.js";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+/**
+ * Extract device/client metadata from the request.
+ */
+function getClientMeta(req) {
+  return {
+    deviceInfo: req.headers["x-device-info"] || req.headers["user-agent"]?.slice(0, 200) || null,
+    ipAddress: req.ip || req.connection?.remoteAddress || null,
+    userAgent: req.headers["user-agent"]?.slice(0, 500) || null,
+  };
+}
+
 export const register = asyncHandler(async (req, res) => {
   const result = await authService.registerOwner(req.validated.body);
   res.cookie("refreshToken", result.refreshToken, {
@@ -34,7 +45,8 @@ export const verifyOwnerOtp = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const result = await authService.loginUser(req.validated.body);
+  const meta = getClientMeta(req);
+  const result = await authService.loginUser(req.validated.body, meta);
   res.cookie("refreshToken", result.refreshToken, {
     httpOnly: true,
     secure: isProduction,
@@ -50,7 +62,52 @@ export const sendOtp = asyncHandler(async (req, res) => {
 });
 
 export const verifyOtp = asyncHandler(async (req, res) => {
-  const result = await authService.verifyTenantOtp(req.validated.body);
+  const meta = getClientMeta(req);
+  const result = await authService.verifyTenantOtp(req.validated.body, meta);
+  res.cookie("refreshToken", result.refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return success(res, result);
+});
+
+export const checkTenantStatus = asyncHandler(async (req, res) => {
+  const result = await authService.checkTenantStatus(req.validated.body);
+  return success(res, result);
+});
+
+export const tenantLogin = asyncHandler(async (req, res) => {
+  const meta = getClientMeta(req);
+  const result = await authService.loginTenantWithPassword(req.validated.body, meta);
+  res.cookie("refreshToken", result.refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return success(res, result);
+});
+
+export const tenantSetPassword = asyncHandler(async (req, res) => {
+  const result = await authService.setTenantPassword(req.validated.body);
+  res.cookie("refreshToken", result.refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return success(res, result);
+});
+
+export const sendForgotOtp = asyncHandler(async (req, res) => {
+  const result = await authService.sendTenantForgotOtp(req.validated.body);
+  return success(res, result);
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const result = await authService.resetTenantPassword(req.validated.body);
   res.cookie("refreshToken", result.refreshToken, {
     httpOnly: true,
     secure: isProduction,
@@ -63,7 +120,8 @@ export const verifyOtp = asyncHandler(async (req, res) => {
 export const refresh = asyncHandler(async (req, res) => {
   const token = req.body?.refreshToken || req.cookies?.refreshToken;
   if (!token) return fail(res, "Refresh token required", 401);
-  const result = await authService.refreshSession(token);
+  const meta = getClientMeta(req);
+  const result = await authService.refreshSession(token, meta);
   res.cookie("refreshToken", result.refreshToken, {
     httpOnly: true,
     secure: isProduction,
@@ -153,4 +211,17 @@ export const changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save();
   return success(res, { message: "Password updated successfully" });
+});
+
+// ── Session management ─────────────────────────────────
+
+export const listSessions = asyncHandler(async (req, res) => {
+  const sessions = await authService.listUserSessions(req.user.id, req.user.role);
+  return success(res, { sessions });
+});
+
+export const revokeSession = asyncHandler(async (req, res) => {
+  const { familyId } = req.params;
+  const result = await authService.revokeSession(req.user.id, req.user.role, familyId);
+  return success(res, result);
 });

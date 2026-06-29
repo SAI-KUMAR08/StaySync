@@ -3,7 +3,7 @@ import { MdPayment, MdCalendarToday } from "react-icons/md";
 
 const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
   <div className="bento-card p-6 md:p-7 relative overflow-hidden">
-    <div className={`absolute top-0 left-0 w-full h-1.5 ${variant === "overdue" ? "bg-rose-500" : "bg-amber-500"}`} />
+    <div className={`absolute top-0 left-0 w-full h-1.5 ${variant === "overdue" ? "bg-primary" : "bg-[#8D6E2A]"}`} />
     <div className="flex justify-between items-start mb-6">
       <div>
         <p className="text-[9px] font-bold uppercase tracking-wider text-text-secondary/60 mb-0.5">
@@ -13,18 +13,18 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
           ₹{(payment.amount + (payment.fine || 0)).toLocaleString()}
         </h5>
         {payment.fine > 0 && (
-          <span className="text-[10px] font-bold text-rose-500 inline-block mt-2 bg-rose-50 px-2 py-1 rounded-lg">
+          <span className="text-[10px] font-bold text-accent inline-block mt-2 bg-accent-soft px-2 py-1 rounded-lg">
             + ₹{payment.fine} penalty
           </span>
         )}
       </div>
       <span className={`badge ${
-        variant === "overdue" ? "badge-rose" : "badge-amber"
+        variant === "overdue" ? "badge-accent" : "badge-amber"
       }`}>
         {variant === "overdue" ? "overdue" : "unpaid"}
       </span>
     </div>
-    <div className="flex items-center gap-2 text-sm text-text-secondary font-semibold mb-6 bg-[#FAFAF9] p-4 rounded-2xl border border-border/50">
+    <div className="flex items-center gap-2 text-sm text-text-secondary font-semibold mb-6 bg-surface p-4 rounded-2xl border border-border/50">
       <MdCalendarToday className="text-text-secondary/40" size={16} />
       Due {new Date(payment.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
     </div>

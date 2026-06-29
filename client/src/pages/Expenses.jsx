@@ -9,18 +9,18 @@ import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 
 const CATEGORIES = [
-  { id: "electricity", label: "Electricity", color: "bg-amber-100 text-amber-700" },
-  { id: "water", label: "Water", color: "bg-blue-100 text-blue-700" },
-  { id: "maintenance", label: "Maintenance", color: "bg-zinc-100 text-zinc-700" },
-  { id: "cleaning", label: "Cleaning", color: "bg-emerald-100 text-emerald-700" },
-  { id: "food", label: "Food", color: "bg-orange-100 text-orange-700" },
-  { id: "salary", label: "Salary", color: "bg-rose-100 text-rose-700" },
-  { id: "repairs", label: "Repairs", color: "bg-red-100 text-red-700" },
-  { id: "internet", label: "Internet", color: "bg-sky-100 text-sky-700" },
-  { id: "security", label: "Security", color: "bg-violet-100 text-violet-700" },
-  { id: "supplies", label: "Supplies", color: "bg-teal-100 text-teal-700" },
-  { id: "furniture", label: "Furniture", color: "bg-stone-100 text-stone-700" },
-  { id: "other", label: "Other", color: "bg-gray-100 text-gray-700" },
+  { id: "electricity", label: "Electricity", color: "bg-primary-light text-primary" },
+  { id: "water", label: "Water", color: "bg-primary-light text-primary" },
+  { id: "maintenance", label: "Maintenance", color: "bg-white/5 text-text-secondary" },
+  { id: "cleaning", label: "Cleaning", color: "bg-green-500/10 text-[#2E7D32]" },
+  { id: "food", label: "Food", color: "bg-primary-light text-primary" },
+  { id: "salary", label: "Salary", color: "bg-primary-light text-primary" },
+  { id: "repairs", label: "Repairs", color: "bg-primary-light text-primary" },
+  { id: "internet", label: "Internet", color: "bg-primary-light text-primary" },
+  { id: "security", label: "Security", color: "bg-primary-light text-primary/80" },
+  { id: "supplies", label: "Supplies", color: "bg-primary-light text-primary/80" },
+  { id: "furniture", label: "Furniture", color: "bg-white/5 text-text-secondary" },
+  { id: "other", label: "Other", color: "bg-white/5 text-text-secondary" },
 ];
 
 const CATEGORY_ICONS = {
@@ -141,7 +141,7 @@ const Expenses = () => {
 
   return (
     <div className="space-y-8 pb-16">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
           <div className="section-tag mb-3"><MdTrendingDown size={12} /> Expenses</div>
           <h2 className="section-title">Expense <span className="highlight">Tracker</span></h2>
@@ -155,23 +155,23 @@ const Expenses = () => {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="stagger-container grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="bento-card p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center"><MdTrendingDown size={22} /></div>
+            <div className="w-11 h-11 rounded-[16px] bg-red-500/10 text-[#C62828] flex items-center justify-center"><MdTrendingDown size={22} /></div>
             <div>
               <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Total Expenses</p>
               <p className="text-xl font-black text-text-primary">₹{summary.totalExpenses?.toLocaleString()}</p>
             </div>
           </div>
           <div className="bento-card p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center"><MdCalendarToday size={22} /></div>
+            <div className="w-11 h-11 rounded-[16px] bg-primary-light text-primary flex items-center justify-center"><MdCalendarToday size={22} /></div>
             <div>
               <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">This Month</p>
               <p className="text-xl font-black text-text-primary">₹{summary.thisMonthTotal?.toLocaleString()}</p>
             </div>
           </div>
           <div className="bento-card p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center"><MdReceipt size={22} /></div>
+            <div className="w-11 h-11 rounded-[16px] bg-green-500/10 text-[#2E7D32] flex items-center justify-center"><MdReceipt size={22} /></div>
             <div>
               <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Total Entries</p>
               <p className="text-xl font-black text-text-primary">{summary.count}</p>
@@ -198,15 +198,15 @@ const Expenses = () => {
       <div className="bento-card overflow-hidden">
         {expenses.length === 0 ? (
           <div className="py-20 text-center">
-            <MdAttachMoney className="text-5xl mx-auto mb-3 text-zinc-200" />
+            <MdAttachMoney className="text-5xl mx-auto mb-3 text-text-tertiary" />
             <p className="text-text-secondary/50 font-medium text-sm">No expenses recorded yet</p>
           </div>
         ) : (
           <div className="divide-y divide-border/40">
             {expenses.map((e, i) => (
-              <div key={e._id} className="stagger-enter p-5 hover:bg-[#FAFAFA] transition-all flex items-center gap-5"
+              <div key={e._id} className="stagger-enter p-5 hover:bg-surface transition-all flex items-center gap-5"
                 style={{ animationDelay: `${i * 0.04}s` }}>
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg ${CATEGORIES.find(c => c.id === e.category)?.color || 'bg-zinc-100 text-zinc-600'}`}>
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg ${CATEGORIES.find(c => c.id === e.category)?.color || 'bg-white/5 text-text-secondary/60'}`}>
                   {CATEGORY_ICONS[e.category] || "📋"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -221,7 +221,7 @@ const Expenses = () => {
                   <button onClick={() => handleEdit(e)} className="p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 rounded-xl transition-all">
                     <MdEdit size={16} />
                   </button>
-                  <button onClick={() => handleDelete(e._id)} className="p-2 text-text-secondary/40 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+                  <button onClick={() => handleDelete(e._id)} className="p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft rounded-xl transition-all">
                     <MdDelete size={16} />
                   </button>
                 </div>
@@ -240,7 +240,7 @@ const Expenses = () => {
                 <h4 className="text-lg font-black font-sans text-text-primary">{editing ? "Edit Expense" : "Add Expense"}</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Record a hostel expense</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-rose-500 hover:bg-rose-50 transition-all">
+              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all">
                 <MdClose size={20} />
               </button>
             </div>

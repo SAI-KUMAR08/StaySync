@@ -15,6 +15,15 @@ import { getApiError } from "../utils/getApiError";
 import { useSocket } from "../context/SocketContext";
 
 const TenantManagement = () => {
+  const COUNTRY_CODES = [
+    { code: "+91", label: "IN", flag: "🇮🇳" },
+    { code: "+1", label: "US", flag: "🇺🇸" },
+    { code: "+44", label: "UK", flag: "🇬🇧" },
+    { code: "+61", label: "AU", flag: "🇦🇺" },
+    { code: "+971", label: "UAE", flag: "🇦🇪" },
+    { code: "+65", label: "SG", flag: "🇸🇬" },
+  ];
+
   const { user } = useAuth();
   const { socket } = useSocket();
   const [tenants, setTenants] = useState([]);
@@ -42,6 +51,8 @@ const TenantManagement = () => {
   });
 
   const [reassigningTenant, setReassigningTenant] = useState(null);
+  const [countryCode, setCountryCode] = useState("+91");
+  const [phoneError, setPhoneError] = useState("");
 
   const handleReassignStart = (tenant) => {
     const name = tenant.name || tenant.personalInfo?.name || "";
@@ -120,8 +131,10 @@ const TenantManagement = () => {
 
   const handleSubmit = async () => {
     if (!formData.bedId) return toast.error("Please select a bed");
+    if (formData.phone.length !== 10) return toast.error("Phone must be exactly 10 digits");
     try {
-      const phone = normalizePhone(formData.phone);
+      const fullPhone = countryCode + formData.phone;
+      const phone = normalizePhone(fullPhone);
       if (reassigningTenant) {
         await api.post(`/owner/tenants/${reassigningTenant._id}/assign-bed`, {
           bedId: formData.bedId,
@@ -284,7 +297,7 @@ const TenantManagement = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1.5 bg-zinc-100/80 p-1 rounded-2xl">
+        <div className="flex gap-1.5 bg-surface/50 p-1 rounded-2xl">
           {[
             { id: "", label: "All" },
             { id: "active", label: "Active" },
@@ -295,7 +308,7 @@ const TenantManagement = () => {
               className={`px-4 py-2.5 rounded-xl text-[9px] font-bold font-sans uppercase tracking-wider transition-all ${
                 filter === id
                   ? "bg-primary text-white shadow-md shadow-primary/20"
-                  : "text-text-secondary/60 hover:text-text-secondary hover:bg-white/50"
+                  : "text-text-secondary/60 hover:text-text-secondary hover:bg-surface-hover/50"
               }`}>
               {label}
             </button>
@@ -321,10 +334,10 @@ const TenantManagement = () => {
             {tempTenants.map(t => {
               const roomReady = hasPreferredRoomAvailable(t);
               return (
-                <div key={t._id} className="p-4 rounded-2xl bg-white border border-border/50 hover:shadow-md transition-all">
+                <div key={t._id} className="p-4 rounded-2xl bg-surface border border-border/50 hover:shadow-md transition-all">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xs font-bold">
+                      <div className="w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center text-xs font-bold">
                         {t.name?.[0] || 'T'}
                       </div>
                       <div>
@@ -339,7 +352,7 @@ const TenantManagement = () => {
                       Waiting for: <strong className="text-primary">{t.preferredSharing || '?'}-sharing</strong>
                     </span>
                     {roomReady && (
-                      <span className="flex items-center gap-1 text-emerald-600 font-bold uppercase tracking-wider">
+                      <span className="flex items-center gap-1 text-emerald-400 font-bold uppercase tracking-wider">
                         <MdCheckCircle size={12} /> Room Available
                       </span>
                     )}
@@ -347,7 +360,7 @@ const TenantManagement = () => {
                   {roomReady && (
                     <button
                       onClick={() => handleFixTempTenant(t)}
-                      className="mt-3 w-full py-2.5 rounded-xl bg-emerald-50 text-emerald-700 text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-100 border border-emerald-200/50 transition-all flex items-center justify-center gap-1.5"
+                      className="mt-3 w-full py-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500/20 border border-emerald-500/15 transition-all flex items-center justify-center gap-1.5"
                     >
                       <MdCheckCircle size={14} /> Move to Preferred Room
                     </button>
@@ -412,7 +425,7 @@ const TenantManagement = () => {
                     </button>
                     <button
                       onClick={() => handleDelete(tenant._id)}
-                      className="p-2 text-text-secondary/50 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                      className="p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light rounded-xl transition-all"
                     >
                       <MdDelete size={18} />
                     </button>
@@ -422,10 +435,10 @@ const TenantManagement = () => {
             ))}
             {/* 🆕 Show temporary tenants in table */}
             {tempTenants.length > 0 && tempTenants.map((tenant, i) => (
-              <tr key={tenant._id} className="stagger-enter bg-amber-50/20" style={{ animationDelay: `${i * 0.04}s` }}>
+              <tr key={tenant._id} className="stagger-enter bg-primary-light" style={{ animationDelay: `${i * 0.04}s` }}>
                 <td>
                   <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
+                    <div className="w-9 h-9 rounded-xl bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm">
                       {(tenant.name?.[0] || "T").toUpperCase()}
                     </div>
                     <div>
@@ -460,7 +473,7 @@ const TenantManagement = () => {
                     </button>
                     <button
                       onClick={() => handleDelete(tenant._id)}
-                      className="p-2 text-text-secondary/50 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
+                      className="p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light rounded-xl transition-all"
                     >
                       <MdDelete size={18} />
                     </button>
@@ -486,7 +499,7 @@ const TenantManagement = () => {
           <div className="modal-card max-w-xl max-h-[90vh] flex flex-col">
             <div className="p-6 md:p-7 border-b border-border/60 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center font-bold text-lg shadow-md shadow-primary/20">
+                <div className="w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-md shadow-primary/20">
                   {step}
                 </div>
                 <div>
@@ -501,7 +514,7 @@ const TenantManagement = () => {
                   }</p>
                 </div>
               </div>
-              <button onClick={() => { setShowModal(false); setReassigningTenant(null); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-rose-500 hover:bg-rose-50 transition-all border border-transparent hover:border-rose-100">
+              <button onClick={() => { setShowModal(false); setReassigningTenant(null); }} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all border border-transparent hover:border-accent/20">
                 <MdClose size={20} />
               </button>
             </div>
@@ -517,8 +530,43 @@ const TenantManagement = () => {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Mobile Number</label>
-                      <input required type="tel" placeholder="+91 00000 00000" className="field-input"
-                        value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+                      <div className="flex gap-2">
+                        <div className="relative shrink-0">
+                          <select
+                            value={countryCode}
+                            onChange={(e) => setCountryCode(e.target.value)}
+                            className="field-select !pr-7 !pl-3 !w-[88px] text-center font-bold text-sm"
+                          >
+                            {COUNTRY_CODES.map((cc) => (
+                              <option key={`${cc.code}-${cc.label}`} value={cc.code}>
+                                {cc.flag} {cc.code}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="relative flex-1">
+                          <input
+                            required
+                            type="tel"
+                            inputMode="numeric"
+                            className="field-input font-mono tracking-wider text-center text-lg"
+                            placeholder="0000000000"
+                            value={formData.phone}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+                              setFormData({...formData, phone: raw});
+                              if (raw.length > 0 && raw.length !== 10) {
+                                setPhoneError("Must be exactly 10 digits");
+                              } else {
+                                setPhoneError("");
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {phoneError && (
+                        <p className="text-[9px] text-danger font-bold mt-1 ml-1">{phoneError}</p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -537,7 +585,7 @@ const TenantManagement = () => {
                             if (!isTemporary) setPreferredSharing(null);
                           }}
                           className={`relative w-10 h-6 rounded-full transition-all duration-300 ${
-                            isTemporary ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-zinc-200'
+                            isTemporary ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-white/10'
                           }`}
                         >
                           <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${
@@ -553,7 +601,7 @@ const TenantManagement = () => {
                       {/* 🆕 Preferred Sharing Selector */}
                       {isTemporary && (
                         <div className="space-y-1.5 animate-slide-down pl-[52px]">
-                          <label className="text-[9px] font-bold font-sans text-amber-600 uppercase tracking-wider ml-1">
+                          <label className="text-[9px] font-bold font-sans text-primary uppercase tracking-wider ml-1">
                             Waiting for room type
                           </label>
                           <div className="grid grid-cols-4 gap-2">
@@ -562,7 +610,7 @@ const TenantManagement = () => {
                                 className={`py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
                                   preferredSharing === type
                                     ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                                    : 'bg-white text-text-secondary border-border/60 hover:border-primary/30'
+                                    : 'bg-surface text-text-secondary border-border/60 hover:border-primary/30'
                                 }`}>
                                 {type}
                               </button>
@@ -614,7 +662,7 @@ const TenantManagement = () => {
                         <div className="flex items-center gap-1.5 mt-2">
                           <div className="flex -space-x-1">
                             {[...Array(room.totalBeds)].map((_, i) => (
-                              <div key={i} className={`w-2.5 h-2.5 rounded-full border-2 border-card ${i < room.occupiedBeds ? 'bg-rose-300' : 'bg-emerald-400'}`}></div>
+                              <div key={i} className={`w-2.5 h-2.5 rounded-full border-2 border-card ${i < room.occupiedBeds ? 'bg-accent/60' : 'bg-emerald-400'}`}></div>
                             ))}
                           </div>
                           <span className="text-[9px] font-medium text-text-secondary uppercase tracking-tight">{room.totalBeds - room.occupiedBeds} Beds Free</span>
@@ -632,11 +680,11 @@ const TenantManagement = () => {
               {step === 4 && (
                 <div className="space-y-6">
                   {isTemporary && (
-                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3">
-                      <MdSwapHoriz className="text-2xl text-amber-600 shrink-0 mt-0.5" />
+                    <div className="p-4 rounded-2xl bg-primary-light border border-primary/20 flex items-start gap-3">
+                      <MdSwapHoriz className="text-2xl text-primary shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-bold text-amber-800">Temporary Assignment</p>
-                        <p className="text-[10px] text-amber-700 font-medium">Select any available bed. When a {preferredSharing}-sharing room opens up, you can move this resident.</p>
+                        <p className="text-sm font-bold text-amber-200">Temporary Assignment</p>
+                        <p className="text-[10px] text-primary/80 font-medium">Select any available bed. When a {preferredSharing}-sharing room opens up, you can move this resident.</p>
                       </div>
                     </div>
                   )}
@@ -650,7 +698,7 @@ const TenantManagement = () => {
                           onClick={() => setFormData({...formData, bedId: bed._id})}
                           className={`w-20 h-20 rounded-3xl border-2 flex flex-col items-center justify-center transition-all relative ${
                             bed.status === 'occupied'
-                              ? 'bg-[#F5F5F4] border-border/40 text-text-secondary/30 cursor-not-allowed'
+                              ? 'bg-surface border-border/40 text-text-secondary/30 cursor-not-allowed'
                               : formData.bedId === bed._id
                                 ? 'bg-primary border-primary text-white shadow-xl shadow-primary/30'
                                 : 'bg-card border-border/60 text-text-secondary/40 hover:border-primary/30 hover:text-primary/60'
@@ -665,7 +713,7 @@ const TenantManagement = () => {
                   <div className="pt-4 space-y-3">
                     <button
                       onClick={handleSubmit}
-                      disabled={!formData.name || !formData.phone || formData.phone.length < 10 || !formData.bedId}
+                      disabled={!formData.name || !formData.phone || formData.phone.length !== 10 || !formData.bedId}
                       className="btn-primary w-full py-4 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isTemporary ? "Finalize Temporary Assignment" : "Finalize Onboarding"}

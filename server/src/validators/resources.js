@@ -24,6 +24,8 @@ export const roomUpdateSchema = z.object({
   params: z.object({ id: objectId }),
   body: z.object({
     monthlyRent: z.coerce.number().min(0).optional(),
+    sharingType: z.coerce.number().int().min(1).max(20).optional(),
+    type: z.enum(["AC", "Non-AC"]).optional(),
     amenities: z.array(z.string()).optional(),
   }),
 });

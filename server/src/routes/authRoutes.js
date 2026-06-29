@@ -12,6 +12,11 @@ import {
   sendOtpSchema,
   verifyOtpSchema,
   switchHostelSchema,
+  tenantLoginSchema,
+  tenantSetPasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  tenantCheckSchema,
 } from "../validators/auth.js";
 import * as authController from "../controllers/authController.js";
 import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
@@ -27,11 +32,20 @@ router.post("/send-otp", otpLimiter, validate(sendOtpSchema), authController.sen
 router.post("/verify-otp", otpLimiter, validate(verifyOtpSchema), authController.verifyOtp);
 router.post("/tenant/send-otp", otpLimiter, validate(sendOtpSchema), authController.sendOtp);
 router.post("/tenant/verify-otp", otpLimiter, validate(verifyOtpSchema), authController.verifyOtp);
+router.post("/tenant/check-status", otpLimiter, validate(tenantCheckSchema), authController.checkTenantStatus);
+router.post("/tenant/login", otpLimiter, validate(tenantLoginSchema), authController.tenantLogin);
+router.post("/tenant/set-password", otpLimiter, validate(tenantSetPasswordSchema), authController.tenantSetPassword);
+router.post("/tenant/forgot-password", otpLimiter, validate(forgotPasswordSchema), authController.sendForgotOtp);
+router.post("/tenant/reset-password", otpLimiter, validate(resetPasswordSchema), authController.resetPassword);
 router.post("/refresh", authController.refresh);
 router.post("/logout", authController.logout);
 router.get("/me", authenticate, authController.me);
 router.post("/switch-hostel", authenticate, authLimiter, validate(switchHostelSchema), authController.switchHostel);
 router.patch("/profile", authenticate, authLimiter, validate(updateProfileSchema), authController.updateProfile);
 router.patch("/password", authenticate, authLimiter, validate(changePasswordSchema), authController.changePassword);
+
+// ── Session management ─────────────────────────────────
+router.get("/sessions", authenticate, authController.listSessions);
+router.delete("/sessions/:familyId", authenticate, authController.revokeSession);
 
 export default router;

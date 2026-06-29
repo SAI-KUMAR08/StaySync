@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import crypto from "crypto";
 import { Owner, Hostel, Tenant, RefreshToken, OTP } from "../models/index.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/tokens.js";
 import { AppError } from "../middleware/error.middleware.js";
@@ -246,7 +247,7 @@ export async function verifyOwnerOtpAndRegister({ email, otp }) {
 }
 
 
-export async function loginUser({ email, password }) {
+export async function loginUser({ email, password }, meta = {}) {
   const normalizedEmail = email.trim().toLowerCase();
 
   const user = await Owner.findOne({ email: normalizedEmail, isActive: true }).select("+password");
@@ -254,8 +255,25 @@ export async function loginUser({ email, password }) {
     throw new AppError("Invalid credentials", 401);
   }
 
+  // ⛔ Account lockout check
+  if (user.isLocked()) {
+    const remaining = Math.ceil((user.lockUntil - new Date()) / 1000 / 60);
+    throw new AppError(`Account temporarily locked. Try again in ${remaining} minute(s).`, 429);
+  }
+
   const valid = await user.comparePassword(password);
-  if (!valid) throw new AppError("Invalid credentials", 401);
+  if (!valid) {
+    await user.incrementLoginAttempts();
+    const attemptsLeft = 5 - (user.loginAttempts || 0);
+    const msg =
+      attemptsLeft > 0
+        ? `Invalid credentials. ${attemptsLeft} attempt(s) remaining before account is locked.`
+        : "Account locked due to too many failed attempts. Try again in 15 minutes.";
+    throw new AppError(msg, 401);
+  }
+
+  // ✅ Successful login — reset attempts
+  await user.resetLoginAttempts();
 
   let ownerId = user._id;
   let hostelId;
@@ -275,6 +293,7 @@ export async function loginUser({ email, password }) {
   const tokens = await issueTokens(user, user.role, {
     ownerId,
     hostelId,
+    ...meta,
   });
 
   return {
@@ -321,7 +340,7 @@ export async function sendTenantOtp({ phone }) {
   return { message: "OTP sent successfully" };
 }
 
-export async function verifyTenantOtp({ phone, otp }) {
+export async function verifyTenantOtp({ phone, otp }, meta = {}) {
   const normalized = normalizePhone(phone);
 
   const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
@@ -347,6 +366,176 @@ export async function verifyTenantOtp({ phone, otp }) {
   const tokens = await issueTokens(tenant, "tenant", {
     ownerId: tenant.ownerId,
     hostelId: tenant.hostelId,
+    ...meta,
+  });
+
+  const profile = await buildTenantProfile(tenant);
+
+  return {
+    user: profile,
+    ...tokens,
+  };
+}
+
+/**
+ * Check if a tenant exists and whether they've set a password.
+ */
+export async function checkTenantStatus({ phone }) {
+  const normalized = normalizePhone(phone);
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
+  if (!tenant) {
+    return { exists: false, hasPassword: false };
+  }
+  return { exists: true, hasPassword: tenant.isPasswordSet };
+}
+
+/**
+ * Tenant login with phone + password (for returning residents).
+ */
+export async function loginTenantWithPassword({ phone, password }, meta = {}) {
+  const normalized = normalizePhone(phone);
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true }).select("+personalInfo.password");
+  if (!tenant) {
+    throw new AppError("No active resident found with this number", 404);
+  }
+  if (!tenant.isPasswordSet) {
+    throw new AppError("Password not set. Please use OTP login to set your password first.", 400);
+  }
+
+  // ⛔ Account lockout check
+  if (tenant.isLocked()) {
+    const remaining = Math.ceil((tenant.lockUntil - new Date()) / 1000 / 60);
+    throw new AppError(`Account temporarily locked. Try again in ${remaining} minute(s).`, 429);
+  }
+
+  const valid = await tenant.comparePassword(password);
+  if (!valid) {
+    await tenant.incrementLoginAttempts();
+    const attemptsLeft = 5 - (tenant.loginAttempts || 0);
+    const msg =
+      attemptsLeft > 0
+        ? `Invalid credentials. ${attemptsLeft} attempt(s) remaining before account is locked.`
+        : "Account locked due to too many failed attempts. Try again in 15 minutes.";
+    throw new AppError(msg, 401);
+  }
+
+  // ✅ Successful login — reset attempts
+  await tenant.resetLoginAttempts();
+
+  const tokens = await issueTokens(tenant, "tenant", {
+    ownerId: tenant.ownerId,
+    hostelId: tenant.hostelId,
+    ...meta,
+  });
+
+  const profile = await buildTenantProfile(tenant);
+
+  return {
+    user: profile,
+    ...tokens,
+  };
+}
+
+/**
+ * First-time password set: verify OTP, then set password + mark isPasswordSet.
+ */
+export async function setTenantPassword({ phone, otp, password }) {
+  const normalized = normalizePhone(phone);
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
+  if (!tenant) throw new AppError("Tenant not found", 404);
+  if (tenant.isPasswordSet) {
+    throw new AppError("Password already set. Please login with your password.", 400);
+  }
+
+  // Set password directly (no OTP required for first-time setup)
+  tenant.personalInfo.password = password;
+  tenant.isPasswordSet = true;
+  await tenant.save();
+
+  // Auto-login after setting password
+  const tokens = await issueTokens(tenant, "tenant", {
+    ownerId: tenant.ownerId,
+    hostelId: tenant.hostelId,
+  });
+
+  const profile = await buildTenantProfile(tenant);
+
+  return {
+    user: profile,
+    ...tokens,
+  };
+}
+
+/**
+ * Send OTP to tenant's email for password reset.
+ */
+export async function sendTenantForgotOtp({ phone }) {
+  const normalized = normalizePhone(phone);
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
+  if (!tenant) throw new AppError("No active resident found with this number", 404);
+  if (!tenant.isPasswordSet) {
+    throw new AppError("Password not set yet. Please login via OTP first.", 400);
+  }
+
+  const email = tenant.personalInfo?.email || tenant.email;
+  if (!email || email.includes("@residents.local")) {
+    throw new AppError("No valid email on record. Contact your hostel owner to update your email.", 400);
+  }
+
+  // Check 60-second cooldown
+  const latestOtp = await OTP.findOne({ userId: tenant._id }).sort({ createdAt: -1 });
+  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
+    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
+  }
+
+  const otpVal = isMockOtp() ? DEMO_OTP : String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await OTP.findOneAndUpdate(
+    { userId: tenant._id, mobile: normalized },
+    { otp: otpVal, expiresAt, verified: false },
+    { upsert: true, new: true }
+  );
+
+  if (isMockOtp()) {
+    console.log(`[DEMO OTP] Forgot password for ${email} → ${DEMO_OTP} (no email sent)`);
+    return { message: "OTP sent to your registered email", otp: DEMO_OTP, mock: true };
+  }
+
+  console.log(`[EMAIL] Password reset OTP for ${email}`);
+  return { message: "OTP sent to your registered email" };
+}
+
+/**
+ * Reset password after verifying OTP sent to email.
+ */
+export async function resetTenantPassword({ phone, otp, newPassword }) {
+  const normalized = normalizePhone(phone);
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
+  if (!tenant) throw new AppError("Tenant not found", 404);
+
+  const otpDoc = await OTP.findOne({ userId: tenant._id, verified: false }).sort({ createdAt: -1 });
+  if (!otpDoc) {
+    throw new AppError("OTP session not found. Please request a new OTP.", 404);
+  }
+
+  const demoOk = isMockOtp() && otp === DEMO_OTP;
+  const storedOk = otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
+
+  if (!demoOk && !storedOk) {
+    throw new AppError("Invalid or expired OTP", 401);
+  }
+
+  otpDoc.verified = true;
+  await otpDoc.save();
+
+  tenant.personalInfo.password = newPassword;
+  tenant.isPasswordSet = true;
+  await tenant.save();
+
+  const tokens = await issueTokens(tenant, "tenant", {
+    ownerId: tenant.ownerId,
+    hostelId: tenant.hostelId,
   });
 
   const profile = await buildTenantProfile(tenant);
@@ -358,7 +547,11 @@ export async function verifyTenantOtp({ phone, otp }) {
 }
 
 
-async function issueTokens(user, role, { ownerId, hostelId }) {
+async function issueTokens(
+  user,
+  role,
+  { ownerId, hostelId, family, deviceInfo, ipAddress, userAgent }
+) {
   const payload = {
     sub: user._id.toString(),
     userId: user._id.toString(),
@@ -370,21 +563,38 @@ async function issueTokens(user, role, { ownerId, hostelId }) {
 
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
-
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  // Use provided family or generate a new one (first-time issuance)
+  const tokenFamily = family || RefreshToken.generateFamily();
+
+  // Mark any existing current tokens for this family as non-current
+  if (family) {
+    await RefreshToken.updateMany(
+      { userId: user._id, family, isCurrent: true },
+      { isCurrent: false }
+    );
+  }
+
   await RefreshToken.create({
     userId: user._id,
     role,
     token: refreshToken,
+    family: tokenFamily,
+    isCurrent: true,
     expiresAt,
+    deviceInfo: deviceInfo || null,
+    ipAddress: ipAddress || null,
+    userAgent: userAgent || null,
+    lastUsedAt: new Date(),
     ownerId,
     hostelId,
   });
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, family: tokenFamily };
 }
 
-export async function refreshSession(token) {
+export async function refreshSession(token, meta = {}) {
   let decoded;
   try {
     decoded = verifyRefreshToken(token);
@@ -395,6 +605,18 @@ export async function refreshSession(token) {
   const stored = await RefreshToken.findOne({ token });
   if (!stored || stored.expiresAt < new Date()) {
     throw new AppError("Refresh token expired", 401);
+  }
+
+  // ── Reuse detection ─────────────────────────────────
+  // If this token is NOT the current one in its family,
+  // someone is trying to reuse an old rotated token.
+  if (!stored.isCurrent) {
+    // Invalidate ALL tokens in this family (attacker + legitimate user)
+    await RefreshToken.deleteMany({ userId: stored.userId, family: stored.family });
+    throw new AppError(
+      "Session compromised. Please log in again.",
+      401
+    );
   }
 
   if (decoded.role === "owner" || decoded.role === "manager") {
@@ -415,11 +637,16 @@ export async function refreshSession(token) {
     }
     if (!hostel) throw new AppError("No active hostel found", 404);
 
-    await RefreshToken.deleteOne({ token });
+    // Rotate: issue new tokens in same family, old becomes non-current
     const tokens = await issueTokens(user, user.role, {
       ownerId,
       hostelId,
+      family: stored.family,
+      deviceInfo: meta.deviceInfo || stored.deviceInfo,
+      ipAddress: meta.ipAddress || stored.ipAddress,
+      userAgent: meta.userAgent || stored.userAgent,
     });
+
     return {
       user: buildAuthUser(user, user.role, {
         ownerId: ownerId.toString(),
@@ -433,10 +660,14 @@ export async function refreshSession(token) {
   const tenant = await Tenant.findById(decoded.sub);
   if (!tenant?.isActive) throw new AppError("User inactive", 401);
 
-  await RefreshToken.deleteOne({ token });
+  // Rotate: issue new tokens in same family
   const tokens = await issueTokens(tenant, "tenant", {
     ownerId: tenant.ownerId,
     hostelId: tenant.hostelId,
+    family: stored.family,
+    deviceInfo: meta.deviceInfo || stored.deviceInfo,
+    ipAddress: meta.ipAddress || stored.ipAddress,
+    userAgent: meta.userAgent || stored.userAgent,
   });
 
   return {
@@ -452,8 +683,50 @@ export async function refreshSession(token) {
 
 export async function logoutUser(refreshToken) {
   if (refreshToken) {
+    // Mark as non-current (keep for reuse detection) + delete
+    await RefreshToken.updateOne({ token: refreshToken }, { isCurrent: false });
     await RefreshToken.deleteOne({ token: refreshToken });
   }
+}
+
+/**
+ * List all active sessions (current refresh tokens) for a user.
+ */
+export async function listUserSessions(userId, role) {
+  const sessions = await RefreshToken.find({
+    userId,
+    role,
+    isCurrent: true,
+    expiresAt: { $gt: new Date() },
+  })
+    .sort({ lastUsedAt: -1 })
+    .select("family deviceInfo ipAddress userAgent lastUsedAt createdAt expiresAt")
+    .lean();
+
+  return sessions.map((s) => ({
+    id: s.family,
+    device: s.deviceInfo || "Unknown device",
+    ipAddress: s.ipAddress || null,
+    userAgent: s.userAgent || null,
+    lastUsedAt: s.lastUsedAt,
+    createdAt: s.createdAt,
+    expiresAt: s.expiresAt,
+  }));
+}
+
+/**
+ * Revoke a specific session by family ID.
+ */
+export async function revokeSession(userId, role, familyId) {
+  const result = await RefreshToken.deleteMany({
+    userId,
+    role,
+    family: familyId,
+  });
+  if (result.deletedCount === 0) {
+    throw new AppError("Session not found", 404);
+  }
+  return { message: "Session revoked" };
 }
 
 export async function getMe(userId, role) {
