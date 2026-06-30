@@ -16,6 +16,7 @@ export async function connectDB() {
         socketTimeoutMS: 45000,
         retryWrites: true,
         family: 4,
+        bufferCommands: false, // fail fast instead of silent 10s timeout
       });
       console.log(`✓ MongoDB connected (database: ${mongoose.connection.db.databaseName})`);
       await runSchemaMigration();
