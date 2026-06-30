@@ -73,7 +73,8 @@ export function corsOriginDelegate(origin, callback) {
   }
 
   console.warn(
-    `[CORS] Blocked origin: ${origin || "(none)"}. Allowed: ${getAllowedCorsOrigins().join(", ")}`
+    `[CORS] Blocked origin: ${origin || "(none)"}. Allowed: ${getAllowedCorsOrigins().join(", ")}` +
+      ` | Set CLIENT_URL or CLIENT_URLS env var on the server to add this origin.`
   );
   return callback(new Error("CORS blocked"));
 }
@@ -84,6 +85,18 @@ export function applyCorsHeaders(req, res) {
   if (origin && isOriginAllowed(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Expose-Headers", "X-Access-Token, X-Refresh-Token, Set-Cookie");
     res.setHeader("Vary", "Origin");
   }
 }
+
+/** Log CORS config at startup */
+(function logCorsConfig() {
+  const origins = getAllowedCorsOrigins();
+  const vercelPreviews = origins.some((o) => o.includes(".vercel.app"));
+  console.log(
+    `[CORS] ${origins.length} origin(s) configured` +
+      (vercelPreviews ? ` + wildcard *.vercel.app previews` : "") +
+      ` | ${origins.slice(0, 3).join(", ")}${origins.length > 3 ? `…` : ""}`
+  );
+})();

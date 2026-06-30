@@ -6,7 +6,7 @@ import { Server } from "socket.io";
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
 import { initCronJobs } from "./services/cronService.js";
-import { getAllowedCorsOrigins } from "./utils/corsOrigins.js";
+import { isOriginAllowed } from "./utils/corsOrigins.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -14,7 +14,9 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: getAllowedCorsOrigins(),
+    origin: (origin, callback) => {
+      callback(null, isOriginAllowed(origin));
+    },
     credentials: true,
   },
 });

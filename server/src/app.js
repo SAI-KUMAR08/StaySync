@@ -20,11 +20,12 @@ const corsOptions = {
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
+  exposedHeaders: ["X-Access-Token", "X-Refresh-Token", "Set-Cookie"],
+  maxAge: 86400, // 24h — cache preflight
 };
 
-// 1. CORS
+// 1. CORS (global middleware — handles preflight automatically)
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 
 // 2. Helmet
 app.use(
