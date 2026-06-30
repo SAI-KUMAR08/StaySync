@@ -12,7 +12,7 @@ async function ensureDb() {
   if (connected && mongoose.connection.readyState === 1) return true;
 
   // Grab MONGO_URI — must be set as a Vercel environment variable
-  const uri = process.env.MONGO_URI;
+  const uri = process.env.MONGO_URI || process.env.MONGO_URL;
   const dbName = process.env.MONGO_DB_NAME || "smart-hostel";
 
   if (!uri) {
