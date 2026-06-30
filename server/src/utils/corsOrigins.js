@@ -21,6 +21,7 @@ const DEPLOYED_FRONTENDS = [
   "https://my-hostel-client.vercel.app",
   "https://hostel-frountend.vercel.app",
   "https://hostel-frontend.vercel.app",
+  "https://stay-sync-git-main-code-catalist.vercel.app",
 ];
 
 export function getAllowedCorsOrigins() {
@@ -46,11 +47,22 @@ export function isLocalDevOrigin(origin) {
   }
 }
 
+/** Accept any *.vercel.app subdomain (preview deploys change every push) */
+function isVercelPreviewOrigin(origin) {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 export function isOriginAllowed(origin) {
   if (!origin) return true;
   const allowed = getAllowedCorsOrigins();
   if (allowed.includes(origin)) return true;
   if (isLocalDevOrigin(origin)) return true;
+  if (isVercelPreviewOrigin(origin)) return true;
   return false;
 }
 
