@@ -28,7 +28,7 @@ export async function connectDB() {
         console.error("1. Check MongoDB Atlas cluster is ACTIVE (not paused)");
         console.error("2. Whitelist your IP in Network Access");
         console.error("3. Verify credentials in .env file");
-        process.exit(1);
+        throw new Error(`MongoDB connection failed after ${maxRetries} attempts: ${error.message}`);
       }
       console.log(`Retrying in ${retryIntervalMs / 1000} seconds...`);
       await new Promise((resolve) => setTimeout(resolve, retryIntervalMs));

@@ -23,11 +23,11 @@ const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
   console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);
-  process.exit(1);
+  // Don't process.exit in serverless — let handler return a clear error instead
 }
 
 export const env = {
-  ...parsed.data,
-  REFRESH_TOKEN_SECRET: parsed.data.REFRESH_TOKEN_SECRET || parsed.data.JWT_SECRET,
-  CLIENT_URL: parsed.data.CLIENT_URL.replace(/\/$/, ""),
+  ...(parsed.success ? parsed.data : process.env),
+  REFRESH_TOKEN_SECRET: parsed.data?.REFRESH_TOKEN_SECRET || parsed.data?.JWT_SECRET || process.env.JWT_SECRET || "",
+  CLIENT_URL: (parsed.data?.CLIENT_URL || process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, ""),
 };
