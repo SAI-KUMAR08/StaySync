@@ -164,35 +164,50 @@ export const switchHostel = asyncHandler(async (req, res) => {
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const { name, phone, email } = req.validated.body;
-  const Model = req.user.role === "owner" ? Owner : Tenant;
-  const query =
-    req.user.role === "tenant"
-      ? { _id: req.user.id, ownerId: req.user.ownerId, hostelId: req.user.hostelId }
-      : { _id: req.user.id };
+  const isTenant = req.user.role === "tenant";
+  const Model = isTenant ? Tenant : Owner;
+  const query = isTenant
+    ? { _id: req.user.id, ownerId: req.user.ownerId, hostelId: req.user.hostelId }
+    : { _id: req.user.id };
 
   const user = await Model.findOne(query);
   if (!user) throw new AppError("User not found", 404);
 
-  if (email && email.toLowerCase() !== user.email) {
+  // Resolve the effective email for comparison (Tenant uses personalInfo subdoc)
+  const currentEmail = isTenant ? user.personalInfo?.email : user.email;
+
+  if (email && email.toLowerCase() !== currentEmail) {
     const normalized = email.trim().toLowerCase();
     const ownerClash = await Owner.findOne({ email: normalized });
     if (ownerClash) throw new AppError("Email already in use", 409);
-    if (req.user.role === "tenant") {
-      const tenantClash = await Tenant.findOne({
-        "personalInfo.email": normalized,
-        ownerId: req.user.ownerId,
-        hostelId: req.user.hostelId,
-        _id: { $ne: user._id },
-      });
-      if (tenantClash) throw new AppError("Email already in use", 409);
+
+    const clashQuery = isTenant
+      ? { "personalInfo.email": normalized, ownerId: req.user.ownerId, hostelId: req.user.hostelId, _id: { $ne: user._id } }
+      : { "personalInfo.email": normalized };
+    const tenantClash = await Tenant.findOne(clashQuery);
+    if (tenantClash) throw new AppError("Email already in use", 409);
+
+    if (isTenant) {
+      user.personalInfo.email = normalized;
     } else {
-      const tenantClash = await Tenant.findOne({ "personalInfo.email": normalized });
-      if (tenantClash) throw new AppError("Email already in use", 409);
+      user.email = normalized;
     }
-    user.email = normalized;
   }
-  if (name) user.name = name.trim();
-  if (phone !== undefined) user.phone = phone?.trim();
+  if (name) {
+    if (isTenant) {
+      user.personalInfo.name = name.trim();
+    } else {
+      user.name = name.trim();
+    }
+  }
+  if (phone !== undefined) {
+    const cleaned = phone?.trim();
+    if (isTenant) {
+      user.personalInfo.phone = cleaned;
+    } else {
+      user.phone = cleaned;
+    }
+  }
   await user.save();
 
   const updated = await authService.getMe(req.user.id, req.user.role);

@@ -7,83 +7,90 @@ export const initCronJobs = () => {
   cron.schedule("0 0 * * *", async () => {
     console.log("🕒 Running daily rent generation & late fee engine...");
     try {
-      // 1. Rent Generation using cursor
-      const activeTenantsCursor = Tenant.find({ isActive: true }).cursor();
+      // 1. Rent Generation — iterate per hostel to ensure tenant scoping
+      const hostels = await Hostel.find({ isActive: true });
       let rentCount = 0;
-      
+
       const now = new Date();
       const currentDay = now.getDate();
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const monthStr = now.toLocaleString("default", { month: "long" });
       const year = now.getFullYear();
 
-      for (let tenant = await activeTenantsCursor.next(); tenant != null; tenant = await activeTenantsCursor.next()) {
-        if (!tenant.monthlyRent || tenant.monthlyRent <= 0) continue;
-        
-        const joinDate = new Date(tenant.joinDate || tenant.createdAt);
-        const anniversaryDay = joinDate.getDate();
-        
-        const isAnniversary = 
-          currentDay === anniversaryDay || 
-          (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
+      for (const hostel of hostels) {
+        const activeTenantsCursor = Tenant.find({ isActive: true, ownerId: hostel.ownerId, hostelId: hostel._id }).cursor();
 
-        if (isAnniversary) {
-          const exists = await Payment.findOne({
-            tenantId: tenant._id,
-            paymentMonth: monthStr,
-            year
-          });
+        for (let tenant = await activeTenantsCursor.next(); tenant != null; tenant = await activeTenantsCursor.next()) {
+          if (!tenant.monthlyRent || tenant.monthlyRent <= 0) continue;
 
-          if (!exists) {
-            const dueDate = new Date(now);
-            dueDate.setDate(dueDate.getDate() + 5); // 5 days to pay
+          const joinDate = new Date(tenant.joinDate || tenant.createdAt);
+          const anniversaryDay = joinDate.getDate();
 
-            const payment = await Payment.create({
-              ownerId: tenant.ownerId,
-              hostelId: tenant.hostelId,
+          const isAnniversary =
+            currentDay === anniversaryDay ||
+            (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
+
+          if (isAnniversary) {
+            const exists = await Payment.findOne({
               tenantId: tenant._id,
-              bedId: tenant.bedId,
-              amount: tenant.monthlyRent,
-              fineAmount: 0,
-              totalAmount: tenant.monthlyRent,
               paymentMonth: monthStr,
-              year,
-              dueDate,
-              paymentStatus: "unpaid",
-              notes: `Monthly rent for cycle starting ${now.toDateString()}`,
+              year
             });
 
-            await logActivity({
-              ownerId: tenant.ownerId,
-              hostelId: tenant.hostelId,
-              actorId: tenant.ownerId,
-              actorRole: "system",
-              action: "rent_generated",
-              entityType: "payment",
-              entityId: payment._id,
-            });
-            
-            rentCount++;
+            if (!exists) {
+              const dueDate = new Date(now);
+              dueDate.setDate(dueDate.getDate() + 5); // 5 days to pay
+
+              const payment = await Payment.create({
+                ownerId: tenant.ownerId,
+                hostelId: tenant.hostelId,
+                tenantId: tenant._id,
+                bedId: tenant.bedId,
+                amount: tenant.monthlyRent,
+                fineAmount: 0,
+                totalAmount: tenant.monthlyRent,
+                paymentMonth: monthStr,
+                year,
+                dueDate,
+                paymentStatus: "unpaid",
+                notes: `Monthly rent for cycle starting ${now.toDateString()}`,
+              });
+
+              await logActivity({
+                ownerId: tenant.ownerId,
+                hostelId: tenant.hostelId,
+                actorId: tenant.ownerId,
+                actorRole: "system",
+                action: "rent_generated",
+                entityType: "payment",
+                entityId: payment._id,
+              });
+
+              rentCount++;
+            }
           }
         }
       }
-      console.log(`✅ Generated ${rentCount} rent invoices today.`);
 
-      // 2. Late Fee Application using cursor
-      const unpaidPaymentsCursor = Payment.find({ paymentStatus: { $in: ["unpaid", "overdue"] } }).cursor();
+      // 2. Late Fee Application — per hostel for scoped processing
       let lateCount = 0;
       const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      for (let payment = await unpaidPaymentsCursor.next(); payment != null; payment = await unpaidPaymentsCursor.next()) {
-        const dueDate = new Date(payment.dueDate);
-        const dueMidnight = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      for (const hostel of hostels) {
+        const unpaidPaymentsCursor = Payment.find({
+          ownerId: hostel.ownerId,
+          hostelId: hostel._id,
+          paymentStatus: { $in: ["unpaid", "overdue"] },
+        }).cursor();
 
-        const diffTime = todayMidnight - dueMidnight;
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        for (let payment = await unpaidPaymentsCursor.next(); payment != null; payment = await unpaidPaymentsCursor.next()) {
+          const dueDate = new Date(payment.dueDate);
+          const dueMidnight = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
 
-        if (diffDays > 0) {
-          const hostel = await Hostel.findById(payment.hostelId);
-          if (hostel) {
+          const diffTime = todayMidnight - dueMidnight;
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays > 0) {
             const graceDays = hostel.lateFeeGracePeriodDays ?? 5;
             const dailyRate = hostel.lateFeeDailyRate ?? 50;
 

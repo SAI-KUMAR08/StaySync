@@ -330,7 +330,7 @@ export const markNoticeRead = asyncHandler(async (req, res) => {
   if (!tenant || !tenant.isActive) throw new AppError("Tenant not found", 404);
 
   const notice = await Notice.findOneAndUpdate(
-    { _id: req.params.id, ownerId: req.user.ownerId, hostelId: req.user.hostelId, isActive: true },
+    { _id: req.validated.params.id, ownerId: req.user.ownerId, hostelId: req.user.hostelId, isActive: true },
     { $addToSet: { readBy: req.user.id } },
     { new: true }
   );

@@ -14,6 +14,7 @@ import { mapTenantForDisplay } from "../utils/tenantDisplay";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
 import { useSocket } from "../context/SocketContext";
+import { useDebounce } from "../hooks/useDebounce";
 
 const TenantManagement = () => {
   const COUNTRY_CODES = [
@@ -33,6 +34,7 @@ const TenantManagement = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [filter, setFilter] = useState("");
 
   const [step, setStep] = useState(1);
@@ -76,7 +78,7 @@ const TenantManagement = () => {
   useEffect(() => {
     fetchTenants();
     fetchStructure();
-  }, [search, filter, user?.hostelId]);
+  }, [debouncedSearch, filter, user?.hostelId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -97,7 +99,7 @@ const TenantManagement = () => {
   const fetchTenants = async () => {
     setError(null);
     try {
-      const res = await api.get(`/owner/tenants?search=${search}&status=${filter}`);
+      const res = await api.get(`/owner/tenants?search=${debouncedSearch}&status=${filter}`);
       const list = Array.isArray(res.data.data) ? res.data.data : [];
       setTenants(list.map(mapTenantForDisplay));
     } catch (error) {

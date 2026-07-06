@@ -14,7 +14,13 @@ export function validate(schema) {
       });
     }
 
-    req.validated = result.data;
+    // Merge with any existing validated data from previous validate() calls
+    req.validated = {
+      ...(req.validated || {}),
+      body: { ...(req.validated?.body || {}), ...(result.data.body || {}) },
+      query: { ...(req.validated?.query || {}), ...(result.data.query || {}) },
+      params: { ...(req.validated?.params || {}), ...(result.data.params || {}) },
+    };
     next();
   };
 }

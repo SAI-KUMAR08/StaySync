@@ -49,3 +49,17 @@ export const env = {
   REFRESH_TOKEN_SECRET: parsed.data?.REFRESH_TOKEN_SECRET || parsed.data?.JWT_SECRET || process.env.JWT_SECRET || "",
   CLIENT_URL: (parsed.data?.CLIENT_URL || process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, ""),
 };
+
+// Warn about placeholder secrets in production
+if (env.NODE_ENV === "production") {
+  const placeholder = /^your_/i;
+  if (placeholder.test(env.JWT_SECRET)) {
+    console.error("[env] ⚠️ JWT_SECRET appears to be a placeholder! Set a strong, unique secret for production.");
+  }
+  if (!process.env.REFRESH_TOKEN_SECRET && env.REFRESH_TOKEN_SECRET === env.JWT_SECRET) {
+    console.warn("[env] ⚠️ REFRESH_TOKEN_SECRET is not set — falling back to JWT_SECRET. Set a separate REFRESH_TOKEN_SECRET for better security.");
+  }
+  if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+    console.warn("[env] ⚠️ RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not configured. Online payments will not work.");
+  }
+}

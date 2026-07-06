@@ -10,6 +10,7 @@ import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { getApiError } from "../../utils/getApiError";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => (
   <div className="bento-card p-5 flex items-center gap-4">
@@ -29,6 +30,7 @@ const AdminPayments = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("");
   const [showFineModal, setShowFineModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
@@ -39,7 +41,7 @@ const AdminPayments = () => {
     setError(null);
     try {
       setLoading(true);
-      const res = await api.get(`/owner/payments?status=${statusFilter}&search=${search}`);
+      const res = await api.get(`/owner/payments?status=${statusFilter}&search=${debouncedSearch}`);
       const list = Array.isArray(res.data.data) ? res.data.data : [];
       setPayments(list.map((p) => ({ ...p, fine: p.fineAmount ?? 0 })));
     } catch (error) {
@@ -53,7 +55,7 @@ const AdminPayments = () => {
 
   useEffect(() => {
     fetchPayments();
-  }, [statusFilter, search, user?.hostelId]);
+  }, [statusFilter, debouncedSearch, user?.hostelId]);
 
   useEffect(() => {
     if (socket) {

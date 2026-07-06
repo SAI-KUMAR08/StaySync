@@ -8,6 +8,7 @@ import {
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../components/ErrorRetry";
+import { useDebounce } from "../hooks/useDebounce";
 
 const PriorityBadge = ({ priority }) => {
   const colors = {
@@ -32,6 +33,7 @@ const Complaints = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState("");
   const [formData, setFormData] = useState({
     category: "maintenance",
@@ -42,7 +44,7 @@ const Complaints = () => {
   useEffect(() => {
     if (!user) return;
     fetchComplaints();
-  }, [statusFilter, search, user?.id, user?.role]);
+  }, [statusFilter, debouncedSearch, user?.id, user?.role]);
 
   useEffect(() => {
     if (!socket || !user) return;
@@ -77,7 +79,7 @@ const Complaints = () => {
       setLoading(true);
       const params = new URLSearchParams();
       if (statusFilter) params.set("status", statusFilter);
-      if (search.trim()) params.set("search", search.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       const base = user.role === "owner" ? "/owner/complaints" : "/tenant/complaints";
       const url = params.toString() ? `${base}?${params}` : base;
       const res = await api.get(url);

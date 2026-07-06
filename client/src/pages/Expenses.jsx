@@ -8,6 +8,7 @@ import {
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
+import { useDebounce } from "../hooks/useDebounce";
 
 const CATEGORIES = [
   { id: "electricity", label: "Electricity", color: "bg-primary-light text-primary" },
@@ -42,6 +43,8 @@ const Expenses = () => {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
+  const debouncedSearch = useDebounce(search, 300);
+
   const [form, setForm] = useState({
     category: "electricity",
     amount: "",
@@ -73,7 +76,7 @@ const Expenses = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, [categoryFilter, search]);
+  useEffect(() => { fetchData(); }, [categoryFilter, debouncedSearch]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

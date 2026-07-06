@@ -2,16 +2,12 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import api from "../api/axios";
 import ErrorRetry from "../components/ErrorRetry";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area
-} from "recharts";
-import {
   MdPeople, MdReportProblem,
   MdAttachMoney, MdCheckCircle, MdNotificationsActive, MdArrowForward,
   MdQueryStats, MdHome, MdTrendingUp, MdWarning, MdReceipt,
   MdHotel, MdCurrencyRupee
 } from "react-icons/md";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";

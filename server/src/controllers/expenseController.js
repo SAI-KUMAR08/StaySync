@@ -23,7 +23,7 @@ export const listExpenses = asyncHandler(async (req, res) => {
   }
 
   const expenses = await Expense.find(query)
-    .populate("hostelId", "hostelName")
+    .populate("hostelId", "name")
     .sort({ date: -1, createdAt: -1 });
 
   return success(res, expenses);
@@ -31,7 +31,7 @@ export const listExpenses = asyncHandler(async (req, res) => {
 
 export const getExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findOne({ _id: req.validated.params.id, ...filter(req) })
-    .populate("hostelId", "hostelName");
+    .populate("hostelId", "name");
   if (!expense) throw new AppError("Expense not found", 404);
   return success(res, expense);
 });

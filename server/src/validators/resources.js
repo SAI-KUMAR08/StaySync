@@ -66,7 +66,11 @@ export const tenantUpdateSchema = z.object({
 
 export const assignBedSchema = z.object({
   params: z.object({ id: objectId }),
-  body: z.object({ bedId: objectId }),
+  body: z.object({
+    bedId: objectId,
+    isTemporary: z.boolean().optional(),
+    preferredSharing: z.coerce.number().int().min(1).max(20).optional(),
+  }),
 });
 
 export const complaintCreateSchema = z.object({

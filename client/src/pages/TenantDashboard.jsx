@@ -28,6 +28,7 @@ const TenantDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [roomDetails, setRoomDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -37,14 +38,16 @@ const TenantDashboard = () => {
   const fetchData = async () => {
     setError(null);
     try {
-      const [notifRes, compRes, payRes] = await Promise.all([
+      const [notifRes, compRes, payRes, roomRes] = await Promise.all([
         api.get("/tenant/notifications?limit=5"),
         api.get("/tenant/complaints"),
         api.get("/tenant/payments"),
+        api.get("/tenant/room").catch(() => null),
       ]);
       setNotifications(notifRes.data.data || []);
       setComplaints(compRes.data.data || []);
       setPayments(payRes.data.data?.payments || []);
+      setRoomDetails(roomRes?.data?.data || null);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Failed to load dashboard");
@@ -99,8 +102,8 @@ const TenantDashboard = () => {
       {/* Stats - staggered */}
       <div className="stagger-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
         {[
-          { label: "Assigned Unit", value: `Room ${user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-primary" },
-          { label: "Base Rent", value: `₹${user?.rentAmount?.toLocaleString() || 0}`, sub: "Monthly cycle", icon: MdAttachMoney, color: "bg-emerald-600" },
+          { label: "Assigned Unit", value: `Room ${roomDetails?.room?.roomNumber || roomDetails?.room?.number || user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${roomDetails?.room?.floor || roomDetails?.floorId?.number || user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-primary" },
+          { label: "Base Rent", value: `₹${(roomDetails?.room?.pricing || roomDetails?.room?.monthlyRent || user?.rentAmount || 0).toLocaleString()}`, sub: "Monthly cycle", icon: MdAttachMoney, color: "bg-emerald-600" },
           { label: "Overdue", value: `₹${overdueDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status === "overdue").length} month(s)`, icon: MdAssignment, color: "bg-accent" },
           { label: "Unpaid", value: `₹${unpaidDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status !== "paid" && p.status !== "overdue").length} bill(s)`, icon: MdAttachMoney, color: "bg-amber-600" },
           { label: "Support", value: complaints.filter(c => c.status !== 'resolved').length, sub: "Active tickets", icon: MdReportProblem, color: "bg-zinc-600" },

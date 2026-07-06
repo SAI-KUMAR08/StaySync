@@ -27,7 +27,7 @@ export function normalizeStructure(structure = []) {
 }
 
 export function getAvailableRooms(structure, sharingType) {
-  return normalizeStructure(structure).flatMap((floor) =>
+  return (structure || []).flatMap((floor) =>
     floor.rooms
       .filter((r) => r.sharingType === sharingType && r.occupiedBeds < r.totalBeds)
       .map((r) => ({ ...r, floorNumber: floor.number, floorId: floor }))

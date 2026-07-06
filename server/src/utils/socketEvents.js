@@ -14,9 +14,9 @@ export function emitTenantAssigned(req, tenant, bed) {
   emitToHostel(req, "tenant_assigned", {
     hostelId: tenant.hostelId,
     tenantId: tenant._id,
-    tenantName: tenant.name,
+    tenantName: tenant.name || tenant.personalInfo?.name,
     bedId: bed?._id,
-    message: `${tenant.name} assigned to bed ${bed?.bedLabel || ""}`.trim(),
+    message: `${tenant.name || tenant.personalInfo?.name} assigned to bed ${bed?.bedLabel || ""}`.trim(),
   });
   emitOccupancyUpdate(req, tenant.hostelId);
 }
@@ -25,7 +25,7 @@ export function emitTenantRemoved(req, tenant) {
   emitToHostel(req, "tenant_removed", {
     hostelId: tenant.hostelId,
     tenantId: tenant._id,
-    message: `${tenant.name} removed from hostel`,
+    message: `${tenant.name || tenant.personalInfo?.name} removed from hostel`,
   });
   emitOccupancyUpdate(req, tenant.hostelId);
 }

@@ -299,7 +299,7 @@ export const listTenants = asyncHandler(async (req, res) => {
   }
 
   const tenants = await Tenant.find(query)
-    .populate("hostelId", "hostelName")
+    .populate("hostelId", "name")
     .populate("floorId", "name level")
     .populate("roomId", "roomNumber floor")
     .populate("bedId", "bedLabel status")
@@ -308,8 +308,8 @@ export const listTenants = asyncHandler(async (req, res) => {
 });
 
 export const getTenant = asyncHandler(async (req, res) => {
-  const tenant = await Tenant.findOne({ _id: req.params.id, ...filter(req) })
-    .populate("hostelId", "hostelName")
+  const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...filter(req) })
+    .populate("hostelId", "name")
     .populate("floorId", "name level")
     .populate("roomId", "roomNumber floor")
     .populate("bedId", "bedLabel status");
@@ -455,6 +455,20 @@ export const assignBed = asyncHandler(async (req, res) => {
       bedId: req.validated.body.bedId,
       session,
     });
+
+    // Persist isTemporary / preferredSharing if provided
+    const { isTemporary, preferredSharing } = req.validated.body;
+    if (isTemporary !== undefined || preferredSharing !== undefined) {
+      const tenantUpdate = {};
+      if (isTemporary !== undefined) tenantUpdate.isTemporary = isTemporary;
+      if (preferredSharing !== undefined) tenantUpdate.preferredSharing = preferredSharing;
+      await Tenant.findOneAndUpdate(
+        { _id: req.validated.params.id, ownerId: f.ownerId, hostelId: f.hostelId },
+        { $set: tenantUpdate },
+        { session }
+      );
+    }
+
     await session.commitTransaction();
     emitTenantAssigned(req, result.tenant, result.bed);
     return success(res, result);
@@ -740,7 +754,7 @@ export const updateBedShiftRequest = asyncHandler(async (req, res) => {
 export const getTenantHistory = asyncHandler(async (req, res) => {
   const f = filter(req);
   const history = await RoomAssignmentHistory.find({
-    tenantId: req.params.id,
+    tenantId: req.validated.params.id,
     ownerId: f.ownerId,
     hostelId: f.hostelId,
   })
@@ -789,7 +803,7 @@ export const createManager = asyncHandler(async (req, res) => {
 
 export const deleteManager = asyncHandler(async (req, res) => {
   const manager = await Owner.findOneAndUpdate(
-    { _id: req.params.id, ownerId: req.user.id, role: "manager" },
+    { _id: req.validated.params.id, ownerId: req.user.id, role: "manager" },
     { isActive: false },
     { new: true }
   );

@@ -130,7 +130,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
   ]);
   if (existingOwner || existingTenant) throw new AppError("Email already registered", 409);
 
-  const otpVal = isMockOtp() ? DEMO_OTP : String(Math.floor(100000 + Math.random() * 900000));
+  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   // Find or update/create inactive Owner record
@@ -321,7 +321,7 @@ export async function sendTenantOtp({ phone }) {
     throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
   }
 
-  const otpVal = isMockOtp() ? DEMO_OTP : String(Math.floor(100000 + Math.random() * 900000));
+  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   // Save OTP in OTP collection
@@ -447,7 +447,23 @@ export async function setTenantPassword({ phone, otp, password }) {
     throw new AppError("Password already set. Please login with your password.", 400);
   }
 
-  // Set password directly (no OTP required for first-time setup)
+  // Verify OTP before allowing password set
+  const otpDoc = await OTP.findOne({ userId: tenant._id, verified: false }).sort({ createdAt: -1 });
+  if (!otpDoc) {
+    throw new AppError("OTP session not found. Please request a new OTP.", 404);
+  }
+
+  const demoOk = isMockOtp() && otp === DEMO_OTP;
+  const storedOk = otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
+
+  if (!demoOk && !storedOk) {
+    throw new AppError("Invalid or expired OTP", 401);
+  }
+
+  // Mark OTP as verified
+  otpDoc.verified = true;
+  await otpDoc.save();
+
   tenant.personalInfo.password = password;
   tenant.isPasswordSet = true;
   await tenant.save();
@@ -488,7 +504,7 @@ export async function sendTenantForgotOtp({ phone }) {
     throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
   }
 
-  const otpVal = isMockOtp() ? DEMO_OTP : String(Math.floor(100000 + Math.random() * 900000));
+  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   await OTP.findOneAndUpdate(
