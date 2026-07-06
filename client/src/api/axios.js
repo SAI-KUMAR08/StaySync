@@ -1,6 +1,35 @@
 import axios from "axios";
 import { getAxiosBaseURL } from "../config/api.js";
 
+// ── GET response cache (TTL-based, per-URL) ──────────────────
+const cache = new Map();
+const CACHE_TTL = 5000; // 5 seconds
+
+function getCached(url) {
+  const entry = cache.get(url);
+  if (!entry) return null;
+  if (Date.now() - entry.ts > CACHE_TTL) {
+    cache.delete(url);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCached(url, data) {
+  cache.set(url, { data, ts: Date.now() });
+  if (cache.size > 50) {
+    const oldest = cache.entries().next().value;
+    if (oldest) cache.delete(oldest[0]);
+  }
+}
+
+function invalidateCache(prefix) {
+  if (!prefix) { cache.clear(); return; }
+  for (const key of cache.keys()) {
+    if (key.startsWith(prefix)) cache.delete(key);
+  }
+}
+
 const api = axios.create({
   baseURL: getAxiosBaseURL(),
   withCredentials: true,
@@ -9,6 +38,29 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = sessionStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Cache GET responses — return cached data if fresh
+  if (config.method?.toLowerCase() === "get" && !config._skipCache) {
+    const cached = getCached(config.url);
+    if (cached) {
+      config._cached = cached;
+      config.adapter = () => Promise.resolve({
+        data: cached,
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    }
+  }
+
+  // Invalidate cache on mutations
+  if (config.method && !["get", "head"].includes(config.method.toLowerCase())) {
+    const basePath = config.url?.split("?")[0] || "";
+    // Invalidate parent resource paths
+    invalidateCache(basePath.replace(/\/[^/]+$/, ""));
+  }
+
   return config;
 });
 
@@ -27,7 +79,13 @@ const processQueue = (error, token = null) => {
 };
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Cache successful GET responses
+    if (res.config?.method?.toLowerCase() === "get" && res.data) {
+      setCached(res.config.url, res.data);
+    }
+    return res;
+  },
   (error) => {
     const originalRequest = error.config;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -191,7 +191,10 @@ const TenantManagement = () => {
     }
   };
 
-  const availableRooms = getAvailableRooms(structure, selectedSharing);
+  const availableRooms = useMemo(
+    () => getAvailableRooms(structure, selectedSharing),
+    [structure, selectedSharing]
+  );
 
   // 🆕 Quick fix: directly move temp tenant to preferred room type
   const handleFixTempTenant = (tenant) => {
@@ -222,19 +225,28 @@ const TenantManagement = () => {
   };
 
   // 🆕 Check if a tenant has waiting room type
+  const roomAvailabilityMap = useMemo(() => {
+    const map = {};
+    for (const f of structure) {
+      for (const r of f.rooms) {
+        if (r.occupiedBeds < r.totalBeds) {
+          map[r.sharingType] = true;
+        }
+      }
+    }
+    return map;
+  }, [structure]);
+
   const hasPreferredRoomAvailable = (tenant) => {
     if (!tenant.preferredSharing) return false;
-    return structure.some(f =>
-      f.rooms.some(r =>
-        r.sharingType === tenant.preferredSharing &&
-        r.occupiedBeds < r.totalBeds
-      )
-    );
+    return !!roomAvailabilityMap[tenant.preferredSharing];
   };
 
   // 🆕 Temporary tenants analysis
-  const tempTenants = tenants.filter(t => t.isTemporary);
-  const regularTenants = tenants.filter(t => !t.isTemporary);
+  const { tempTenants, regularTenants } = useMemo(() => ({
+    tempTenants: tenants.filter(t => t.isTemporary),
+    regularTenants: tenants.filter(t => !t.isTemporary),
+  }), [tenants]);
 
   if (loading) return (
     <div className="space-y-5" role="status" aria-label="Loading residents">

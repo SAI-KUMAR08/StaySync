@@ -24,16 +24,16 @@ async function buildTenantProfile(tenantOrId) {
     tenant = tenantOrId;
     if (!tenant.populated("floorId") || !tenant.populated("roomId") || !tenant.populated("bedId")) {
       await tenant.populate([
-        { path: "floorId", select: "name level" },
+        { path: "floorId", select: "floorName floorNumber" },
         { path: "roomId", select: "roomNumber floor" },
-        { path: "bedId", select: "bedLabel" },
+        { path: "bedId", select: "bedNumber" },
       ]);
     }
   } else {
     tenant = await Tenant.findById(tenantOrId)
-      .populate("floorId", "name level")
+      .populate("floorId", "floorName floorNumber")
       .populate("roomId", "roomNumber floor")
-      .populate("bedId", "bedLabel");
+      .populate("bedId", "bedNumber");
   }
   if (!tenant) throw new AppError("Tenant not found", 404);
 
@@ -78,7 +78,7 @@ export async function registerOwner({ name, email, password, phone, hostelName, 
       [
         {
           ownerId: owner._id,
-          hostelName: hostelName.trim(),
+          name: hostelName.trim(),
           address: address?.trim(),
           city: city?.trim(),
           contactPhone: phone?.trim(),

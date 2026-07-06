@@ -125,7 +125,7 @@ export const listComplaints = asyncHandler(async (req, res) => {
   }
 
   const complaints = await Complaint.find(query)
-    .populate("tenantId", "name email phone roomId")
+    .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone roomId")
     .populate("roomId", "roomNumber")
     .sort({ createdAt: -1 });
   return success(res, complaints);
@@ -161,7 +161,7 @@ export const createComplaint = asyncHandler(async (req, res) => {
   });
 
   const populated = await Complaint.findById(complaint._id)
-    .populate("tenantId", "name email phone roomId")
+    .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone roomId")
     .populate("roomId", "roomNumber");
 
   const io = req.app.get("io");

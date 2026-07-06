@@ -8,11 +8,11 @@ export function mapTenantForDisplay(tenant) {
     email: tenant.email || tenant.personalInfo?.email || "",
     status: tenant.isActive === false ? "inactive" : "active",
     rentAmount: tenant.monthlyRent ?? 0,
-    hostelName: tenant.hostelId?.hostelName || "",
+    hostelName: tenant.hostelId?.name || tenant.hostelId?.hostelName || "",
     roomDetails: {
       roomId: { number: tenant.roomId?.roomNumber ?? "N/A" },
-      floorId: { number: tenant.floorId?.level ?? tenant.floorId?.name ?? "—" },
-      bedId: { number: tenant.bedId?.bedLabel ?? "—" },
+      floorId: { number: tenant.floorId?.floorNumber ?? tenant.floorId?.level ?? tenant.floorId?.name ?? "—" },
+      bedId: { number: tenant.bedId?.bedNumber ?? tenant.bedId?.bedLabel ?? "—" },
     },
   };
 }

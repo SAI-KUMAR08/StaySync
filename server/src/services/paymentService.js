@@ -19,12 +19,16 @@ export function getBillingPeriodsFromJoin(joinDate, until = new Date()) {
   let year = join.getFullYear();
   let month = join.getMonth() + 1;
 
+  // Limit lookback to prevent runaway loops
+  const maxMonths = 36;
+  let count = 0;
+
   const end = new Date(until.getFullYear(), until.getMonth(), until.getDate());
 
-  while (true) {
+  while (count < maxMonths) {
     const maxDays = new Date(year, month + 1, 0).getDate();
     const currentDueDay = Math.min(dueDay, maxDays);
-    const cursor = new Date(year, month, currentDueDay);
+    const cursor = new Date(year, month - 1, currentDueDay);
 
     if (cursor > end) break;
 
@@ -35,10 +39,11 @@ export function getBillingPeriodsFromJoin(joinDate, until = new Date()) {
     });
 
     month++;
-    if (month > 11) {
-      month = 0;
+    if (month > 12) {
+      month = 1;
       year++;
     }
+    count++;
   }
   return periods;
 }
@@ -58,83 +63,128 @@ export function derivePaymentStatus(payment, now = new Date()) {
   return "unpaid";
 }
 
+/**
+ * Batch-ensure rent invoices for a single tenant.
+ * Uses a single aggregate query + bulkWrite instead of per-period loops + saves.
+ */
 export async function ensureTenantRentInvoices(tenant, session = null) {
   if (!tenant?.monthlyRent || tenant.monthlyRent <= 0) return [];
 
   const joinDate = new Date(tenant.joinDate || tenant.createdAt);
   const periods = getBillingPeriodsFromJoin(joinDate);
-  const created = [];
   const opts = session ? { session } : {};
 
-  for (const period of periods) {
-    const exists = await Payment.findOne({
-      tenantId: tenant._id,
-      paymentMonth: period.month,
-      year: period.year,
-    }).session(session || null);
+  // Single query: find all existing payments for this tenant
+  const existingDocs = await Payment.find(
+    { tenantId: tenant._id },
+    { paymentMonth: 1, year: 1, _id: 0 }
+  ).lean().session(session || null).then(rows => new Set(rows.map(r => `${r.paymentMonth}|${r.year}`)));
 
-    if (exists) continue;
-
-    const draft = {
+  // Gather missing draft payments
+  const drafts = periods
+    .filter(p => !existingDocs.has(`${p.month}|${p.year}`))
+    .map(p => ({
       ownerId: tenant.ownerId,
       hostelId: tenant.hostelId,
       tenantId: tenant._id,
       amount: tenant.monthlyRent,
       fineAmount: 0,
       totalAmount: tenant.monthlyRent,
-      paymentMonth: period.month,
-      year: period.year,
-      dueDate: period.dueDate,
-      notes: `Rent for ${period.month} ${period.year}`,
-    };
-    draft.paymentStatus = derivePaymentStatus({ ...draft, paymentStatus: "unpaid" });
+      paymentMonth: p.month,
+      year: p.year,
+      dueDate: p.dueDate,
+      paymentStatus: derivePaymentStatus({ dueDate: p.dueDate, paymentStatus: "unpaid" }),
+      notes: `Rent for ${p.month} ${p.year}`,
+    }));
 
-    const [payment] = await Payment.create([draft], opts);
-    created.push(payment);
+  if (drafts.length > 0) {
+    await Payment.insertMany(drafts, opts);
   }
 
-  const open = await Payment.find({
+  // Bulk-update overdue/unpaid statuses
+  const openPayments = await Payment.find({
     tenantId: tenant._id,
     paymentStatus: { $ne: "paid" },
-  }).session(session || null);
+  }).lean().session(session || null);
 
-  for (const payment of open) {
+  const bulkOps = [];
+  for (const payment of openPayments) {
     const next = derivePaymentStatus(payment);
     if (payment.paymentStatus !== next) {
-      payment.paymentStatus = next;
-      await payment.save(opts);
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: payment._id },
+          update: { $set: { paymentStatus: next } },
+        },
+      });
     }
   }
 
-  return created;
-}
-
-export async function ensureHostelRentInvoices(ownerId, hostelId) {
-  const tenants = await Tenant.find({ ownerId, hostelId, isActive: true });
-  for (const tenant of tenants) {
-    await ensureTenantRentInvoices(tenant);
+  if (bulkOps.length > 0) {
+    await Payment.bulkWrite(bulkOps, opts);
   }
+
+  return drafts;
 }
 
-export async function syncHostelPaymentStatuses(ownerId, hostelId) {
-  await ensureHostelRentInvoices(ownerId, hostelId);
-
+/**
+ * Lightweight status sync — only refreshes payment statuses, skips invoice creation.
+ * Use this for dashboard loads where you just need fresh statuses, not new invoices.
+ */
+export async function syncPaymentStatusesOnly(ownerId, hostelId) {
   const payments = await Payment.find({
     ownerId,
     hostelId,
     paymentStatus: { $ne: "paid" },
-  });
+  }).lean();
 
-  let updated = 0;
+  const bulkOps = [];
   for (const payment of payments) {
     const next = derivePaymentStatus(payment);
     if (payment.paymentStatus !== next) {
-      payment.paymentStatus = next;
-      await payment.save();
-      updated++;
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: payment._id },
+          update: { $set: { paymentStatus: next } },
+        },
+      });
     }
   }
-  return updated;
+
+  if (bulkOps.length > 0) {
+    await Payment.bulkWrite(bulkOps);
+  }
+  return bulkOps.length;
+}
+
+/**
+ * Full sync: creates missing invoices + refreshes payment statuses.
+ * Only call this from the payments page or cron, not from the dashboard.
+ */
+export async function syncHostelPaymentStatuses(ownerId, hostelId) {
+  // Batch-create invoices per hostel using aggregation
+  const activeTenants = await Tenant.find(
+    { ownerId, hostelId, isActive: true, monthlyRent: { $gt: 0 } },
+    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, joinDate: 1, createdAt: 1 }
+  ).lean();
+
+  await Promise.all(
+    activeTenants.map(t => ensureTenantRentInvoices(t))
+  );
+
+  // Bulk-update statuses
+  return syncPaymentStatusesOnly(ownerId, hostelId);
+}
+
+export async function ensureHostelRentInvoices(ownerId, hostelId) {
+  const tenants = await Tenant.find(
+    { ownerId, hostelId, isActive: true, monthlyRent: { $gt: 0 } },
+    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, joinDate: 1, createdAt: 1 }
+  ).lean();
+
+  await Promise.all(
+    tenants.map(t => ensureTenantRentInvoices(t))
+  );
 }
 
 export async function countOverdueTenants(ownerId, hostelId) {
@@ -188,7 +238,7 @@ export function groupPaymentsByStatus(payments) {
 
   const byMonth = (a, b) => {
     if (a.year !== b.year) return b.year - a.year;
-    return monthIndex(b.month) - monthIndex(a.month);
+    return monthIndex(b.paymentMonth || b.month) - monthIndex(a.paymentMonth || a.month);
   };
 
   overdue.sort(byMonth);

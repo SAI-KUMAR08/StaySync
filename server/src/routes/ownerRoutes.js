@@ -86,7 +86,7 @@ router.get("/expenses", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtr
 router.get("/expenses/summary", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtrl.getExpenseSummary);
 router.get("/expenses/:id", requirePermission(PERMISSIONS.READ_EXPENSES), validate(idParamSchema), expenseCtrl.getExpense);
 router.post("/expenses", requirePermission(PERMISSIONS.CREATE_EXPENSES), validate(createExpenseSchema), expenseCtrl.createExpense);
-router.patch("/expenses/:id", requirePermission(PERMISSIONS.UPDATE_EXPENSES), validate(updateExpenseSchema), validate(idParamSchema), expenseCtrl.updateExpense);
+router.patch("/expenses/:id", requirePermission(PERMISSIONS.UPDATE_EXPENSES), validate(idParamSchema), validate(updateExpenseSchema), expenseCtrl.updateExpense);
 router.delete("/expenses/:id", requirePermission(PERMISSIONS.DELETE_EXPENSES), validate(idParamSchema), expenseCtrl.deleteExpense);
 
 // Managers Management (owner-only)

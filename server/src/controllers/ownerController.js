@@ -12,7 +12,7 @@ import * as occupancyService from "../services/occupancyService.js";
 import * as analyticsService from "../services/analyticsService.js";
 import { getSlaDueAt } from "../services/authService.js";
 import { logActivity } from "../services/activityService.js";
-import { syncHostelPaymentStatuses, ensureTenantRentInvoices } from "../services/paymentService.js";
+import { syncHostelPaymentStatuses, syncPaymentStatusesOnly, ensureTenantRentInvoices } from "../services/paymentService.js";
 import { normalizePhone } from "../utils/phone.js";
 import { escapeRegex } from "../utils/regex.js";
 
@@ -27,7 +27,7 @@ export const createHostel = asyncHandler(async (req, res) => {
   const { hostelName, address, city, contactPhone, totalFloors } = req.validated.body;
   const hostel = await Hostel.create({
     ownerId: req.user.id,
-    hostelName: hostelName.trim(),
+    name: hostelName.trim(),
     address: address?.trim(),
     city: city?.trim(),
     contactPhone: contactPhone?.trim(),
@@ -46,33 +46,63 @@ export const listFloors = asyncHandler(async (req, res) => {
 
 export const getHostelStructure = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const floors = await Floor.find({ ...f, isActive: true }).sort({ floorNumber: 1 });
-  
-  const structure = [];
-  for (const floor of floors) {
-    const rooms = await Room.find({ floorId: floor._id, ...f, isActive: true }).sort({ roomNumber: 1 });
-    const roomsWithBeds = [];
-    for (const room of rooms) {
-      const beds = await Bed.find({ roomId: room._id, ...f })
-        .sort({ bedNumber: 1 })
-        .populate("tenantId", "name email phone");
-      roomsWithBeds.push({ ...room.toObject(), beds });
-    }
-    structure.push({ ...floor.toObject(), rooms: roomsWithBeds });
-  }
+  const ownerId = f.ownerId instanceof mongoose.Types.ObjectId ? f.ownerId : new mongoose.Types.ObjectId(f.ownerId);
+  const hostelId = f.hostelId instanceof mongoose.Types.ObjectId ? f.hostelId : new mongoose.Types.ObjectId(f.hostelId);
+
+  const structure = await Floor.aggregate([
+    { $match: { ownerId, hostelId, isActive: true } },
+    { $sort: { floorNumber: 1 } },
+    {
+      $lookup: {
+        from: "rooms",
+        let: { floorId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $and: [{ $eq: ["$floorId", "$$floorId"] }, { $eq: ["$ownerId", ownerId] }, { $eq: ["$hostelId", hostelId] }, { $eq: ["$isActive", true] }] } } },
+          { $sort: { roomNumber: 1 } },
+          {
+            $lookup: {
+              from: "beds",
+              let: { roomId: "$_id" },
+              pipeline: [
+                { $match: { $expr: { $and: [{ $eq: ["$roomId", "$$roomId"] }, { $eq: ["$ownerId", ownerId] }, { $eq: ["$hostelId", hostelId] }] } } },
+                { $sort: { bedNumber: 1 } },
+                {
+                  $lookup: {
+                    from: "tenants",
+                    let: { tid: "$tenantId" },
+                    pipeline: [
+                      { $match: { $expr: { $eq: ["$_id", "$$tid"] } } },
+                      { $project: { "personalInfo.name": 1, "personalInfo.email": 1, "personalInfo.phone": 1, monthlyRent: 1, _id: 1 } },
+                    ],
+                    as: "tenant",
+                  },
+                },
+                { $addFields: { tenantId: { $arrayElemAt: ["$tenant", 0] } } },
+                { $project: { tenant: 0 } },
+              ],
+              as: "beds",
+            },
+          },
+        ],
+        as: "rooms",
+      },
+    },
+  ]);
 
   return success(res, { structure });
 });
 
 export const createFloor = asyncHandler(async (req, res) => {
   const f = filter(req);
-  let { name, level } = req.validated.body || {};
-  if (level === undefined) {
+  const body = req.validated.body || {};
+  let floorName = body.floorName || body.name;
+  let floorNumber = body.floorNumber ?? body.level;
+  if (floorNumber === undefined) {
     const top = await Floor.findOne({ ...f, isActive: true }).sort({ floorNumber: -1 });
-    level = (top?.level ?? 0) + 1;
+    floorNumber = (top?.floorNumber ?? 0) + 1;
   }
-  if (!name) name = `Floor ${level}`;
-  const floor = await Floor.create({ ...f, name, level });
+  if (!floorName) floorName = `Floor ${floorNumber}`;
+  const floor = await Floor.create({ ...f, floorName, floorNumber });
   emitOccupancyUpdate(req, f.hostelId);
   return success(res, floor, 201);
 });
@@ -90,11 +120,11 @@ export const setupHostel = asyncHandler(async (req, res) => {
     await Bed.deleteMany(f, { session });
 
     for (const floorData of floors) {
-      const floor = await Floor.create([{ ...f, name: `Floor ${floorData.number}`, level: floorData.number }], { session });
+      const floor = await Floor.create([{ ...f, floorName: `Floor ${floorData.number}`, floorNumber: floorData.number }], { session });
       if (!floor || floor.length === 0) {
         throw new Error(`Failed to create floor level ${floorData.number}`);
       }
-      
+
       for (const roomData of floorData.rooms) {
         const room = await Room.create([{
           ...f,
@@ -102,7 +132,7 @@ export const setupHostel = asyncHandler(async (req, res) => {
           floor: floorData.number,
           floorId: floor[0]._id,
           capacity: roomData.sharingType,
-          monthlyRent: roomData.price,
+          pricing: roomData.price,
           roomType: roomData.isAC ? "AC" : "Non-AC",
           amenities: roomData.isAC ? ["AC"] : ["Non-AC"],
           availableBeds: roomData.sharingType,
@@ -135,7 +165,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
   const f = filter(req);
   const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
 
-  await syncHostelPaymentStatuses(resolvedOwnerId, f.hostelId);
+  await syncPaymentStatusesOnly(resolvedOwnerId, f.hostelId);
   const [stats, occupancy, payments, complaints] = await Promise.all([
     analyticsService.getDashboardStats(resolvedOwnerId, f.hostelId),
     analyticsService.getOccupancyAnalytics(resolvedOwnerId, f.hostelId),
@@ -167,21 +197,22 @@ export const getDashboard = asyncHandler(async (req, res) => {
 
 export const listRooms = asyncHandler(async (req, res) => {
   const rooms = await Room.find({ ...filter(req), isActive: true })
-    .populate("floorId", "name level")
+    .populate("floorId", "floorName floorNumber")
     .sort({ roomNumber: 1 });
   return success(res, rooms);
 });
 
 export const createRoom = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const { roomNumber, floor, floorId, capacity, monthlyRent, amenities } = req.validated.body;
+  const { roomNumber, floor, floorId, pricing, monthlyRent, capacity, amenities } = req.validated.body;
 
+  const effectivePricing = pricing ?? monthlyRent ?? 0;
   let floorLevel = floor;
   let resolvedFloorId = floorId ?? null;
   if (floorId) {
     const floorDoc = await Floor.findOne({ _id: floorId, ...f, isActive: true });
     if (!floorDoc) throw new AppError("Floor not found", 404);
-    floorLevel = floorDoc.level;
+    floorLevel = floorDoc.floorNumber;
     resolvedFloorId = floorDoc._id;
   }
 
@@ -191,7 +222,7 @@ export const createRoom = asyncHandler(async (req, res) => {
     floor: floorLevel,
     floorId: resolvedFloorId,
     capacity,
-    monthlyRent,
+    pricing: effectivePricing,
     roomType: amenities?.includes("AC") ? "AC" : "Non-AC",
     amenities: amenities ?? [],
     availableBeds: capacity,
@@ -214,7 +245,7 @@ export const updateRoom = asyncHandler(async (req, res) => {
   const room = await Room.findOne({ _id: req.validated.params.id, ...f });
   if (!room) throw new AppError("Room not found", 404);
 
-  const { monthlyRent, sharingType, type, amenities } = req.validated.body;
+  const { pricing, monthlyRent, sharingType, type, amenities } = req.validated.body;
   if (sharingType !== undefined) {
     if (sharingType < room.occupiedBeds) {
       throw new AppError(
@@ -224,7 +255,8 @@ export const updateRoom = asyncHandler(async (req, res) => {
     }
     room.capacity = sharingType;
   }
-  if (monthlyRent !== undefined) room.monthlyRent = monthlyRent;
+  const effectivePricing = pricing ?? monthlyRent;
+  if (effectivePricing !== undefined) room.pricing = effectivePricing;
   if (type !== undefined) room.roomType = type;
   if (amenities !== undefined) room.amenities = amenities;
   await room.save();
@@ -249,7 +281,7 @@ export const listBeds = asyncHandler(async (req, res) => {
   const query = { ...filter(req) };
   if (req.query.roomId) query.roomId = req.query.roomId;
   const beds = await Bed.find(query)
-    .populate("tenantId", "name email")
+    .populate("tenantId", "personalInfo.name personalInfo.email")
     .populate("roomId", "roomNumber")
     .sort({ bedNumber: 1 });
   return success(res, beds);
@@ -257,10 +289,14 @@ export const listBeds = asyncHandler(async (req, res) => {
 
 export const updateBed = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const { status, bedLabel, monthlyRent } = req.validated.body;
+  const { status, bedLabel, monthlyRent, bedNumber, pricing } = req.validated.body;
+
+  // Use actual DB field names
+  const effectiveBedNumber = bedNumber || bedLabel;
+  const effectivePricing = pricing ?? monthlyRent;
 
   if (status) {
-    if (bedLabel !== undefined || monthlyRent !== undefined) {
+    if (effectiveBedNumber !== undefined || effectivePricing !== undefined) {
       throw new AppError("Status changes must be performed separately from label/price updates", 400);
     }
     const bed = await occupancyService.updateBedStatus({
@@ -272,9 +308,13 @@ export const updateBed = asyncHandler(async (req, res) => {
     return success(res, bed);
   }
 
+  const updateFields = {};
+  if (effectiveBedNumber) updateFields.bedNumber = effectiveBedNumber;
+  if (effectivePricing !== undefined) updateFields.pricing = effectivePricing;
+
   const bed = await Bed.findOneAndUpdate(
     { _id: req.validated.params.id, ...f },
-    { ...(bedLabel && { bedLabel }), ...(monthlyRent !== undefined && { monthlyRent }) },
+    { $set: updateFields },
     { new: true }
   );
   if (!bed) throw new AppError("Bed not found", 404);
@@ -300,9 +340,9 @@ export const listTenants = asyncHandler(async (req, res) => {
 
   const tenants = await Tenant.find(query)
     .populate("hostelId", "name")
-    .populate("floorId", "name level")
+    .populate("floorId", "floorName floorNumber")
     .populate("roomId", "roomNumber floor")
-    .populate("bedId", "bedLabel status")
+    .populate("bedId", "bedNumber occupancyStatus")
     .sort({ createdAt: -1 });
   return success(res, tenants);
 });
@@ -310,9 +350,9 @@ export const listTenants = asyncHandler(async (req, res) => {
 export const getTenant = asyncHandler(async (req, res) => {
   const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...filter(req) })
     .populate("hostelId", "name")
-    .populate("floorId", "name level")
+    .populate("floorId", "floorName floorNumber")
     .populate("roomId", "roomNumber floor")
-    .populate("bedId", "bedLabel status");
+    .populate("bedId", "bedNumber occupancyStatus");
   if (!tenant) throw new AppError("Tenant not found", 404);
   return success(res, tenant);
 });
@@ -537,7 +577,7 @@ export const listComplaints = asyncHandler(async (req, res) => {
   }
 
   const complaints = await Complaint.find(query)
-    .populate("tenantId", "name email phone roomId")
+    .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone roomId")
     .populate("roomId", "roomNumber")
     .sort({ createdAt: -1 });
   return success(res, complaints);
@@ -567,7 +607,7 @@ export const updateComplaint = asyncHandler(async (req, res) => {
   await complaint.save();
 
   const populated = await Complaint.findById(complaint._id)
-    .populate("tenantId", "name email phone roomId")
+    .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone roomId")
     .populate("roomId", "roomNumber");
 
   const io = req.app.get("io");
@@ -585,7 +625,7 @@ export const listPayments = asyncHandler(async (req, res) => {
   const query = { ...f };
   const { status, search } = req.query;
 
-  if (status) query.status = status;
+  if (status) query.paymentStatus = status;
 
   if (search?.trim()) {
     const safeSearch = escapeRegex(search.trim());
@@ -603,11 +643,11 @@ export const listPayments = asyncHandler(async (req, res) => {
   const payments = await Payment.find(query)
     .populate({
       path: "tenantId",
-      select: "name email phone monthlyRent",
+      select: "personalInfo.name personalInfo.email personalInfo.phone monthlyRent roomId floorId bedId",
       populate: [
         { path: "roomId", select: "roomNumber" },
-        { path: "floorId", select: "level name" },
-        { path: "bedId", select: "bedLabel" },
+        { path: "floorId", select: "floorName floorNumber" },
+        { path: "bedId", select: "bedNumber" },
       ],
     })
     .sort({ dueDate: -1 });
@@ -616,22 +656,23 @@ export const listPayments = asyncHandler(async (req, res) => {
 
 export const createPayment = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const { tenantId, amount, fineAmount, month, year, dueDate, notes } = req.validated.body;
+  const { tenantId, amount, fineAmount, paymentMonth, month, year, dueDate, notes } = req.validated.body;
   const tenant = await Tenant.findOne({ _id: tenantId, ...f, isActive: true });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
   const totalAmount = amount + (fineAmount ?? 0);
+  const effectivePaymentMonth = paymentMonth || month;
   const payment = await Payment.create({
     ...f,
     tenantId,
     amount,
     fineAmount: fineAmount ?? 0,
     totalAmount,
-    month,
+    paymentMonth: effectivePaymentMonth,
     year,
     dueDate,
     notes,
-    status: "unpaid",
+    paymentStatus: "unpaid",
   });
   return success(res, payment, 201);
 });
@@ -642,17 +683,23 @@ export const updatePayment = asyncHandler(async (req, res) => {
   if (!payment) throw new AppError("Payment not found", 404);
 
   const updates = req.validated.body;
+  const effectiveStatus = updates.paymentStatus || updates.status;
   // Manual owner mark-paid defaults to cash unless explicitly provided
-  if (updates.status === "paid" && !updates.paymentMethod) {
+  if (effectiveStatus === "paid" && !updates.paymentMethod) {
     updates.paymentMethod = "cash";
   }
-  if (updates.status === "paid" && !updates.paidDate) {
+  if (effectiveStatus === "paid" && !updates.paidDate) {
     updates.paidDate = new Date();
   }
   if (updates.fineAmount !== undefined) {
     payment.fineAmount = updates.fineAmount;
     payment.totalAmount = payment.amount + payment.fineAmount;
   }
+  // Normalize to actual DB field names before assign
+  if (updates.paymentStatus === undefined && updates.status) {
+    updates.paymentStatus = updates.status;
+  }
+  delete updates.status;
   Object.assign(payment, updates);
   await payment.save();
   return success(res, payment);
@@ -703,8 +750,8 @@ export const updateHostel = asyncHandler(async (req, res) => {
 
 export const listBedShiftRequests = asyncHandler(async (req, res) => {
   const requests = await BedShiftRequest.find(filter(req))
-    .populate("tenantId", "name email")
-    .populate("currentBedId", "bedLabel")
+    .populate("tenantId", "personalInfo.name personalInfo.email")
+    .populate("currentBedId", "bedNumber")
     .sort({ createdAt: -1 });
   return success(res, requests);
 });
@@ -758,9 +805,9 @@ export const getTenantHistory = asyncHandler(async (req, res) => {
     ownerId: f.ownerId,
     hostelId: f.hostelId,
   })
-    .populate("floorId", "floorName level")
+    .populate("floorId", "floorName floorNumber")
     .populate("roomId", "roomNumber")
-    .populate("bedId", "bedNumber bedLabel")
+    .populate("bedId", "bedNumber")
     .sort({ date: -1 });
   return success(res, history);
 });

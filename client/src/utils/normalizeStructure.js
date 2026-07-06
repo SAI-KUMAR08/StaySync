@@ -18,8 +18,9 @@ export function normalizeStructure(structure = []) {
         type: room?.roomType ?? (room?.amenities?.includes("AC") ? "AC" : room?.type || "Non-AC"),
         beds: (room?.beds || []).map((bed) => ({
           ...bed,
-          status: bed?.status ?? bed?.occupancyStatus ?? "available",
+          status: bed?.occupancyStatus ?? bed?.status ?? "available",
           number: bed?.bedNumber ?? bed?.bedLabel ?? bed?.number,
+          tenantId: bed?.tenantId || null,
         })),
       };
     }),

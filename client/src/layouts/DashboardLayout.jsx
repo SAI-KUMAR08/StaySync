@@ -212,13 +212,13 @@ const DashboardLayout = () => {
               >
                 {hostels.map((h) => (
                   <option key={h._id} value={h._id} className="bg-surface text-white">
-                    {h.hostelName}
+                    {h.name || h.hostelName}
                   </option>
                 ))}
               </select>
             ) : (
               <div className="px-4 py-2.5 rounded-xl border border-border bg-white/5 text-sm font-medium text-white/60">
-                <span className="text-white font-bold">{hostels?.[0]?.hostelName || "My Hostel"}</span>
+                <span className="text-white font-bold">{hostels?.[0]?.name || hostels?.[0]?.hostelName || "My Hostel"}</span>
               </div>
             )}
             <button
@@ -309,14 +309,14 @@ const DashboardLayout = () => {
                     >
                       {hostels.map((h) => (
                         <option key={h._id} value={h._id} className="bg-surface text-white">
-                          {h.hostelName}
+                          {h.name || h.hostelName}
                         </option>
                       ))}
                     </select>
                   ) : (
                     <div className="px-3 py-2 rounded-xl border border-border bg-surface/80 text-xs font-medium text-text-primary flex items-center gap-1.5">
                       <span className="text-text-secondary/60">Hostel:</span>
-                      <span className="font-bold">{hostels?.[0]?.hostelName || "My Hostel"}</span>
+                      <span className="font-bold">{hostels?.[0]?.name || hostels?.[0]?.hostelName || "My Hostel"}</span>
                     </div>
                   )}
                   <button

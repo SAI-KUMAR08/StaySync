@@ -4,8 +4,10 @@ const objectId = z.string().regex(/^[a-f\d]{24}$/i, "Invalid id");
 
 export const floorSchema = z.object({
   body: z.object({
-    name: z.string().min(1).optional(),
-    level: z.coerce.number().int().min(0).optional(),
+    floorName: z.string().min(1).optional(),
+    floorNumber: z.coerce.number().int().min(0).optional(),
+    name: z.string().min(1).optional(),        // alias — legacy support
+    level: z.coerce.number().int().min(0).optional(), // alias — legacy support
   }).optional().default({}),
 });
 
@@ -15,7 +17,8 @@ export const roomSchema = z.object({
     floorId: objectId.optional(),
     floor: z.coerce.number().int().min(0).default(1),
     capacity: z.coerce.number().int().min(1).max(20),
-    monthlyRent: z.coerce.number().min(0).default(0),
+    pricing: z.coerce.number().min(0).default(0),
+    monthlyRent: z.coerce.number().min(0).default(0).optional(), // alias
     amenities: z.array(z.string()).optional(),
   }),
 });
@@ -23,7 +26,8 @@ export const roomSchema = z.object({
 export const roomUpdateSchema = z.object({
   params: z.object({ id: objectId }),
   body: z.object({
-    monthlyRent: z.coerce.number().min(0).optional(),
+    pricing: z.coerce.number().min(0).optional(),
+    monthlyRent: z.coerce.number().min(0).optional(), // alias
     sharingType: z.coerce.number().int().min(1).max(20).optional(),
     type: z.enum(["AC", "Non-AC"]).optional(),
     amenities: z.array(z.string()).optional(),
@@ -34,8 +38,10 @@ export const bedUpdateSchema = z.object({
   params: z.object({ id: objectId }),
   body: z.object({
     status: z.enum(["available", "occupied", "maintenance"]).optional(),
-    bedLabel: z.string().optional(),
-    monthlyRent: z.coerce.number().min(0).optional(),
+    bedNumber: z.string().optional(),
+    bedLabel: z.string().optional(), // alias
+    pricing: z.coerce.number().min(0).optional(),
+    monthlyRent: z.coerce.number().min(0).optional(), // alias
   }),
 });
 
@@ -51,6 +57,8 @@ export const tenantCreateSchema = z.object({
     bedId: objectId,
     monthlyRent: z.coerce.number().min(0).optional(),
     joinDate: z.coerce.date().optional(),
+    isTemporary: z.boolean().optional(),
+    preferredSharing: z.coerce.number().int().min(1).max(20).optional(),
   }),
 });
 
@@ -98,7 +106,8 @@ export const paymentCreateSchema = z.object({
     tenantId: objectId,
     amount: z.coerce.number().min(0),
     fineAmount: z.coerce.number().min(0).default(0),
-    month: z.enum(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]),
+    paymentMonth: z.enum(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]),
+    month: z.enum(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]).optional(), // alias
     year: z.coerce.number().int(),
     dueDate: z.coerce.date(),
     notes: z.string().optional(),
@@ -108,7 +117,8 @@ export const paymentCreateSchema = z.object({
 export const paymentUpdateSchema = z.object({
   params: z.object({ id: objectId }),
   body: z.object({
-    status: z.enum(["paid", "unpaid", "overdue", "partial"]).optional(),
+    paymentStatus: z.enum(["paid", "unpaid", "overdue", "partial"]).optional(),
+    status: z.enum(["paid", "unpaid", "overdue", "partial"]).optional(), // alias
     fineAmount: z.coerce.number().min(0).optional(),
     paidDate: z.coerce.date().optional(),
     paymentMethod: z.string().optional(),
