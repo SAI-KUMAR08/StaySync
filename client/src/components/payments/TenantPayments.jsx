@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
 import { MdPayment, MdHistory, MdCheckCircle, MdWarning, MdLock, MdLocalOffer } from "react-icons/md";
 import toast from "react-hot-toast";
+import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { getApiError } from "../../utils/getApiError";
 import PaymentCard from "./PaymentCard";
@@ -16,10 +17,12 @@ const TenantPayments = () => {
   const [unpaid, setUnpaid] = useState([]);
   const [paid, setPaid] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
   const { socket } = useSocket();
 
   const fetchPayments = async () => {
+    setError(null);
     try {
       setLoading(true);
       const res = await api.get("/tenant/payments");
@@ -29,6 +32,7 @@ const TenantPayments = () => {
       setUnpaid((grouped.unpaid ?? []).map(mapPayment));
       setPaid((grouped.paid ?? data.payments?.filter((p) => p.status === "paid") ?? []).map(mapPayment));
     } catch (error) {
+      setError(error.response?.data?.message || "Failed to load payments");
       toast.error(getApiError(error));
     } finally {
       setLoading(false);
@@ -129,6 +133,7 @@ const TenantPayments = () => {
     }
   };
 
+  if (error) return <ErrorRetry message={error} onRetry={fetchPayments} />;
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-text-secondary/40 font-bold animate-pulse uppercase tracking-wider text-xs">

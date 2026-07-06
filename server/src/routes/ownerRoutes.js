@@ -18,6 +18,9 @@ import {
   noticeSchema,
   idParamSchema,
   hostelCreateSchema,
+  hostelUpdateSchema,
+  createManagerSchema,
+  bedShiftUpdateSchema,
   createExpenseSchema,
   updateExpenseSchema,
 } from "../validators/resources.js";
@@ -46,8 +49,8 @@ router.patch("/beds/:id", requirePermission(PERMISSIONS.UPDATE_BEDS), validate(b
 
 // ── Tenants ──────────────────────────────────────────────
 router.get("/tenants", requirePermission(PERMISSIONS.READ_TENANTS), owner.listTenants);
-router.get("/tenants/:id", requirePermission(PERMISSIONS.READ_TENANTS), owner.getTenant);
-router.get("/tenants/:id/history", requirePermission(PERMISSIONS.READ_TENANTS), owner.getTenantHistory);
+router.get("/tenants/:id", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenant);
+router.get("/tenants/:id/history", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenantHistory);
 router.post("/tenants", requirePermission(PERMISSIONS.CREATE_TENANTS), validate(tenantCreateSchema), owner.createTenant);
 router.patch("/tenants/:id", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(tenantUpdateSchema), owner.updateTenant);
 router.post("/tenants/:id/assign-bed", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(assignBedSchema), owner.assignBed);
@@ -69,26 +72,26 @@ router.delete("/notices/:id", requirePermission(PERMISSIONS.DELETE_NOTICES), val
 
 // ── Bed Shift Requests ───────────────────────────────────
 router.get("/bed-shift-requests", requirePermission(PERMISSIONS.READ_BED_SHIFT_REQUESTS), owner.listBedShiftRequests);
-router.patch("/bed-shift-requests/:id", requirePermission(PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS), owner.updateBedShiftRequest);
+router.patch("/bed-shift-requests/:id", requirePermission(PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS), validate(bedShiftUpdateSchema), owner.updateBedShiftRequest);
 
 // ── STRICTLY OWNER-ONLY ROUTES ──────────────────────────
 // Hostel setup & structure
 router.get("/hostels", requirePermission(PERMISSIONS.MANAGE_HOSTEL), owner.listHostels);
 router.post("/hostels", requirePermission(PERMISSIONS.MANAGE_HOSTEL), validate(hostelCreateSchema), owner.createHostel);
-router.patch("/hostel", requirePermission(PERMISSIONS.UPDATE_HOSTEL), owner.updateHostel);
+router.patch("/hostel", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(hostelUpdateSchema), owner.updateHostel);
 router.post("/setup", requirePermission(PERMISSIONS.MANAGE_HOSTEL), owner.setupHostel);
 
 // Expenses (owner-only financial tracking)
 router.get("/expenses", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtrl.listExpenses);
 router.get("/expenses/summary", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtrl.getExpenseSummary);
-router.get("/expenses/:id", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtrl.getExpense);
+router.get("/expenses/:id", requirePermission(PERMISSIONS.READ_EXPENSES), validate(idParamSchema), expenseCtrl.getExpense);
 router.post("/expenses", requirePermission(PERMISSIONS.CREATE_EXPENSES), validate(createExpenseSchema), expenseCtrl.createExpense);
-router.patch("/expenses/:id", requirePermission(PERMISSIONS.UPDATE_EXPENSES), validate(updateExpenseSchema), expenseCtrl.updateExpense);
+router.patch("/expenses/:id", requirePermission(PERMISSIONS.UPDATE_EXPENSES), validate(updateExpenseSchema), validate(idParamSchema), expenseCtrl.updateExpense);
 router.delete("/expenses/:id", requirePermission(PERMISSIONS.DELETE_EXPENSES), validate(idParamSchema), expenseCtrl.deleteExpense);
 
 // Managers Management (owner-only)
 router.get("/managers", requirePermission(PERMISSIONS.READ_MANAGERS), owner.listManagers);
-router.post("/managers", requirePermission(PERMISSIONS.CREATE_MANAGERS), owner.createManager);
-router.delete("/managers/:id", requirePermission(PERMISSIONS.DELETE_MANAGERS), owner.deleteManager);
+router.post("/managers", requirePermission(PERMISSIONS.CREATE_MANAGERS), validate(createManagerSchema), owner.createManager);
+router.delete("/managers/:id", requirePermission(PERMISSIONS.DELETE_MANAGERS), validate(idParamSchema), owner.deleteManager);
 
 export default router;

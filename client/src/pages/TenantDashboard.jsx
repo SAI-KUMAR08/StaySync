@@ -8,6 +8,7 @@ import {
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
+import ErrorRetry from "../components/ErrorRetry";
 import toast from "react-hot-toast";
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => (
@@ -28,11 +29,13 @@ const TenantDashboard = () => {
   const [complaints, setComplaints] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const overdueDues = payments.reduce((sum, p) => sum + (p.status === "overdue" ? p.amount : 0), 0);
   const unpaidDues = payments.reduce((sum, p) => sum + (p.status !== "paid" && p.status !== "overdue" ? p.amount : 0), 0);
 
   const fetchData = async () => {
+    setError(null);
     try {
       const [notifRes, compRes, payRes] = await Promise.all([
         api.get("/tenant/notifications?limit=5"),
@@ -42,7 +45,9 @@ const TenantDashboard = () => {
       setNotifications(notifRes.data.data || []);
       setComplaints(compRes.data.data || []);
       setPayments(payRes.data.data?.payments || []);
-    } catch (err) { console.error(err);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Failed to load dashboard");
     } finally { setLoading(false); }
   };
 
@@ -58,6 +63,7 @@ const TenantDashboard = () => {
     };
   }, [socket]);
 
+  if (error) return <ErrorRetry message={error} onRetry={fetchData} />;
   if (loading) return (
     <div className="space-y-5">
       <div className="shimmer h-24 w-full rounded-2xl" />

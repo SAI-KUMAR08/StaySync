@@ -99,7 +99,7 @@ export const tenantLoginSchema = z.object({
 export const tenantSetPasswordSchema = z.object({
   body: z.object({
     phone: z.string().min(10, "Phone is required"),
-    otp: z.string().length(6, "OTP must be exactly 6 digits"),
+    otp: z.string().length(6, "OTP must be exactly 6 digits").optional(),
     password: strongPassword,
   }),
 });

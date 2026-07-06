@@ -14,6 +14,7 @@ import { getSlaDueAt } from "../services/authService.js";
 import { logActivity } from "../services/activityService.js";
 import { syncHostelPaymentStatuses, ensureTenantRentInvoices } from "../services/paymentService.js";
 import { normalizePhone } from "../utils/phone.js";
+import { escapeRegex } from "../utils/regex.js";
 
 const filter = (req) => ownerFilter(req);
 
@@ -200,7 +201,7 @@ export const createRoom = asyncHandler(async (req, res) => {
   await logActivity({
     ...f,
     actorId: req.user.id,
-    actorRole: "owner",
+    actorRole: req.user.role,
     action: "room_created",
     entityType: "room",
     entityId: room._id,
@@ -214,8 +215,16 @@ export const updateRoom = asyncHandler(async (req, res) => {
   if (!room) throw new AppError("Room not found", 404);
 
   const { monthlyRent, sharingType, type, amenities } = req.validated.body;
+  if (sharingType !== undefined) {
+    if (sharingType < room.occupiedBeds) {
+      throw new AppError(
+        `Cannot reduce capacity to ${sharingType}: room currently has ${room.occupiedBeds} occupied bed(s)`,
+        400
+      );
+    }
+    room.capacity = sharingType;
+  }
   if (monthlyRent !== undefined) room.monthlyRent = monthlyRent;
-  if (sharingType !== undefined) room.capacity = sharingType;
   if (type !== undefined) room.roomType = type;
   if (amenities !== undefined) room.amenities = amenities;
   await room.save();
@@ -251,6 +260,9 @@ export const updateBed = asyncHandler(async (req, res) => {
   const { status, bedLabel, monthlyRent } = req.validated.body;
 
   if (status) {
+    if (bedLabel !== undefined || monthlyRent !== undefined) {
+      throw new AppError("Status changes must be performed separately from label/price updates", 400);
+    }
     const bed = await occupancyService.updateBedStatus({
       ownerId: f.ownerId,
       hostelId: f.hostelId,
@@ -278,7 +290,7 @@ export const listTenants = asyncHandler(async (req, res) => {
   if (status === "temporary") query.isTemporary = true;
 
   if (search?.trim()) {
-    const term = search.trim();
+    const term = escapeRegex(search.trim());
     const phoneDigits = normalizePhone(term);
     query.$or = [
       { "personalInfo.name": { $regex: term, $options: "i" } },
@@ -387,7 +399,7 @@ export const createTenant = asyncHandler(async (req, res) => {
     await logActivity({
       ...f,
       actorId: req.user.id,
-      actorRole: "owner",
+      actorRole: req.user.role,
       action: "tenant_created",
       entityType: "tenant",
       entityId: result._id,
@@ -459,9 +471,29 @@ export const removeTenant = asyncHandler(async (req, res) => {
   const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...f });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
-  await occupancyService.freeTenantBed(tenant);
-  tenant.isActive = false;
-  await tenant.save();
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    await occupancyService.freeTenantBed(tenant, session);
+    tenant.isActive = false;
+    await tenant.save({ session });
+    await session.commitTransaction();
+  } catch (e) {
+    await session.abortTransaction();
+    throw e instanceof AppError ? e : new AppError("Failed to remove tenant", 400);
+  } finally {
+    session.endSession();
+  }
+
+  await logActivity({
+    ...f,
+    actorId: req.user.id,
+    actorRole: req.user.role,
+    action: "tenant_removed",
+    entityType: "tenant",
+    entityId: tenant._id,
+  });
+
   emitTenantRemoved(req, tenant);
   return success(res, { message: "Tenant removed and bed freed" });
 });
@@ -477,14 +509,15 @@ export const listComplaints = asyncHandler(async (req, res) => {
   }
 
   if (search?.trim()) {
+    const safeSearch = escapeRegex(search.trim());
     const tenants = await Tenant.find({
       ...filter(req),
-      "personalInfo.name": { $regex: search.trim(), $options: "i" },
+      "personalInfo.name": { $regex: safeSearch, $options: "i" },
     }).select("_id");
     query.$or = [
-      { description: { $regex: search.trim(), $options: "i" } },
-      { title: { $regex: search.trim(), $options: "i" } },
-      { category: { $regex: search.trim(), $options: "i" } },
+      { description: { $regex: safeSearch, $options: "i" } },
+      { title: { $regex: safeSearch, $options: "i" } },
+      { category: { $regex: safeSearch, $options: "i" } },
       ...(tenants.length ? [{ tenantId: { $in: tenants.map((t) => t._id) } }] : []),
     ];
   }
@@ -507,7 +540,7 @@ export const updateComplaint = asyncHandler(async (req, res) => {
       status,
       note: note ?? `Status changed to ${status}`,
       changedBy: req.user.id,
-      changedByRole: "owner",
+      changedByRole: req.user.role,
     });
     complaint.status = status;
     if (status === "resolved") complaint.resolvedAt = new Date();
@@ -541,9 +574,10 @@ export const listPayments = asyncHandler(async (req, res) => {
   if (status) query.status = status;
 
   if (search?.trim()) {
+    const safeSearch = escapeRegex(search.trim());
     const tenants = await Tenant.find({
       ...filter(req),
-      "personalInfo.name": { $regex: search.trim(), $options: "i" },
+      "personalInfo.name": { $regex: safeSearch, $options: "i" },
     }).select("_id");
     if (tenants.length) {
       query.tenantId = { $in: tenants.map((t) => t._id) };
@@ -636,16 +670,20 @@ export const deleteNotice = asyncHandler(async (req, res) => {
 });
 
 export const getHostel = asyncHandler(async (req, res) => {
-  const hostel = await Hostel.findOne({ ownerId: req.user.id, _id: req.user.hostelId });
+  const f = filter(req);
+  const hostel = await Hostel.findOne({ ownerId: f.ownerId, _id: f.hostelId });
+  if (!hostel) throw new AppError("Hostel not found", 404);
   return success(res, hostel);
 });
 
 export const updateHostel = asyncHandler(async (req, res) => {
+  const f = filter(req);
   const hostel = await Hostel.findOneAndUpdate(
-    { ownerId: req.user.id, _id: req.user.hostelId },
-    req.body,
-    { new: true }
+    { ownerId: f.ownerId, _id: f.hostelId },
+    { $set: req.validated.body },
+    { new: true, runValidators: true }
   );
+  if (!hostel) throw new AppError("Hostel not found", 404);
   return success(res, hostel);
 });
 
@@ -659,10 +697,10 @@ export const listBedShiftRequests = asyncHandler(async (req, res) => {
 
 export const updateBedShiftRequest = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const request = await BedShiftRequest.findOne({ _id: req.params.id, ...f });
+  const request = await BedShiftRequest.findOne({ _id: req.validated.params.id, ...f });
   if (!request) throw new AppError("Request not found", 404);
 
-  const { status, ownerNote } = req.body;
+  const { status, ownerNote } = req.validated.body;
   if (!["approved", "rejected"].includes(status)) {
     throw new AppError("Invalid status", 400);
   }
@@ -723,7 +761,7 @@ export const listManagers = asyncHandler(async (req, res) => {
 });
 
 export const createManager = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, hostelId } = req.body;
+  const { name, email, password, phone, hostelId } = req.validated.body;
 
   const normalizedEmail = email.trim().toLowerCase();
   const exists = await Owner.findOne({ email: normalizedEmail });
@@ -743,7 +781,10 @@ export const createManager = asyncHandler(async (req, res) => {
     isActive: true,
   });
 
-  return success(res, manager, 201);
+  return success(res, {
+    message: "Manager created successfully",
+    manager: { id: manager._id, name: manager.name, email: manager.email, role: manager.role },
+  }, 201);
 });
 
 export const deleteManager = asyncHandler(async (req, res) => {

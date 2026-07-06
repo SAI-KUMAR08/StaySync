@@ -7,6 +7,7 @@ import {
   MdChevronLeft, MdChevronRight, MdCheckCircle, MdPeople, MdHome
 } from "react-icons/md";
 import { toast } from "react-hot-toast";
+import ErrorRetry from "../components/ErrorRetry";
 import { normalizeStructure } from "../utils/normalizeStructure";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
@@ -16,6 +17,7 @@ const RoomManagement = () => {
   const { socket } = useSocket();
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingRoom, setEditingRoom] = useState(null);
   const [selectedTenant, setSelectedTenant] = useState(null);
@@ -107,11 +109,13 @@ const RoomManagement = () => {
   }, [socket, user?.hostelId]);
 
   const fetchStructure = async () => {
+    setError(null);
     try {
       setLoading(true);
       const res = await api.get("/owner/structure");
       setStructure(normalizeStructure(res.data.data.structure || []));
     } catch (error) {
+      setError(error.response?.data?.message || "Failed to load room structure");
       toast.error("Failed to fetch room structure.");
     } finally {
       setLoading(false);
@@ -170,6 +174,7 @@ const RoomManagement = () => {
     }
   };
 
+  if (error) return <ErrorRetry message={error} onRetry={fetchStructure} />;
   if (loading) return (
     <div className="space-y-8" role="status" aria-label="Loading inventory">
       <div className="flex items-center gap-6 px-2">

@@ -4,6 +4,7 @@ import { success } from "../utils/apiResponse.js";
 import { AppError } from "../middleware/error.middleware.js";
 import Expense from "../models/Expense.js";
 import { ownerFilter } from "../utils/scope.js";
+import { escapeRegex } from "../utils/regex.js";
 
 const filter = (req) => ownerFilter(req);
 
@@ -18,7 +19,7 @@ export const listExpenses = asyncHandler(async (req, res) => {
     if (endDate) query.date.$lte = new Date(endDate);
   }
   if (search?.trim()) {
-    query.description = { $regex: search.trim(), $options: "i" };
+    query.description = { $regex: escapeRegex(search.trim()), $options: "i" };
   }
 
   const expenses = await Expense.find(query)
@@ -29,7 +30,7 @@ export const listExpenses = asyncHandler(async (req, res) => {
 });
 
 export const getExpense = asyncHandler(async (req, res) => {
-  const expense = await Expense.findOne({ _id: req.params.id, ...filter(req) })
+  const expense = await Expense.findOne({ _id: req.validated.params.id, ...filter(req) })
     .populate("hostelId", "hostelName");
   if (!expense) throw new AppError("Expense not found", 404);
   return success(res, expense);
@@ -55,7 +56,7 @@ export const createExpense = asyncHandler(async (req, res) => {
 });
 
 export const updateExpense = asyncHandler(async (req, res) => {
-  const expense = await Expense.findOne({ _id: req.params.id, ...filter(req) });
+  const expense = await Expense.findOne({ _id: req.validated.params.id, ...filter(req) });
   if (!expense) throw new AppError("Expense not found", 404);
 
   const { category, amount, description, date, paymentMethod, vendor, isRecurring } = req.validated.body;
@@ -72,7 +73,7 @@ export const updateExpense = asyncHandler(async (req, res) => {
 });
 
 export const deleteExpense = asyncHandler(async (req, res) => {
-  const expense = await Expense.findOneAndDelete({ _id: req.params.id, ...filter(req) });
+  const expense = await Expense.findOneAndDelete({ _id: req.validated.params.id, ...filter(req) });
   if (!expense) throw new AppError("Expense not found", 404);
   return success(res, { deleted: true });
 });

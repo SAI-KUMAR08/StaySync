@@ -7,6 +7,7 @@ import {
   MdSearch, MdChevronRight, MdClose, MdFlag
 } from "react-icons/md";
 import toast from "react-hot-toast";
+import ErrorRetry from "../components/ErrorRetry";
 
 const PriorityBadge = ({ priority }) => {
   const colors = {
@@ -28,6 +29,7 @@ const Complaints = () => {
   const { socket } = useSocket();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -40,7 +42,7 @@ const Complaints = () => {
   useEffect(() => {
     if (!user) return;
     fetchComplaints();
-  }, [statusFilter, search, user]);
+  }, [statusFilter, search, user?.id, user?.role]);
 
   useEffect(() => {
     if (!socket || !user) return;
@@ -66,10 +68,11 @@ const Complaints = () => {
       socket.off("complaint_created");
       socket.off("complaint_updated");
     };
-  }, [socket, user]);
+  }, [socket, user?.id, user?.role]);
 
   const fetchComplaints = async () => {
     if (!user) return;
+    setError(null);
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -81,6 +84,7 @@ const Complaints = () => {
       setComplaints(res.data.data || res.data || []);
     } catch (error) {
       console.error(error);
+      setError(error.response?.data?.message || "Failed to load complaints");
       toast.error("Failed to load complaints");
     } finally {
       setLoading(false);
@@ -132,6 +136,7 @@ const Complaints = () => {
     }
   };
 
+  if (error && complaints.length === 0) return <ErrorRetry message={error} onRetry={fetchComplaints} />;
   if (loading && complaints.length === 0) return (
     <div role="status" aria-label="Loading tickets">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -6,6 +6,7 @@ import {
   MdCalendarToday
 } from "react-icons/md";
 import toast from "react-hot-toast";
+import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { getApiError } from "../../utils/getApiError";
@@ -26,6 +27,7 @@ const AdminPayments = () => {
   const { user } = useAuth();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showFineModal, setShowFineModal] = useState(false);
@@ -34,6 +36,7 @@ const AdminPayments = () => {
   const { socket } = useSocket();
 
   const fetchPayments = async () => {
+    setError(null);
     try {
       setLoading(true);
       const res = await api.get(`/owner/payments?status=${statusFilter}&search=${search}`);
@@ -41,6 +44,7 @@ const AdminPayments = () => {
       setPayments(list.map((p) => ({ ...p, fine: p.fineAmount ?? 0 })));
     } catch (error) {
       console.error(error);
+      setError(error.response?.data?.message || "Failed to load payments");
       toast.error("Failed to load payments");
     } finally {
       setLoading(false);
@@ -99,6 +103,7 @@ const AdminPayments = () => {
     overdue: payments.filter((p) => p.status === "overdue").length,
   };
 
+  if (error && payments.length === 0) return <ErrorRetry message={error} onRetry={fetchPayments} />;
   if (loading && payments.length === 0) return (
     <div className="flex items-center justify-center h-64 text-text-secondary/40 font-bold animate-pulse uppercase tracking-wider text-xs">
       Loading Financials...

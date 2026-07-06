@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import api from "../api/axios";
+import ErrorRetry from "../components/ErrorRetry";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area
@@ -100,18 +101,24 @@ const AdminDashboard = () => {
   const [expenseSummary, setExpenseSummary] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [supportFilter, setSupportFilter] = useState("");
+  const supportFilterRef = useRef(supportFilter);
   const { socket } = useSocket();
 
-  const fetchComplaints = async (status) => {
+  // Keep ref in sync for socket handlers
+  useEffect(() => { supportFilterRef.current = supportFilter; }, [supportFilter]);
+
+  const fetchComplaints = useCallback(async (status) => {
     const url = status ? `/owner/complaints?status=${status}` : "/owner/complaints";
     const complaintsRes = await api.get(url);
     let list = complaintsRes.data.data || [];
     if (!status) list = list.filter((c) => !["resolved", "closed"].includes(c.status));
     setActivities(list.slice(0, 5));
-  };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setError(null);
     try {
       const [statsRes, expRes] = await Promise.all([
         api.get("/owner/dashboard"),
@@ -119,13 +126,15 @@ const AdminDashboard = () => {
       ]);
       setStats(statsRes.data.data.stats || null);
       setExpenseSummary(expRes.data.data || null);
-      await fetchComplaints(supportFilter);
-    } catch (error) { console.error(error);
+      await fetchComplaints(supportFilterRef.current);
+    } catch (error) {
+      console.error(error);
+      setError(error.response?.data?.message || "Failed to load dashboard data");
     } finally { setLoading(false); }
-  };
+  }, [fetchComplaints]);
 
-  useEffect(() => { fetchData(); }, [user?.hostelId]);
-  useEffect(() => { if (!loading) fetchComplaints(supportFilter); }, [supportFilter]);
+  useEffect(() => { fetchData(); }, [fetchData, user?.hostelId]);
+  useEffect(() => { if (!loading) fetchComplaints(supportFilter).catch(console.error); }, [loading, supportFilter, fetchComplaints]);
 
   useEffect(() => {
     if (!socket) return;
@@ -134,12 +143,12 @@ const AdminDashboard = () => {
     socket.on("tenant_removed", (d) => h(d, d.message));
     socket.on("payment_completed", (d) => h(d, d.message));
     socket.on("occupancy_update", () => fetchData());
-    socket.on("complaint_created", () => fetchComplaints(supportFilter));
-    socket.on("complaint_updated", () => fetchComplaints(supportFilter));
+    socket.on("complaint_created", () => fetchComplaints(supportFilterRef.current));
+    socket.on("complaint_updated", () => fetchComplaints(supportFilterRef.current));
     return () => { ["tenant_assigned","tenant_removed","payment_completed","occupancy_update","complaint_created","complaint_updated"].forEach(e => socket.off(e)); };
-  }, [socket, supportFilter]);
+  }, [socket, fetchData, fetchComplaints]);
 
-  if (loading || !stats) return (
+  if (loading && !stats) return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         {[...Array(5)].map((_, i) => (
@@ -152,6 +161,8 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
+
+  if (error && !stats) return <ErrorRetry message={error} onRetry={fetchData} />;
 
   return (
     <div className="space-y-8 pb-16">

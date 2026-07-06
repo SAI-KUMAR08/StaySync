@@ -10,6 +10,7 @@ import {
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
+import ErrorRetry from "../components/ErrorRetry";
 
 const TYPE_LABELS = {
   maintenance: "Maintenance",
@@ -25,6 +26,7 @@ const Notifications = () => {
   const { socket } = useSocket();
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -35,12 +37,14 @@ const Notifications = () => {
 
   const fetchNotices = async () => {
     if (!user) return;
+    setError(null);
     try {
       setLoading(true);
       const url = user.role === "owner" ? "/owner/notices" : "/tenant/notices";
       const res = await api.get(url);
       setNotices(res.data.data || []);
     } catch (error) {
+      setError(error.response?.data?.message || "Failed to load notices");
       toast.error(getApiError(error));
     } finally {
       setLoading(false);
@@ -49,7 +53,7 @@ const Notifications = () => {
 
   useEffect(() => {
     fetchNotices();
-  }, [user]);
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!socket) return;
@@ -91,6 +95,7 @@ const Notifications = () => {
     }
   };
 
+  if (error) return <ErrorRetry message={error} onRetry={fetchNotices} />;
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto space-y-4" role="status" aria-label="Loading notices">

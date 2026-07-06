@@ -12,6 +12,7 @@ import { normalizeStructure, getAvailableRooms } from "../utils/normalizeStructu
 import { normalizePhone } from "../utils/phone";
 import { mapTenantForDisplay } from "../utils/tenantDisplay";
 import { getApiError } from "../utils/getApiError";
+import ErrorRetry from "../components/ErrorRetry";
 import { useSocket } from "../context/SocketContext";
 
 const TenantManagement = () => {
@@ -29,6 +30,7 @@ const TenantManagement = () => {
   const [tenants, setTenants] = useState([]);
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("");
@@ -93,11 +95,13 @@ const TenantManagement = () => {
   }, [socket, user?.hostelId]);
 
   const fetchTenants = async () => {
+    setError(null);
     try {
       const res = await api.get(`/owner/tenants?search=${search}&status=${filter}`);
       const list = Array.isArray(res.data.data) ? res.data.data : [];
       setTenants(list.map(mapTenantForDisplay));
     } catch (error) {
+      setError(error.response?.data?.message || "Failed to load tenants");
       toast.error(getApiError(error));
     } finally {
       setLoading(false);

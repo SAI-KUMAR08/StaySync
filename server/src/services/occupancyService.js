@@ -77,24 +77,28 @@ export async function assignTenantToBed({ ownerId, hostelId, tenantId, bedId, se
   }).session(session);
   if (duplicate) throw new Error("Tenant already assigned to another bed");
 
-  // Atomically claim the bed to prevent race conditions.
+  // Check if bed exists and room hasn't reached capacity BEFORE claiming
+  const bedDoc = await Bed.findOne({ _id: bedId, ownerId, hostelId, occupancyStatus: { $ne: "maintenance" } }).session(session);
+  if (!bedDoc) throw new Error("Bed not found");
+
+  const room = await Room.findOne({ _id: bedDoc.roomId, ownerId, hostelId }).session(session);
+  if (!room) throw new Error("Room not found");
+
+  const occupiedInRoom = await Bed.countDocuments(
+    { roomId: room._id, ownerId, hostelId, occupancyStatus: "occupied" },
+    { session }
+  );
+  if (occupiedInRoom >= room.capacity) {
+    throw new Error("Room is at full capacity");
+  }
+
+  // Atomically claim the bed
   const bed = await Bed.findOneAndUpdate(
     { _id: bedId, ownerId, hostelId, occupancyStatus: { $ne: "maintenance" }, $or: [{ tenantId: null }, { tenantId }] },
     { $set: { occupancyStatus: "occupied", tenantId } },
     { new: true, session }
   );
   if (!bed) throw new Error("Bed not found or unavailable");
-
-  const room = await Room.findOne({ _id: bed.roomId, ownerId, hostelId }).session(session);
-  if (!room) throw new Error("Room not found");
-
-  const occupiedInRoom = await Bed.countDocuments(
-    { roomId: room._id, ownerId, hostelId, occupancyStatus: "occupied", _id: { $ne: bedId } },
-    { session }
-  );
-  if (occupiedInRoom >= room.capacity) {
-    throw new Error("Room is at full capacity");
-  }
 
   tenant.roomId = room._id;
   tenant.bedId = bed._id;
@@ -169,7 +173,7 @@ export async function freeTenantBed(tenant, session = null) {
     const unpaidPayment = await Payment.findOne({
       tenantId: tenant._id,
       paymentStatus: { $in: ["unpaid", "overdue"] },
-    }).session(session || null);
+    }).sort({ dueDate: -1 }).session(session || null);
 
     if (unpaidPayment) {
       unpaidPayment.amount = proratedAmount;
@@ -207,12 +211,10 @@ export async function updateBedStatus({ ownerId, hostelId, bedId, status }) {
     const bed = await Bed.findOne({ _id: bedId, ownerId, hostelId }).session(session);
     if (!bed) throw new Error("Bed not found");
 
-    if (status === "available" && bed.tenantId) {
+    if (bed.tenantId && (status === "available" || status === "maintenance")) {
       const tenant = await Tenant.findById(bed.tenantId).session(session);
       if (tenant) {
-        tenant.roomId = null;
-        tenant.bedId = null;
-        await tenant.save({ session });
+        await freeTenantBed(tenant, session);
       }
       bed.tenantId = null;
     }

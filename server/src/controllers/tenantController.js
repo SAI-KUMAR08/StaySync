@@ -11,6 +11,7 @@ import {
   groupPaymentsByStatus,
   ensureTenantRentInvoices,
 } from "../services/paymentService.js";
+import { escapeRegex } from "../utils/regex.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 
@@ -47,8 +48,8 @@ export const getDashboard = asyncHandler(async (req, res) => {
     Payment.aggregate([
       {
         $match: {
-          ownerId: req.user.ownerId && mongoose.isValidObjectId(req.user.ownerId) ? new mongoose.Types.ObjectId(req.user.ownerId) : null,
-          hostelId: req.user.hostelId && mongoose.isValidObjectId(req.user.hostelId) ? new mongoose.Types.ObjectId(req.user.hostelId) : null,
+          ownerId: new mongoose.Types.ObjectId(req.user.ownerId),
+          hostelId: new mongoose.Types.ObjectId(req.user.hostelId),
           tenantId: tenant._id,
           paymentStatus: { $in: ["unpaid", "overdue", "partial"] },
         },
@@ -83,7 +84,6 @@ export const listPayments = asyncHandler(async (req, res) => {
   const f = scope(req);
   const tenant = await Tenant.findById(req.user.id);
   if (tenant) await ensureTenantRentInvoices(tenant);
-  await syncHostelPaymentStatuses(f.ownerId, f.hostelId);
 
   const payments = await Payment.find({
     ...f,
@@ -117,9 +117,10 @@ export const listComplaints = asyncHandler(async (req, res) => {
     query.status = status;
   }
   if (search?.trim()) {
+    const safeSearch = escapeRegex(search.trim());
     query.$or = [
-      { description: { $regex: search.trim(), $options: "i" } },
-      { title: { $regex: search.trim(), $options: "i" } },
+      { description: { $regex: safeSearch, $options: "i" } },
+      { title: { $regex: safeSearch, $options: "i" } },
     ];
   }
 
@@ -133,7 +134,7 @@ export const listComplaints = asyncHandler(async (req, res) => {
 export const createComplaint = asyncHandler(async (req, res) => {
   const { title, description, category, priority, imageUrl } = req.validated.body;
   const tenant = await Tenant.findById(req.user.id);
-  if (!tenant?.isActive) throw new AppError("Tenant account not found", 404);
+  if (!tenant?.isActive) throw new AppError("Account is deactivated. Contact your hostel admin.", 403);
   if (!tenant.bedId || !tenant.roomId || !tenant.floorId) {
     throw new AppError("You are not assigned to a bed. Contact your hostel admin.", 400);
   }
@@ -164,7 +165,7 @@ export const createComplaint = asyncHandler(async (req, res) => {
     .populate("roomId", "roomNumber");
 
   const io = req.app.get("io");
-  if (io) {
+  if (io && req.user.hostelId) {
     io.to(`hostel_${req.user.hostelId}`).emit("complaint_created", populated);
   }
 
@@ -256,6 +257,11 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   const payment = await Payment.findOne({ _id: paymentId, tenantId: req.user.id });
   if (!payment) throw new AppError("Payment not found", 404);
 
+  // Idempotency guard: already paid — return success without reprocessing
+  if (payment.paymentStatus === "paid") {
+    return success(res, payment);
+  }
+
   if (razorpay_order_id?.startsWith("order_mock_")) {
     if (process.env.NODE_ENV === "production") {
       throw new AppError("Mock payments not allowed in production", 400);
@@ -277,7 +283,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     await payment.save();
 
     const io = req.app.get("io");
-    if (io) {
+    if (io && payment.hostelId) {
       io.to(`hostel_${payment.hostelId}`).emit("payment_completed", { message: `Payment of ₹${payment.totalAmount} received (Mock).` });
     }
 
@@ -312,7 +318,7 @@ export const verifyPayment = asyncHandler(async (req, res) => {
   await payment.save();
 
   const io = req.app.get("io");
-  if (io) {
+  if (io && payment.hostelId) {
     io.to(`hostel_${payment.hostelId}`).emit("payment_completed", { message: `Payment of ₹${payment.totalAmount} received.` });
   }
 
@@ -320,6 +326,9 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 });
 
 export const markNoticeRead = asyncHandler(async (req, res) => {
+  const tenant = await Tenant.findById(req.user.id);
+  if (!tenant || !tenant.isActive) throw new AppError("Tenant not found", 404);
+
   const notice = await Notice.findOneAndUpdate(
     { _id: req.params.id, ownerId: req.user.ownerId, hostelId: req.user.hostelId, isActive: true },
     { $addToSet: { readBy: req.user.id } },

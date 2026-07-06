@@ -7,6 +7,7 @@ import {
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
+import ErrorRetry from "../components/ErrorRetry";
 
 const CATEGORIES = [
   { id: "electricity", label: "Electricity", color: "bg-primary-light text-primary" },
@@ -35,6 +36,7 @@ const Expenses = () => {
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState("");
@@ -50,6 +52,7 @@ const Expenses = () => {
   });
 
   const fetchData = async () => {
+    setError(null);
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -63,6 +66,7 @@ const Expenses = () => {
       setExpenses(Array.isArray(expRes.data.data) ? expRes.data.data : []);
       setSummary(sumRes.data.data || null);
     } catch (error) {
+      setError(error.response?.data?.message || "Failed to load expenses");
       toast.error(getApiError(error));
     } finally {
       setLoading(false);
@@ -125,6 +129,7 @@ const Expenses = () => {
     setShowModal(true);
   };
 
+  if (error && expenses.length === 0) return <ErrorRetry message={error} onRetry={fetchData} />;
   if (loading && expenses.length === 0) return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

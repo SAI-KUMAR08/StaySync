@@ -5,7 +5,7 @@ const activityLogSchema = new mongoose.Schema(
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true, index: true },
     hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true, index: true },
     actorId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    actorRole: { type: String, enum: ["owner", "tenant"], required: true },
+    actorRole: { type: String, enum: ["owner", "manager", "tenant", "system"], required: true },
     action: { type: String, required: true, trim: true },
     entityType: { type: String, trim: true },
     entityId: { type: mongoose.Schema.Types.ObjectId },

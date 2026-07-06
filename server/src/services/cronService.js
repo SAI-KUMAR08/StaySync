@@ -27,7 +27,7 @@ export const initCronJobs = () => {
           currentDay === anniversaryDay || 
           (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
 
-        if (isAnniversary || reqIsFallbackCheck(tenant, monthStr, year)) {
+        if (isAnniversary) {
           const exists = await Payment.findOne({
             tenantId: tenant._id,
             paymentMonth: monthStr,
@@ -38,7 +38,7 @@ export const initCronJobs = () => {
             const dueDate = new Date(now);
             dueDate.setDate(dueDate.getDate() + 5); // 5 days to pay
 
-            await Payment.create({
+            const payment = await Payment.create({
               ownerId: tenant.ownerId,
               hostelId: tenant.hostelId,
               tenantId: tenant._id,
@@ -60,7 +60,7 @@ export const initCronJobs = () => {
               actorRole: "system",
               action: "rent_generated",
               entityType: "payment",
-              entityId: tenant._id,
+              entityId: payment._id,
             });
             
             rentCount++;
@@ -88,7 +88,10 @@ export const initCronJobs = () => {
             const dailyRate = hostel.lateFeeDailyRate ?? 50;
 
             if (diffDays > graceDays) {
-              const fineAmount = diffDays * dailyRate;
+              // Cap late fee at 50% of rent amount to prevent runaway charges
+              const rawFine = diffDays * dailyRate;
+              const maxFine = Math.max(payment.amount * 0.5, 0);
+              const fineAmount = Math.min(rawFine, maxFine);
               if (payment.fineAmount !== fineAmount || payment.paymentStatus !== "overdue") {
                 payment.fineAmount = fineAmount;
                 payment.totalAmount = payment.amount + fineAmount;
@@ -108,7 +111,3 @@ export const initCronJobs = () => {
 
   console.log("🕒 Cron jobs initialized");
 };
-
-function reqIsFallbackCheck(tenant, month, year) {
-   return false;
-}

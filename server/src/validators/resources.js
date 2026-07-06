@@ -94,7 +94,7 @@ export const paymentCreateSchema = z.object({
     tenantId: objectId,
     amount: z.coerce.number().min(0),
     fineAmount: z.coerce.number().min(0).default(0),
-    month: z.string().min(1),
+    month: z.enum(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]),
     year: z.coerce.number().int(),
     dueDate: z.coerce.date(),
     notes: z.string().optional(),
@@ -131,6 +131,35 @@ export const bedShiftSchema = z.object({
 
 export const idParamSchema = z.object({
   params: z.object({ id: objectId }),
+});
+
+export const hostelUpdateSchema = z.object({
+  body: z.object({
+    name: z.string().min(2).optional(),
+    address: z.string().optional(),
+    city: z.string().optional(),
+    contactPhone: z.string().optional(),
+    lateFeeGracePeriodDays: z.coerce.number().int().min(0).optional(),
+    lateFeeDailyRate: z.coerce.number().min(0).optional(),
+  }).strict(),
+});
+
+export const createManagerSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    phone: z.string().min(10).optional(),
+    hostelId: objectId,
+  }),
+});
+
+export const bedShiftUpdateSchema = z.object({
+  params: z.object({ id: objectId }),
+  body: z.object({
+    status: z.enum(["approved", "rejected"]),
+    ownerNote: z.string().optional(),
+  }),
 });
 
 export const hostelCreateSchema = z.object({
