@@ -66,8 +66,10 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, to, prefix = "" }
   return to ? <Link to={to} className="block cursor-pointer">{content}</Link> : content;
 };
 
-const MiniStat = ({ title, value, icon: Icon, color, to }) => {
-  const numericVal = parseInt(value) || 0;
+const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
+  // Strip non-numeric chars (₹, commas) for parsing, keeping decimals
+  const cleaned = String(value).replace(/[^0-9.-]/g, "");
+  const numericVal = parseFloat(cleaned) || 0;
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
@@ -77,7 +79,7 @@ const MiniStat = ({ title, value, icon: Icon, color, to }) => {
       </div>
       <div>
         <p className="text-[8px] font-bold font-body text-text-secondary uppercase tracking-[0.15em] leading-none mb-1">{title}</p>
-        <p className="text-xl font-bold font-body text-text-primary tracking-tight">{animated}</p>
+        <p className="text-xl font-bold font-body text-text-primary tracking-tight">{prefix}{animated.toLocaleString()}</p>
       </div>
     </div>
   );
@@ -174,8 +176,8 @@ const AdminDashboard = () => {
         {/* Total Residents — Hero card spanning 2 columns */}
         <HeroStat title="Total Residents" value={stats.totalTenants} icon={MdPeople} trend="+4.2%" subValue="Active" to="/admin/tenants" />
 
-        <MiniStat title="Monthly Income" value={`₹${(stats.monthlyRevenue ?? 0).toLocaleString()}`} icon={MdCurrencyRupee} color="bg-emerald-600" to="/admin/payments" />
-        <MiniStat title="Monthly Expenses" value={`₹${(expenseSummary?.thisMonthTotal ?? 0).toLocaleString()}`} icon={MdReceipt} color="bg-zinc-600" to="/admin/expenses" />
+        <MiniStat title="Monthly Income" value={stats.monthlyRevenue ?? 0} prefix="₹" icon={MdCurrencyRupee} color="bg-emerald-600" to="/admin/payments" />
+        <MiniStat title="Monthly Expenses" value={expenseSummary?.thisMonthTotal ?? 0} prefix="₹" icon={MdReceipt} color="bg-zinc-600" to="/admin/expenses" />
         <MiniStat title="Unpaid Bills" value={stats.unpaidPayments ?? 0} icon={MdAttachMoney} color="bg-amber-600" to="/admin/payments" />
         <MiniStat title="Active Tickets" value={stats.activeComplaints} icon={MdReportProblem} color="bg-zinc-600" to="/admin/complaints" />
       </div>
