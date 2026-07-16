@@ -319,12 +319,8 @@ const OwnerOnboarding = () => {
     setOtpLoading(true);
     try {
       const res = await api.post("/auth/owner/send-otp", formData);
-      toast.success("Verification code sent to your mobile!");
+      toast.success("Verification code sent to your email!");
       setShowOtpModal(true);
-      if (res.data?.data?.otp) {
-        setOtp(res.data.data.otp);
-        toast.success(`Use OTP: ${res.data.data.otp}`, { icon: "🧪" });
-      }
       startCooldown();
     } catch (error) {
       const msg = error.response?.data?.message || error.message || "Failed to send OTP";
@@ -365,10 +361,6 @@ const OwnerOnboarding = () => {
     try {
       const res = await api.post("/auth/owner/send-otp", formData);
       toast.success("Verification code resent!");
-      if (res.data?.data?.otp) {
-        setOtp(res.data.data.otp);
-        toast.success(`Use OTP: ${res.data.data.otp}`, { icon: "🧪" });
-      }
       startCooldown();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || "Failed to resend code");
@@ -447,7 +439,7 @@ const OwnerOnboarding = () => {
               </div>
               <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Verify Your Identity</h3>
               <p className="text-text-secondary text-sm font-medium">
-                We've sent a 6-digit verification code to <span className="font-bold text-text-primary">{formData.phone}</span>.
+                We've sent a 6-digit verification code to <span className="font-bold text-text-primary">{formData.email}</span>.
               </p>
             </div>
 
