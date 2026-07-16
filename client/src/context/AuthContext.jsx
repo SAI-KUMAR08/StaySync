@@ -8,6 +8,8 @@ const defaultAuth = {
   loading: true,
   hostels: [],
   login: async () => { throw new Error("AuthProvider is missing"); },
+  sendOwnerLoginOtp: async () => { throw new Error("AuthProvider is missing"); },
+  verifyOwnerLoginOtp: async () => { throw new Error("AuthProvider is missing"); },
   registerOwner: async () => { throw new Error("AuthProvider is missing"); },
   sendOTP: async () => { throw new Error("AuthProvider is missing"); },
   tenantLogin: async () => { throw new Error("AuthProvider is missing"); },
@@ -71,6 +73,36 @@ export const AuthProvider = ({ children }) => {
       return res.data.data.user;
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
+      throw error;
+    }
+  };
+
+  const sendOwnerLoginOtp = async (email) => {
+    try {
+      const res = await api.post("/auth/owner/login/send-otp", { email });
+      toast.success("OTP sent to your email!");
+      return res.data.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to send OTP");
+      throw error;
+    }
+  };
+
+  const verifyOwnerLoginOtp = async (email, otp) => {
+    try {
+      const res = await api.post("/auth/owner/login/verify-otp", { email, otp });
+      sessionStorage.setItem("token", res.data.data.accessToken);
+      setUser(res.data.data.user);
+      if (res.data.data.user?.role === "owner") {
+        const hostelsRes = await api.get("/owner/hostels");
+        setHostels(hostelsRes.data.data || []);
+      } else {
+        setHostels([]);
+      }
+      toast.success("Login successful!");
+      return res.data.data.user;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Verification failed");
       throw error;
     }
   };
@@ -225,7 +257,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, hostels, loading, login, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
+      value={{ user, hostels, loading, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
     >
       {children}
     </AuthContext.Provider>

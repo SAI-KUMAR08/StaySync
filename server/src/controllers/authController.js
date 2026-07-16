@@ -44,6 +44,23 @@ export const verifyOwnerOtp = asyncHandler(async (req, res) => {
   return success(res, result);
 });
 
+export const sendOwnerLoginOtp = asyncHandler(async (req, res) => {
+  const result = await authService.sendOwnerLoginOtp(req.validated.body);
+  return success(res, result);
+});
+
+export const verifyOwnerLoginOtp = asyncHandler(async (req, res) => {
+  const meta = getClientMeta(req);
+  const result = await authService.verifyOwnerLoginOtp(req.validated.body, meta);
+  res.cookie("refreshToken", result.refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return success(res, result);
+});
+
 export const login = asyncHandler(async (req, res) => {
   const meta = getClientMeta(req);
   const result = await authService.loginUser(req.validated.body, meta);

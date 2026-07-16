@@ -21,8 +21,6 @@ const Login = () => {
 
   const [role, setRole] = useState("owner");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
   // Tenant auth state
   const [countryCode, setCountryCode] = useState("+91");
@@ -36,8 +34,11 @@ const Login = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  // Owner OTP login state
+  const [ownerOtpSent, setOwnerOtpSent] = useState(false);
+  const [ownerOtp, setOwnerOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword: setPwd, sendForgotOtp, resetTenantPassword } = useAuth();
+  const { sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword: setPwd, sendForgotOtp, resetTenantPassword } = useAuth();
   const navigate = useNavigate();
 
   const handlePhoneChange = (e) => {
@@ -50,18 +51,37 @@ const Login = () => {
     }
   };
 
-  const handleOwnerSubmit = async (e) => {
+  const handleOwnerSendOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
-      toast.success("Welcome back!");
-      navigate("/admin/dashboard");
+      await sendOwnerLoginOtp(email);
+      setOwnerOtpSent(true);
+      toast.success("OTP sent to your email!");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Authentication failed");
+      // toast handled in context
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOwnerVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (ownerOtp.length !== 6) { toast.error("Please enter the 6-digit OTP"); return; }
+    setLoading(true);
+    try {
+      await verifyOwnerLoginOtp(email, ownerOtp);
+      navigate("/admin/dashboard");
+    } catch (error) {
+      // toast handled in context
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetOwnerOtpState = () => {
+    setOwnerOtpSent(false);
+    setOwnerOtp("");
   };
 
   const fullPhone = () => countryCode + phone;
@@ -98,12 +118,7 @@ const Login = () => {
     try {
       const res = await sendOTP(fullPhone());
       setOtpSent(true);
-      if (res?.otp) {
-        setOtp(res.otp);
-        toast.success(`Use OTP: ${res.otp}`, { icon: "🧪" });
-      } else {
-        toast.success("OTP sent to your phone!");
-      }
+      toast.success("OTP sent to your phone!");
     } catch {
       // toast handled in context
     } finally { setLoading(false); }
@@ -149,10 +164,6 @@ const Login = () => {
     try {
       const res = await sendForgotOtp(fullPhone());
       setOtpSent(true);
-      if (res?.otp) {
-        setOtp(res.otp);
-        toast.success(`Use OTP: ${res.otp}`, { icon: "🧪" });
-      }
     } catch { } finally { setLoading(false); }
   };
 
@@ -297,7 +308,7 @@ const Login = () => {
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
-                  onClick={() => { setRole(key); setOtpSent(false); }}
+                  onClick={() => { setRole(key); setOtpSent(false); resetOwnerOtpState(); }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[12px] font-bold text-xs uppercase tracking-wider transition-all ${
                     role === key
                       ? 'bg-primary text-white shadow-lg shadow-primary/25'
@@ -309,8 +320,8 @@ const Login = () => {
               ))}
             </div>
 
-            {role === "owner" ? (
-              <form onSubmit={handleOwnerSubmit} className="space-y-5">
+            {role === "owner" ? !ownerOtpSent ? (
+              <form onSubmit={handleOwnerSendOtp} className="space-y-5">
                 <div className="space-y-1.5">
                   <label className="form-label">Work Email</label>
                   <div className="relative">
@@ -325,35 +336,57 @@ const Login = () => {
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="form-label">Password</label>
-                  <div className="relative">
-                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
-                    <input
-                      required
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="current-password"
-                      className="field-input pl-11 pr-11"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary transition-colors"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <MdVisibilityOff size={17} /> : <MdVisibility size={17} />}
-                    </button>
-                  </div>
-                </div>
                 <button
-                  disabled={loading}
+                  disabled={loading || !email}
                   type="submit"
                   className="btn-primary w-full py-4 text-sm"
                 >
-                  {loading ? "Signing in..." : "Access Dashboard"}
+                  {loading ? "Sending OTP..." : "Send OTP to Email"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleOwnerVerifyOtp} className="space-y-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => { setOwnerOtpSent(false); setOwnerOtp(""); }}
+                    className="text-text-tertiary hover:text-text-primary transition-colors"
+                  >
+                    <MdArrowBack size={18} />
+                  </button>
+                  <p className="text-xs text-text-secondary font-medium">
+                    OTP sent to {email}
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="form-label">Verification Code</label>
+                  <div className="relative">
+                    <MdVpnKey className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                    <input
+                      required
+                      type="text"
+                      maxLength="6"
+                      className="field-input pl-11 tracking-[0.5em] text-center font-bold"
+                      placeholder="000000"
+                      value={ownerOtp}
+                      onChange={(e) => setOwnerOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    />
+                  </div>
+                </div>
+                <button
+                  disabled={loading || ownerOtp.length !== 6}
+                  type="submit"
+                  className="btn-primary w-full py-4 text-sm"
+                >
+                  {loading ? "Verifying..." : "Verify & Login"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOwnerSendOtp}
+                  disabled={loading}
+                  className="w-full text-[10px] text-primary font-semibold hover:underline"
+                >
+                  Resend OTP
                 </button>
               </form>
             ) : tenantFlow === "phone" ? (
@@ -447,7 +480,7 @@ const Login = () => {
                   {loading ? "Verifying..." : "Verify OTP & Continue"}
                 </button>
                 {otpSent && (
-                  <p className="text-[10px] text-text-secondary/60 text-center">OTP sent to your phone. Check SMS or use demo OTP shown above.</p>
+                  <p className="text-[10px] text-text-secondary/60 text-center">OTP sent to your phone. Check SMS for the verification code.</p>
                 )}
               </div>
 

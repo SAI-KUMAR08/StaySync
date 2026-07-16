@@ -5,6 +5,8 @@ import {
   registerSchema,
   ownerSendOtpSchema,
   ownerVerifyOtpSchema,
+  ownerLoginOtpSchema,
+  ownerVerifyLoginOtpSchema,
   loginSchema,
   refreshSchema,
   updateProfileSchema,
@@ -27,6 +29,8 @@ router.post("/register", authLimiter, validate(registerSchema), authController.r
 router.post("/register-owner", authLimiter, validate(registerSchema), authController.register);
 router.post("/owner/send-otp", authLimiter, validate(ownerSendOtpSchema), authController.sendOwnerOtp);
 router.post("/owner/verify-otp", authLimiter, validate(ownerVerifyOtpSchema), authController.verifyOwnerOtp);
+router.post("/owner/login/send-otp", authLimiter, validate(ownerLoginOtpSchema), authController.sendOwnerLoginOtp);
+router.post("/owner/login/verify-otp", authLimiter, validate(ownerVerifyLoginOtpSchema), authController.verifyOwnerLoginOtp);
 router.post("/login", authLimiter, validate(loginSchema), authController.login);
 router.post("/send-otp", otpLimiter, validate(sendOtpSchema), authController.sendOtp);
 router.post("/verify-otp", otpLimiter, validate(verifyOtpSchema), authController.verifyOtp);
