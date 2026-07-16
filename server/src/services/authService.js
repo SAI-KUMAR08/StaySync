@@ -6,6 +6,7 @@ import { AppError } from "../middleware/error.middleware.js";
 import { normalizePhone } from "../utils/phone.js";
 
 import { isMockOtp, DEMO_OTP } from "../config/payments.js";
+import { sendOtpEmail } from "./emailService.js";
 
 function buildAuthUser(entity, role, extra = {}) {
   return {
@@ -182,12 +183,14 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
     { upsert: true, new: true }
   );
 
+  // Send OTP via email
+  await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Registration", name: name.trim() });
+
   if (isMockOtp()) {
-    console.log(`[DEMO OTP] Owner ${normalizedPhone} → ${DEMO_OTP} (no SMS sent)`);
+    console.log(`[DEMO OTP] Owner registration ${normalizedEmail} → ${DEMO_OTP}`);
     return { message: "OTP sent successfully", otp: DEMO_OTP, mock: true };
   }
 
-  console.log(`[SMS] OTP for Owner ${normalizedPhone}`);
   return { message: "OTP sent successfully" };
 }
 
@@ -273,12 +276,14 @@ export async function sendOwnerLoginOtp({ email }) {
     { upsert: true, new: true }
   );
 
+  // Send OTP via email
+  await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Login", name: owner.name });
+
   if (isMockOtp()) {
-    console.log(`[DEMO OTP] Owner login ${normalizedEmail} → ${DEMO_OTP} (no email sent)`);
+    console.log(`[DEMO OTP] Owner login ${normalizedEmail} → ${DEMO_OTP}`);
     return { message: "OTP sent to your email", otp: DEMO_OTP, mock: true };
   }
 
-  console.log(`[EMAIL] Login OTP for owner ${normalizedEmail}`);
   return { message: "OTP sent to your email" };
 }
 
@@ -428,12 +433,17 @@ export async function sendTenantOtp({ phone }) {
     { upsert: true, new: true }
   );
 
+  // Send OTP via email
+  const tenantEmail = tenant.personalInfo?.email || tenant.email;
+  if (tenantEmail) {
+    await sendOtpEmail({ to: tenantEmail, otp: otpVal, purpose: "Resident Login", name: tenant.personalInfo?.name || tenant.name });
+  }
+
   if (isMockOtp()) {
-    console.log(`[DEMO OTP] ${normalized} → ${DEMO_OTP} (no SMS sent)`);
+    console.log(`[DEMO OTP] Tenant ${normalized} → ${DEMO_OTP}`);
     return { message: "OTP sent successfully", otp: DEMO_OTP, mock: true };
   }
 
-  console.log(`[SMS] OTP for ${normalized}`);
   return { message: "OTP sent successfully" };
 }
 
@@ -610,12 +620,14 @@ export async function sendTenantForgotOtp({ phone }) {
     { upsert: true, new: true }
   );
 
+  // Send OTP via email
+  await sendOtpEmail({ to: email, otp: otpVal, purpose: "Password Reset", name: tenant.personalInfo?.name || tenant.name });
+
   if (isMockOtp()) {
-    console.log(`[DEMO OTP] Forgot password for ${email} → ${DEMO_OTP} (no email sent)`);
+    console.log(`[DEMO OTP] Forgot password for ${email} → ${DEMO_OTP}`);
     return { message: "OTP sent to your registered email", otp: DEMO_OTP, mock: true };
   }
 
-  console.log(`[EMAIL] Password reset OTP for ${email}`);
   return { message: "OTP sent to your registered email" };
 }
 
