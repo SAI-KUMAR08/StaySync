@@ -188,9 +188,15 @@ export async function ensureHostelRentInvoices(ownerId, hostelId) {
 }
 
 export async function countOverdueTenants(ownerId, hostelId) {
+  // Only count overdue payments from active tenants
+  const activeTenants = await Tenant.find({ ownerId, hostelId, isActive: true }).select("_id");
+  const activeIds = activeTenants.map((t) => t._id);
+  if (activeIds.length === 0) return 0;
+
   return Payment.distinct("tenantId", {
     ownerId,
     hostelId,
+    tenantId: { $in: activeIds },
     paymentStatus: "overdue",
   }).then((ids) => ids.length);
 }
@@ -206,6 +212,17 @@ export async function sumOutstandingByStatus(ownerId, hostelId) {
         paymentStatus: { $in: ["unpaid", "overdue"] },
       },
     },
+    // Only count payments from active tenants
+    {
+      $lookup: {
+        from: "tenants",
+        localField: "tenantId",
+        foreignField: "_id",
+        as: "tenant",
+      },
+    },
+    { $unwind: "$tenant" },
+    { $match: { "tenant.isActive": true } },
     {
       $group: {
         _id: "$paymentStatus",

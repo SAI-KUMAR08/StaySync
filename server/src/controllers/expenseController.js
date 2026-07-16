@@ -108,7 +108,7 @@ export const getExpenseSummary = asyncHandler(async (req, res) => {
         ...match,
         date: {
           $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          $lte: new Date(),
+          $lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
         },
       },
     },
