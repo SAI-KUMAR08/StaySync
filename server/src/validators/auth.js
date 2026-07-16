@@ -117,6 +117,13 @@ export const tenantSetPasswordSchema = z.object({
   }),
 });
 
+export const tenantSetInitialPasswordSchema = z.object({
+  body: z.object({
+    phone: z.string().min(10, "Phone is required"),
+    password: strongPassword,
+  }),
+});
+
 export const forgotPasswordSchema = z.object({
   body: z.object({
     phone: z.string().min(10, "Phone is required"),

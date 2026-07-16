@@ -16,6 +16,7 @@ import {
   switchHostelSchema,
   tenantLoginSchema,
   tenantSetPasswordSchema,
+  tenantSetInitialPasswordSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   tenantCheckSchema,
@@ -39,6 +40,7 @@ router.post("/tenant/verify-otp", otpLimiter, validate(verifyOtpSchema), authCon
 router.post("/tenant/check-status", otpLimiter, validate(tenantCheckSchema), authController.checkTenantStatus);
 router.post("/tenant/login", otpLimiter, validate(tenantLoginSchema), authController.tenantLogin);
 router.post("/tenant/set-password", otpLimiter, validate(tenantSetPasswordSchema), authController.tenantSetPassword);
+router.post("/tenant/set-initial-password", otpLimiter, validate(tenantSetInitialPasswordSchema), authController.tenantSetInitialPassword);
 router.post("/tenant/forgot-password", otpLimiter, validate(forgotPasswordSchema), authController.sendForgotOtp);
 router.post("/tenant/reset-password", otpLimiter, validate(resetPasswordSchema), authController.resetPassword);
 router.post("/refresh", authController.refresh);

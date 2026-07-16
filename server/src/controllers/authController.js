@@ -118,6 +118,17 @@ export const tenantSetPassword = asyncHandler(async (req, res) => {
   return success(res, result);
 });
 
+export const tenantSetInitialPassword = asyncHandler(async (req, res) => {
+  const result = await authService.setInitialTenantPassword(req.validated.body);
+  res.cookie("refreshToken", result.refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+  return success(res, result);
+});
+
 export const sendForgotOtp = asyncHandler(async (req, res) => {
   const result = await authService.sendTenantForgotOtp(req.validated.body);
   return success(res, result);

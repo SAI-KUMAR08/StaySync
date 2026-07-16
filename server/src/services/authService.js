@@ -194,6 +194,36 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
   return { message: "OTP sent successfully" };
 }
 
+/**
+ * First-time password set WITHOUT OTP verification.
+ * Only works when isPasswordSet is false (first login).
+ */
+export async function setInitialTenantPassword({ phone, password }) {
+  const normalized = normalizePhone(phone);
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
+  if (!tenant) throw new AppError("Tenant not found", 404);
+  if (tenant.isPasswordSet) {
+    throw new AppError("Password already set. Please login with your password.", 400);
+  }
+
+  tenant.personalInfo.password = password;
+  tenant.isPasswordSet = true;
+  await tenant.save();
+
+  // Auto-login after setting password
+  const tokens = await issueTokens(tenant, "tenant", {
+    ownerId: tenant.ownerId,
+    hostelId: tenant.hostelId,
+  });
+
+  const profile = await buildTenantProfile(tenant);
+
+  return {
+    user: profile,
+    ...tokens,
+  };
+}
+
 /** 
  * Step 2 of Owner Signup: Verify OTP and activate registration
  */

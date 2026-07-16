@@ -16,6 +16,7 @@ const defaultAuth = {
   checkTenantStatus: async () => ({ exists: false, hasPassword: false }),
   tenantPasswordLogin: async () => { throw new Error("AuthProvider is missing"); },
   setTenantPassword: async () => { throw new Error("AuthProvider is missing"); },
+  setInitialPassword: async () => { throw new Error("AuthProvider is missing"); },
   sendForgotOtp: async () => { throw new Error("AuthProvider is missing"); },
   resetTenantPassword: async () => { throw new Error("AuthProvider is missing"); },
   switchHostel: async () => { throw new Error("AuthProvider is missing"); },
@@ -217,6 +218,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setInitialPassword = async (phone, password) => {
+    try {
+      const res = await api.post("/auth/tenant/set-initial-password", { phone, password });
+      sessionStorage.setItem("token", res.data.data.accessToken);
+      setUser(res.data.data.user);
+      setHostels([]);
+      toast.success("Password set successfully!");
+      return res.data.data.user;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to set password");
+      throw error;
+    }
+  };
+
   const sendForgotOtp = async (phone) => {
     try {
       const res = await api.post("/auth/tenant/forgot-password", { phone });
@@ -257,7 +272,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, hostels, loading, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
+      value={{ user, hostels, loading, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, setInitialPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
     >
       {children}
     </AuthContext.Provider>
