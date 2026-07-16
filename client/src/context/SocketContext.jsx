@@ -65,11 +65,6 @@ export const SocketProvider = ({ children }) => {
     };
   }, [user?.hostelId, loading]);
 
-  useEffect(() => {
-    if (!socket || !user?.hostelId) return;
-    socket.emit("join_hostel", user.hostelId);
-  }, [socket, user?.hostelId]);
-
   return <SocketContext.Provider value={{ socket }}>{children}</SocketContext.Provider>;
 };
 

@@ -158,7 +158,7 @@ const TenantManagement = () => {
           monthlyRent: formData.rentAmount,
           joinDate: formData.joiningDate,
           isTemporary,
-          preferredSharing,
+          ...(isTemporary && preferredSharing ? { preferredSharing } : {}),
         });
         toast.success(isTemporary ? "Resident onboarded temporarily!" : "Resident onboarded successfully!");
       }

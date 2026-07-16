@@ -183,7 +183,7 @@ const DashboardLayout = () => {
               <MdHome className="text-lg text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-black font-sans text-white leading-none">
+              <h1 className="text-lg font-black font-sans text-text-primary leading-none">
                 Sri Rama
               </h1>
               <p className="text-[8px] text-text-secondary/50 uppercase tracking-[0.15em] font-bold mt-0.5">
@@ -193,7 +193,7 @@ const DashboardLayout = () => {
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="p-2 text-text-tertiary hover:text-white rounded-xl hover:bg-white/5 transition-all"
+            className="p-2 text-text-tertiary hover:text-text-primary rounded-xl hover:bg-black/[0.04] transition-all"
           >
             <MdClose size={18} />
           </button>
@@ -208,22 +208,22 @@ const DashboardLayout = () => {
               <select
                 value={user?.hostelId || ""}
                 onChange={(e) => switchHostel(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-white/5 text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full px-4 py-2.5 rounded-xl border border-border bg-black/[0.02] text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 {hostels.map((h) => (
-                  <option key={h._id} value={h._id} className="bg-surface text-white">
+                  <option key={h._id} value={h._id} className="bg-surface text-text-primary">
                     {h.name || h.hostelName}
                   </option>
                 ))}
               </select>
             ) : (
-              <div className="px-4 py-2.5 rounded-xl border border-border bg-white/5 text-sm font-medium text-white/60">
-                <span className="text-white font-bold">{hostels?.[0]?.name || hostels?.[0]?.hostelName || "My Hostel"}</span>
+              <div className="px-4 py-2.5 rounded-xl border border-border bg-black/[0.02] text-sm font-medium text-text-secondary">
+                <span className="text-text-primary font-bold">{hostels?.[0]?.name || hostels?.[0]?.hostelName || "My Hostel"}</span>
               </div>
             )}
             <button
               onClick={createNewHostel}
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-white/[0.03] text-sm font-medium text-text-secondary/60 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 text-xs"
+              className="w-full px-4 py-2.5 rounded-xl border border-border bg-black/[0.02] text-sm font-medium text-text-secondary/60 hover:text-text-primary hover:bg-black/[0.04] transition-all flex items-center justify-center gap-2 text-xs"
             >
               <MdAdd size={14} /> New Hostel
             </button>
@@ -238,7 +238,7 @@ const DashboardLayout = () => {
               className={`flex items-center gap-4 px-4 py-3 rounded-[14px] transition-all ${
                 location.pathname === link.to
                   ? "bg-primary/10 text-primary font-bold"
-                  : "text-text-secondary/50 hover:text-white hover:bg-white/5"
+                  : "text-text-secondary/50 hover:text-text-primary hover:bg-black/[0.04]"
               }`}
             >
               <link.icon className="text-xl" />
@@ -337,9 +337,7 @@ const DashboardLayout = () => {
 
         {/* Content */}
         <div className="px-4 md:px-8 lg:px-10 py-6 max-w-[1440px] mx-auto">
-          <div className="animate-tilt-in">
-            <Outlet />
-          </div>
+          <Outlet />
         </div>
       </div>
     </div>
