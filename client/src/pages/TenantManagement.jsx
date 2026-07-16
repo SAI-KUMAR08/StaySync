@@ -51,7 +51,8 @@ const TenantManagement = () => {
     floorId: "",
     roomId: "",
     bedId: "",
-    rentAmount: 0
+    rentAmount: 0,
+    idProof: "",
   });
 
   const [reassigningTenant, setReassigningTenant] = useState(null);
@@ -144,6 +145,7 @@ const TenantManagement = () => {
       if (reassigningTenant) {
         await api.post(`/owner/tenants/${reassigningTenant._id}/assign-bed`, {
           bedId: formData.bedId,
+          ...(formData.idProof ? { idProof: formData.idProof } : {}),
           ...(isTemporary ? { isTemporary, preferredSharing } : {})
         });
         toast.success("Resident's bed reassigned successfully!");
@@ -158,6 +160,7 @@ const TenantManagement = () => {
           monthlyRent: formData.rentAmount,
           joinDate: formData.joiningDate,
           isTemporary,
+          ...(formData.idProof ? { idProof: formData.idProof } : {}),
           ...(isTemporary && preferredSharing ? { preferredSharing } : {}),
         });
         toast.success(isTemporary ? "Resident onboarded temporarily!" : "Resident onboarded successfully!");
@@ -290,7 +293,7 @@ const TenantManagement = () => {
         </div>
         <button
           onClick={() => {
-            setFormData({ name: "", phone: "", joiningDate: new Date().toISOString().split('T')[0], floorId: "", roomId: "", bedId: "", rentAmount: 0 });
+            setFormData({ name: "", phone: "", joiningDate: new Date().toISOString().split('T')[0], floorId: "", roomId: "", bedId: "", rentAmount: 0, idProof: "" });
             setReassigningTenant(null);
             setIsTemporary(false);
             setPreferredSharing(null);
@@ -591,6 +594,64 @@ const TenantManagement = () => {
                     <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Joining Date</label>
                     <input type="date" className="field-input"
                       value={formData.joiningDate} onChange={(e) => setFormData({...formData, joiningDate: e.target.value})} />
+                  </div>
+
+                  {/* ID Proof Upload */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">ID Proof (Aadhaar / PAN / Voter ID)</label>
+                    <div
+                      onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('border-primary'); }}
+                      onDragLeave={(e) => { e.currentTarget.classList.remove('border-primary'); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('border-primary');
+                        const file = e.dataTransfer.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setFormData({...formData, idProof: reader.result});
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="border-2 border-dashed border-border/60 rounded-2xl p-6 text-center cursor-pointer hover:border-primary/40 transition-all bg-surface/30"
+                      onClick={() => document.getElementById('idProofInput').click()}
+                    >
+                      {formData.idProof ? (
+                        <div className="relative inline-block">
+                          <img src={formData.idProof} alt="ID Proof" className="max-h-28 mx-auto rounded-xl" />
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setFormData({...formData, idProof: ""}); }}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full text-xs font-bold hover:scale-110 transition-all"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="w-12 h-12 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                          </div>
+                          <p className="text-xs text-text-secondary/60 font-medium">Drag & drop an image here, or <span className="text-primary font-bold">browse</span></p>
+                          <p className="text-[8px] text-text-secondary/40">JPG, PNG or PDF</p>
+                        </div>
+                      )}
+                      <input
+                        id="idProofInput"
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => setFormData({...formData, idProof: reader.result});
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* 🆕 Temporary Allotment Toggle */}

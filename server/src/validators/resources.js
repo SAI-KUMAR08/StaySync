@@ -57,6 +57,7 @@ export const tenantCreateSchema = z.object({
     bedId: objectId,
     monthlyRent: z.coerce.number().min(0).optional(),
     joinDate: z.coerce.date().optional(),
+    idProof: z.string().optional(),
     isTemporary: z.boolean().optional(),
     preferredSharing: z.preprocess(
       (val) => (val === null || val === undefined ? undefined : val),
@@ -80,6 +81,7 @@ export const assignBedSchema = z.object({
   body: z.object({
     bedId: objectId,
     isTemporary: z.boolean().optional(),
+    idProof: z.string().optional(),
     preferredSharing: z.preprocess(
       (val) => (val === null || val === undefined ? undefined : val),
       z.coerce.number().int().min(1).max(20).optional()

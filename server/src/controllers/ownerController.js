@@ -369,6 +369,7 @@ export const createTenant = asyncHandler(async (req, res) => {
     bedId,
     monthlyRent,
     joinDate,
+    idProof,
   } = req.validated.body;
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -416,6 +417,7 @@ export const createTenant = asyncHandler(async (req, res) => {
           floorId,
           roomId,
           bedId,
+          idProof: idProof || undefined,
           monthlyRent: monthlyRent ?? 0,
           joinDate: joinDate ?? new Date(),
         },
@@ -496,12 +498,13 @@ export const assignBed = asyncHandler(async (req, res) => {
       session,
     });
 
-    // Persist isTemporary / preferredSharing if provided
-    const { isTemporary, preferredSharing } = req.validated.body;
-    if (isTemporary !== undefined || preferredSharing !== undefined) {
+    // Persist isTemporary / preferredSharing / idProof if provided
+    const { isTemporary, preferredSharing, idProof } = req.validated.body;
+    if (isTemporary !== undefined || preferredSharing !== undefined || idProof !== undefined) {
       const tenantUpdate = {};
       if (isTemporary !== undefined) tenantUpdate.isTemporary = isTemporary;
       if (preferredSharing !== undefined) tenantUpdate.preferredSharing = preferredSharing;
+      if (idProof !== undefined) tenantUpdate.idProof = idProof;
       await Tenant.findOneAndUpdate(
         { _id: req.validated.params.id, ownerId: f.ownerId, hostelId: f.hostelId },
         { $set: tenantUpdate },
