@@ -14,11 +14,13 @@ import toast from "react-hot-toast";
 const StatCard = ({ label, value, sub, icon: Icon, color }) => (
   <div className="arch-card p-6 md:p-7 group relative overflow-hidden">
     <div className={`relative w-12 h-[54px] flex items-center justify-center mb-5`}>
-      <div className={`absolute inset-0 ${color} rounded-[8px] rounded-b-[16px] shadow-lg`}></div>
-      <div className="absolute top-[2px] left-[3px] right-[3px] h-[5px] bg-white/10 rounded-t-[5px]"></div>
+      <div className={`absolute inset-0 ${color} rounded-[8px] rounded-b-[16px] shadow-lg`}>
+        <div className="absolute inset-0 rounded-[8px] rounded-b-[16px] bg-gradient-to-b from-white/10 to-transparent" />
+      </div>
+      <div className="absolute top-[2px] left-[3px] right-[3px] h-[5px] bg-white/15 rounded-t-[5px]" />
       <Icon className="text-2xl text-white relative z-10" />
     </div>
-    <h3 className="text-text-secondary text-[8px] font-bold font-sans uppercase tracking-[0.15em] mb-1.5">{label}</h3>
+    <h3 className="text-text-secondary text-[8px] font-bold uppercase tracking-[0.15em] mb-1.5">{label}</h3>
     <p className="text-2xl font-bold font-display text-text-primary tracking-tight">{value}</p>
     <p className="text-[8px] text-text-secondary font-medium mt-1 uppercase tracking-tight">{sub}</p>
   </div>
@@ -83,12 +85,14 @@ const TenantDashboard = () => {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Profile header — arch card */}
+      {/* Profile header */}
       <header className="arch-card p-7 md:p-9 animate-slide-up-big relative overflow-hidden">
         <div className="flex items-center gap-5 relative">
           <div className="relative w-16 h-[72px] flex items-center justify-center">
-            <div className="absolute inset-0 bg-primary rounded-[10px] rounded-b-[18px] shadow-md shadow-primary/20"></div>
-            <div className="absolute top-[3px] left-[4px] right-[4px] h-[6px] bg-white/10 rounded-t-[6px]"></div>
+            <div className="absolute inset-0 bg-primary rounded-[10px] rounded-b-[18px] shadow-lg shadow-primary/25">
+              <div className="absolute inset-0 rounded-[10px] rounded-b-[18px] bg-gradient-to-b from-white/10 to-transparent" />
+            </div>
+            <div className="absolute top-[3px] left-[4px] right-[4px] h-[6px] bg-white/15 rounded-t-[6px]"></div>
             <span className="text-white font-bold font-display text-2xl relative z-10">
               {user?.name?.[0]?.toUpperCase()}
             </span>
@@ -108,7 +112,7 @@ const TenantDashboard = () => {
         </div>
       </header>
 
-      {/* Stats - staggered */}
+      {/* Stats */}
       <div className="stagger-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
         {[
           { label: "Assigned Unit", value: `Room ${roomDetails?.room?.roomNumber || roomDetails?.room?.number || user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${roomDetails?.room?.floor || roomDetails?.floorId?.number || roomDetails?.floorId?.floorNumber || user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-primary" },
@@ -130,17 +134,13 @@ const TenantDashboard = () => {
           <div className="arch-card p-6 md:p-7 animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
-                  Financials
-                </h3>
-                <p className="text-base font-bold font-display text-text-primary tracking-tight">
-                  Recent Invoices
-                </p>
+                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Financials</h3>
+                <p className="text-base font-bold font-display text-text-primary tracking-tight">Recent Invoices</p>
               </div>
               <div className="relative w-10 h-[44px] flex items-center justify-center">
                 <div className="absolute inset-0 bg-primary/10 rounded-[6px] rounded-b-[14px]"></div>
                 <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-primary/10 rounded-t-[4px]"></div>
-                <MdHistory className="text-xl text-primary relative z-10" />
+                <MdHistory className="text-lg text-primary relative z-10" />
               </div>
             </div>
             <div className="space-y-2">
@@ -153,14 +153,13 @@ const TenantDashboard = () => {
                   </div>
                   <p className="text-lg font-bold font-display text-text-primary/50 tracking-tight mb-1">No invoices yet</p>
                   <p className="text-[10px] font-medium text-text-secondary/40 uppercase tracking-[0.15em]">Your billing history will appear here</p>
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-24 h-px bg-black/5" />
                 </div>
               ) : (
                 payments.map((p, i) => (
                   <div key={p._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
                     <div className="flex items-center justify-between p-4 rounded-[16px] bg-surface hover:bg-surface-hover border border-transparent hover:border-border/50 transition-all group">
                       <div className="flex items-center gap-4">
-                        <div className={`relative w-10 h-[44px] flex items-center justify-center ${(p.paymentStatus || p.status) === 'paid' ? '' : ''}`}>
+                        <div className="relative w-10 h-[44px] flex items-center justify-center">
                           <div className={`absolute inset-0 rounded-[6px] rounded-b-[14px] ${(p.paymentStatus || p.status) === 'paid' ? 'bg-emerald-500/10' : 'bg-accent-soft'}`}></div>
                           <div className={`absolute top-[2px] left-[2px] right-[2px] h-[4px] rounded-t-[4px] ${(p.paymentStatus || p.status) === 'paid' ? 'bg-emerald-500/10' : 'bg-accent-soft'}`}></div>
                           <MdAttachMoney className={`text-lg relative z-10 ${(p.paymentStatus || p.status) === 'paid' ? 'text-success' : 'text-primary'}`} />
@@ -213,7 +212,7 @@ const TenantDashboard = () => {
                 complaints.slice(0, 4).map((c, i) => (
                   <div key={c._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
                     <div className="flex items-center gap-3 p-3 rounded-[16px] bg-surface hover:bg-surface-hover transition-all group border border-transparent hover:border-border/50">
-                      <div className={`relative w-9 h-[40px] flex items-center justify-center ${c.status === 'resolved' ? '' : ''}`}>
+                      <div className="relative w-9 h-[40px] flex items-center justify-center">
                         <div className={`absolute inset-0 rounded-[5px] rounded-b-[12px] ${
                           c.status === 'resolved' ? 'bg-emerald-500/10' :
                           c.status === 'in_progress' ? 'bg-secondary-light' :

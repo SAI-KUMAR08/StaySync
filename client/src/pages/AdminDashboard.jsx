@@ -12,7 +12,6 @@ import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
-// ── Trend direction indicator ───
 const TrendBadge = ({ current, previous }) => {
   if (previous === undefined || previous === null || previous === 0) return null;
   const pct = ((current - previous) / previous) * 100;
@@ -25,7 +24,6 @@ const TrendBadge = ({ current, previous }) => {
   );
 };
 
-// ─── Animated counter hook ───
 const useAnimatedNumber = (target, duration = 800) => {
   const [display, setDisplay] = useState(0);
   const prev = useRef(0);
@@ -56,11 +54,13 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className="arch-card p-6 md:p-8 relative overflow-hidden col-span-1 md:col-span-2 row-span-1 group">
+    <div className="arch-card p-6 md:p-8 relative overflow-hidden col-span-1 md:col-span-2 row-span-1 group cursor-pointer">
       <div className="flex items-start justify-between mb-5">
-        <div className="relative w-14 h-[60px] flex items-center justify-center">
-          <div className="absolute inset-0 bg-primary rounded-[8px] rounded-b-[16px] shadow-md shadow-primary/20"></div>
-          <div className="absolute top-[2px] left-[3px] right-[3px] h-[5px] bg-white/10 rounded-t-[5px]"></div>
+        <div className="relative w-14 h-[64px] flex items-center justify-center">
+          <div className="absolute inset-0 bg-primary rounded-[8px] rounded-b-[18px] shadow-lg shadow-primary/25">
+            <div className="absolute inset-0 rounded-[8px] rounded-b-[18px] bg-gradient-to-b from-white/10 to-transparent" />
+          </div>
+          <div className="absolute top-[3px] left-[4px] right-[4px] h-[5px] bg-white/15 rounded-t-[5px]" />
           <Icon className="text-2xl text-white relative z-10" />
         </div>
         {TrendComponent && <TrendComponent />}
@@ -70,7 +70,7 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
           </div>
         )}
       </div>
-      <h3 className="text-text-secondary text-[9px] font-bold font-sans uppercase tracking-[0.15em] mb-1">{title}</h3>
+      <h3 className="text-text-secondary text-[9px] font-bold uppercase tracking-[0.15em] mb-1">{title}</h3>
       <div className="flex items-baseline gap-2">
         <span className="text-4xl font-bold font-display text-text-primary tracking-tight">
           {prefix}{isMoney ? animated.toLocaleString() : animated}
@@ -83,16 +83,17 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
 };
 
 const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
-  // Strip non-numeric chars (₹, commas) for parsing, keeping decimals
   const cleaned = String(value).replace(/[^0-9.-]/g, "");
   const numericVal = parseFloat(cleaned) || 0;
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
     <div className="origami-stat flex items-center gap-4 group">
-      <div className={`relative w-11 h-[48px] flex items-center justify-center shrink-0`}>
-        <div className={`absolute inset-0 ${color} rounded-[6px] rounded-b-[14px] shadow-md`}></div>
-        <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-white/10 rounded-t-[4px]"></div>
+      <div className={`relative w-12 h-[52px] flex items-center justify-center shrink-0`}>
+        <div className={`absolute inset-0 ${color} rounded-[6px] rounded-b-[16px] shadow-md`}>
+          <div className="absolute inset-0 rounded-[6px] rounded-b-[16px] bg-gradient-to-b from-white/10 to-transparent" />
+        </div>
+        <div className="absolute top-[2px] left-[3px] right-[3px] h-[4px] bg-white/15 rounded-t-[4px]" />
         <Icon className="text-xl text-white relative z-10" />
       </div>
       <div>
@@ -122,7 +123,6 @@ const AdminDashboard = () => {
   const supportFilterRef = useRef(supportFilter);
   const { socket } = useSocket();
 
-  // Keep ref in sync for socket handlers
   useEffect(() => { supportFilterRef.current = supportFilter; }, [supportFilter]);
 
   const fetchComplaints = useCallback(async (status) => {
@@ -169,7 +169,7 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         {[...Array(5)].map((_, i) => (
           <div key={i} className={`arch-card p-6 space-y-4 ${i === 0 ? 'md:col-span-2' : ''}`}>
-            <div className="shimmer w-12 h-12 rounded-[10px]" />
+            <div className="shimmer w-12 h-12 rounded-xl" />
             <div className="shimmer h-3 w-20" />
             <div className="shimmer h-8 w-32 mt-2" />
           </div>
@@ -182,28 +182,28 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Header with decorative ornament */}
       <header className="animate-slide-up-big">
         <div className="section-ornament-diamond mb-3">Pulse</div>
         <h2 className="section-title">Live <span className="highlight">Overview</span></h2>
         <p className="section-sub">Real-time health and occupancy metrics for your facility.</p>
       </header>
 
-      {/* Bento Grid Stats */}
       <div className="stagger-container grid grid-cols-1 md:grid-cols-4 gap-5">
         <HeroStat title="Total Residents" value={stats.totalTenants} icon={MdPeople} TrendComponent={() => <TrendBadge current={stats.totalTenants} previous={stats.previousTotalTenants} />} subValue="Active" to="/admin/tenants" />
-
         <MiniStat title="Monthly Income" value={stats.monthlyRevenue ?? 0} prefix="₹" icon={MdCurrencyRupee} color="bg-emerald-600" to="/admin/payments" />
         <MiniStat title="Monthly Expenses" value={expenseSummary?.thisMonthTotal ?? 0} prefix="₹" icon={MdReceipt} color="bg-zinc-600" to="/admin/expenses" />
         <MiniStat title="Unpaid Bills" value={stats.unpaidPayments ?? 0} icon={MdAttachMoney} color="bg-amber-600" to="/admin/payments" />
         <MiniStat title="Active Tickets" value={stats.activeComplaints} icon={MdReportProblem} color="bg-zinc-600" to="/admin/complaints" />
       </div>
 
-      {/* Support Tickets card */}
+      {/* Support Tickets */}
       <div className="arch-card p-6 md:p-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div className="heading-rule">
-            <h3 className="text-sm font-bold font-body text-text-primary uppercase tracking-[0.15em]">Support Tickets</h3>
+          <div>
+            <div className="flex items-center gap-3">
+              <h3 className="text-sm font-bold font-body text-text-primary uppercase tracking-[0.15em]">Support Tickets</h3>
+              <div className="h-px flex-1 w-12 bg-border/60" />
+            </div>
           </div>
           <Link to="/admin/complaints" className="btn-ghost inline-flex items-center gap-1.5 text-xs">
             Full Desk <MdArrowForward size={13} />
@@ -212,8 +212,8 @@ const AdminDashboard = () => {
         <div className="flex flex-wrap gap-2 mb-6">
           {SUPPORT_FILTERS.map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setSupportFilter(id)}
-              className={`px-4 py-2.5 rounded-[14px] text-[8px] font-bold font-sans uppercase tracking-wider transition-all duration-300 ${
-                supportFilter === id ? 'bg-primary text-white shadow-sm shadow-primary/25' : 'bg-white/[0.04] text-text-secondary hover:bg-white/10'
+              className={`px-4 py-2.5 rounded-[14px] text-[8px] font-bold uppercase tracking-wider transition-all duration-300 ${
+                supportFilter === id ? 'bg-primary text-white shadow-md shadow-primary/25' : 'bg-white/[0.04] text-text-secondary hover:bg-primary/5 hover:text-primary'
               }`}>
               {label}
             </button>
@@ -228,7 +228,7 @@ const AdminDashboard = () => {
           ) : (
             activities.map((activity, i) => (
               <div key={activity._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
-                <div className="flex items-center gap-4 p-4 rounded-[16px] hover:bg-white/[0.02] transition-all group">
+                <div className="flex items-center gap-4 p-4 rounded-[16px] hover:bg-primary/[0.02] transition-all group">
                   <div className="relative w-11 h-[48px] flex items-center justify-center shrink-0">
                     <div className="absolute inset-0 bg-primary/10 rounded-[6px] rounded-b-[14px]"></div>
                     <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-primary/10 rounded-t-[4px]"></div>
