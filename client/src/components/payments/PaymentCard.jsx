@@ -9,7 +9,7 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
         <p className="text-[9px] font-bold uppercase tracking-wider text-text-secondary/60 mb-0.5">
           {payment.paymentMonth || payment.month} {payment.year}
         </p>
-        <h5 className="text-3xl font-bold font-display text-text-primary tracking-tighter">
+        <h5 className="text-3xl font-bold font-sans text-text-primary tracking-tighter">
           ₹{(payment.totalAmount || payment.amount + (payment.fine || 0)).toLocaleString()}
         </h5>
         {payment.fine > 0 && (

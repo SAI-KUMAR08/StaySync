@@ -56,12 +56,8 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
   const content = (
     <div className="arch-card p-6 md:p-8 relative overflow-hidden col-span-1 md:col-span-2 row-span-1 group cursor-pointer">
       <div className="flex items-start justify-between mb-5">
-        <div className="relative w-14 h-[64px] flex items-center justify-center">
-          <div className="absolute inset-0 bg-primary rounded-[8px] rounded-b-[18px] shadow-lg shadow-primary/25">
-            <div className="absolute inset-0 rounded-[8px] rounded-b-[18px] bg-gradient-to-b from-white/10 to-transparent" />
-          </div>
-          <div className="absolute top-[3px] left-[4px] right-[4px] h-[5px] bg-white/15 rounded-t-[5px]" />
-          <Icon className="text-2xl text-white relative z-10" />
+        <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center shadow-md">
+          <Icon className="text-2xl text-white" />
         </div>
         {TrendComponent && <TrendComponent />}
         {trend && (
@@ -72,7 +68,7 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
       </div>
       <h3 className="text-text-secondary text-[9px] font-bold uppercase tracking-[0.15em] mb-1">{title}</h3>
       <div className="flex items-baseline gap-2">
-        <span className="text-4xl font-bold font-display text-text-primary tracking-tight">
+        <span className="text-4xl font-bold font-sans text-text-primary tracking-tight">
           {prefix}{isMoney ? animated.toLocaleString() : animated}
         </span>
         {subValue && <span className="text-text-secondary font-medium text-xs">{subValue}</span>}
@@ -89,12 +85,8 @@ const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
 
   const content = (
     <div className="origami-stat flex items-center gap-4 group">
-      <div className={`relative w-12 h-[52px] flex items-center justify-center shrink-0`}>
-        <div className={`absolute inset-0 ${color} rounded-[6px] rounded-b-[16px] shadow-md`}>
-          <div className="absolute inset-0 rounded-[6px] rounded-b-[16px] bg-gradient-to-b from-white/10 to-transparent" />
-        </div>
-        <div className="absolute top-[2px] left-[3px] right-[3px] h-[4px] bg-white/15 rounded-t-[4px]" />
-        <Icon className="text-xl text-white relative z-10" />
+      <div className={`w-11 h-11 rounded-xl ${color} flex items-center justify-center shadow-md shrink-0`}>
+        <Icon className="text-xl text-white" />
       </div>
       <div>
         <p className="text-[8px] font-bold font-body text-text-secondary uppercase tracking-[0.15em] leading-none mb-1">{title}</p>
@@ -229,10 +221,8 @@ const AdminDashboard = () => {
             activities.map((activity, i) => (
               <div key={activity._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
                 <div className="flex items-center gap-4 p-4 rounded-[16px] hover:bg-primary/[0.02] transition-all group">
-                  <div className="relative w-11 h-[48px] flex items-center justify-center shrink-0">
-                    <div className="absolute inset-0 bg-primary/10 rounded-[6px] rounded-b-[14px]"></div>
-                    <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-primary/10 rounded-t-[4px]"></div>
-                    <MdNotificationsActive className="text-xl text-primary relative z-10" />
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <MdNotificationsActive className="text-xl text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-text-primary text-sm leading-tight mb-0.5 truncate">{activity.description}</p>

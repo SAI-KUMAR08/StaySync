@@ -152,138 +152,83 @@ const Login = () => {
   return (
     <div className="min-h-screen flex bg-background overflow-hidden relative">
 
-      {/* ═══ LUXURY ANIMATED BACKGROUND ═══ */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Gradient overlay */}
-        <div className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(ellipse 80% 50% at 20% 20%, rgba(92, 61, 46, 0.04) 0%, transparent 60%),
-              radial-gradient(ellipse 60% 40% at 80% 80%, rgba(184, 134, 11, 0.03) 0%, transparent 50%),
-              var(--color-background-deep)
-            `
-          }}
-        />
-        {/* Giant arch silhouette */}
-        <svg className="absolute -top-40 -left-40 w-[700px] h-[700px] opacity-[0.025]" viewBox="0 0 700 700" fill="none">
-          <path d="M550 700 C550 400, 380 100, 350 100 C320 100, 150 400, 150 700" stroke="#5C3D2E" strokeWidth="1.5" />
-          <path d="M480 700 C480 470, 370 180, 350 180 C330 180, 220 470, 220 700" stroke="#5C3D2E" strokeWidth="1" />
-          <path d="M410 700 C410 540, 340 260, 350 260 C360 260, 290 540, 290 700" stroke="#5C3D2E" strokeWidth="0.8" />
-        </svg>
-        {/* Floating decorative elements */}
-        <div className="absolute top-[18%] right-[12%] w-24 h-24 rounded-full border border-primary/15 animate-float" style={{ animationDuration: '8s' }} />
-        <div className="absolute top-[40%] right-[5%] w-16 h-16 rounded-full border border-accent/10 animate-float" style={{ animationDuration: '10s', animationDelay: '1s' }} />
-        <div className="absolute bottom-[25%] left-[8%] w-20 h-20 rounded-full border border-primary/10 animate-float" style={{ animationDuration: '7s', animationDelay: '2s' }} />
-        <div className="absolute top-[60%] left-[15%] w-12 h-12 rounded-full bg-primary/5 animate-float" style={{ animationDuration: '9s', animationDelay: '0.5s' }} />
-        {/* Geometric jaali dots */}
-        <div className="absolute top-1/4 right-[20%] w-48 h-48 opacity-[0.02]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, #5C3D2E 1px, transparent 1px)',
-            backgroundSize: '14px 14px'
-          }}
-        />
-        <div className="absolute bottom-1/4 left-[5%] w-32 h-32 opacity-[0.02]"
-          style={{
-            backgroundImage: 'radial-gradient(circle, #B8860B 1px, transparent 1px)',
-            backgroundSize: '10px 10px'
-          }}
-        />
-      </div>
-
-      {/* ═══ BRAND PANEL — Luxury brand experience ═══ */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden items-center justify-center p-16">
-        {/* Subtle moving gradient */}
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{
-            background: 'linear-gradient(-45deg, #5C3D2E, #B8860B, #5C3D2E, #B8860B)',
-            backgroundSize: '400% 400%',
-            animation: 'gradient-shift 15s ease infinite',
-          }}
+      {/* ═══ BRAND PANEL ═══ */}
+      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden items-center justify-center p-16"
+        style={{
+          background: `
+            radial-gradient(ellipse 90% 70% at 30% 30%, rgba(92, 61, 46, 0.06) 0%, transparent 80%),
+            var(--color-background-deep)
+          `
+        }}
+      >
+        {/* Single subtle background glow */}
+        <div className="absolute w-[400px] h-[400px] -top-24 -left-24 opacity-[0.04]"
+          style={{ background: 'radial-gradient(circle at 40% 40%, #5C3D2E, transparent 70%)' }}
         />
 
-        <div className="relative z-10 max-w-lg w-full">
+        <div className="relative z-10 max-w-md w-full">
+          <div className="bg-white rounded-2xl p-10 shadow-lg border border-border">
+            {/* Brand logo */}
+            <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center mb-8">
+              <MdHome className="text-2xl text-white" />
+            </div>
 
-          {/* Premium brand card */}
-          <div className="bg-white/90 backdrop-blur-2xl rounded-[32px] shadow-elevated border border-white/30 overflow-hidden animate-tilt-in">
-            {/* Decorative top gradient */}
-            <div className="h-[3px] bg-gradient-to-r from-transparent via-primary to-accent via-primary to-transparent" />
+            <h1 className="text-4xl font-bold font-sans text-text-primary tracking-tight leading-[1.08] mb-2">
+              Sri Rama
+            </h1>
+            <p className="text-sm text-text-secondary font-medium mb-7 leading-relaxed">
+              Hostel management for real life — rent tracking, maintenance requests, and resident records under one roof.
+            </p>
 
-            <div className="p-10 md:p-12">
-              {/* Arched logo */}
-              <div className="flex justify-center lg:justify-start mb-10">
-                <div className="relative w-20 h-[90px] group">
-                  <div className="absolute inset-0 bg-primary rounded-[10px] rounded-b-[24px] shadow-xl shadow-primary/30 group-hover:shadow-2xl group-hover:shadow-primary/40 transition-shadow duration-500">
-                    <div className="absolute inset-0 rounded-[10px] rounded-b-[24px] bg-gradient-to-b from-white/10 to-transparent" />
+            <div className="space-y-3.5">
+              {[
+                { title: "Rent & billing", desc: "Monthly invoices, due reminders, payment history." },
+                { title: "Maintenance", desc: "Residents submit requests; you track and close them." },
+                { title: "Resident records", desc: "Room assignments, contact info, move-in dates." },
+              ].map((item) => (
+                <div key={item.title} className="flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-primary/60 mt-2 shrink-0" />
+                  <div>
+                    <p className="text-[13px] font-semibold text-text-primary">{item.title}</p>
+                    <p className="text-xs text-text-secondary/70">{item.desc}</p>
                   </div>
-                  <div className="absolute top-[3px] left-[5px] right-[5px] h-[6px] bg-white/15 rounded-t-[6px]"></div>
-                  <MdHome className="text-3xl text-white absolute inset-0 m-auto z-10" />
-                  {/* Glow ring */}
-                  <div className="absolute -inset-4 rounded-full bg-primary/10 animate-glow-pulse pointer-events-none" />
                 </div>
-              </div>
+              ))}
+            </div>
 
-              <h1 className="text-[2.75rem] md:text-[3.25rem] font-bold font-display text-text-primary tracking-tight leading-[1.03] mb-3 text-center lg:text-left">
-                Sri Rama
-              </h1>
-              <p className="text-base text-text-secondary/80 font-medium mb-10 leading-relaxed text-center lg:text-left">
-                Hostel management crafted with care — rent tracking, maintenance, and resident records under one roof.
+            <div className="mt-8 pt-6 border-t border-border">
+              <p className="text-xs text-text-secondary/50 font-medium text-center">
+                Built for hostel owners, by people who run hostels.
               </p>
-
-              {/* Feature highlights */}
-              <div className="space-y-4">
-                {[
-                  { title: "Rent & billing", desc: "Monthly invoices, due reminders, payment history." },
-                  { title: "Maintenance", desc: "Residents submit requests; you track and close them." },
-                  { title: "Resident records", desc: "Room assignments, contact info, move-in dates." },
-                ].map((item, i) => (
-                  <div key={i} className="group flex items-start gap-4 p-3.5 rounded-[16px] hover:bg-primary/5 transition-all duration-300" style={{ animationDelay: `${i * 0.1 + 0.3}s` }}>
-                    <div className="w-1 h-10 rounded-full bg-primary/30 mt-0.5 shrink-0 group-hover:h-12 transition-all duration-300" />
-                    <div>
-                      <p className="text-sm font-semibold text-text-primary">{item.title}</p>
-                      <p className="text-xs text-text-secondary/70 mt-0.5">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Ornamental footer */}
-              <div className="mt-10 pt-6 border-t border-border/40">
-                <p className="text-[11px] text-text-tertiary/50 font-medium text-center italic font-display">
-                  Built for hostel owners, by people who run hostels.
-                </p>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ═══ LOGIN FORM — Premium glass card ═══ */}
+      {/* ═══ LOGIN FORM ═══ */}
       <div className="w-full lg:w-[45%] flex items-center justify-center p-6 md:p-12 relative z-10">
-        <div className="w-full max-w-sm">
+        <div className="w-full max-w-sm animate-slide-up">
+
           {/* Mobile brand */}
-          <div className="lg:hidden text-center mb-12 animate-fade-in">
-            <div className="relative w-16 h-[72px] flex items-center justify-center mx-auto mb-5">
-              <div className="absolute inset-0 bg-primary rounded-[8px] rounded-b-[20px] shadow-xl shadow-primary/30">
-                <div className="absolute inset-0 rounded-[8px] rounded-b-[20px] bg-gradient-to-b from-white/10 to-transparent" />
-              </div>
-              <div className="absolute top-[2px] left-[4px] right-[4px] h-[5px] bg-white/15 rounded-t-[5px]"></div>
-              <MdHome className="text-xl text-white relative z-10" />
+          <div className="lg:hidden text-center mb-12">
+            <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-md">
+              <MdHome className="text-2xl text-white" />
             </div>
-            <h1 className="text-3xl font-bold font-display text-text-primary tracking-tight">
+            <h1 className="text-3xl font-bold font-sans text-text-primary tracking-tight">
               Sri Rama
             </h1>
-            <p className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.2em] mt-1">
+            <p className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.15em] mt-1">
               Hostel Management
             </p>
           </div>
 
           {/* Desktop title */}
-          <div className="hidden lg:block mb-10 animate-reveal" style={{ animationDelay: '0.2s' }}>
-            <h2 className="text-[1.75rem] font-bold font-display tracking-tight mb-1 text-text-primary leading-[1.08]">Welcome back</h2>
-            <p className="text-sm text-text-secondary">Sign in to your dashboard</p>
+          <div className="hidden lg:block mb-10">
+            <h2 className="text-[1.75rem] font-bold font-sans tracking-tight mb-1 text-text-primary leading-[1.08]">Sign in</h2>
+            <p className="text-sm text-text-secondary">to your hostel dashboard</p>
           </div>
 
-          <div className="space-y-8" style={{ animation: 'reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards', animationDelay: '0.3s', opacity: 0 }}>
+          <div className="space-y-8">
 
             {/* Role switcher */}
             <div className="flex bg-white p-1 rounded-[16px] gap-1 border border-border/60 shadow-sm">
@@ -473,7 +418,7 @@ const Login = () => {
                     <MdArrowBack size={18} />
                   </button>
                   <div>
-                    <p className="text-sm font-bold font-display text-text-primary">Set your password</p>
+                    <p className="text-sm font-bold font-sans text-text-primary">Set your password</p>
                     <p className="text-[10px] text-text-secondary">{countryCode} {phone}</p>
                   </div>
                 </div>
