@@ -115,18 +115,8 @@ const DashboardLayout = () => {
 
       {/* ═══ DESKTOP SIDEBAR ═══ */}
       <nav className="hidden lg:flex fixed left-0 top-0 h-full z-50 flex-col items-center py-5 px-3 gap-1 bg-surface/90 backdrop-blur-xl border-r border-border">
-        {/* Brand */}
-        <Link
-          to={links[0]?.to || "/"}
-          className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center mb-6 shadow-md hover:shadow-lg hover:scale-105 transition-all duration-300"
-        >
-          <MdHome className="text-xl text-white" />
-        </Link>
-
-        <div className="w-8 h-px bg-border mb-3" />
-
         {/* Nav items */}
-        <div className="flex-1 flex flex-col items-center gap-1.5">
+        <div className="flex-1 flex flex-col items-center gap-1.5 mt-4">
           {links.map((link) => {
             const active = location.pathname === link.to;
             return (

@@ -295,8 +295,10 @@ const Login = () => {
                     <input
                       required
                       type="text"
+                      inputMode="numeric"
+                      autoFocus
                       maxLength="6"
-                      className="field-input pl-11 tracking-[0.5em] text-center font-bold"
+                      className="field-input pl-11 tracking-[0.5em] text-center font-bold text-2xl"
                       placeholder="000000"
                       value={ownerOtp}
                       onChange={(e) => setOwnerOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
