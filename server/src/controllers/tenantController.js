@@ -127,7 +127,8 @@ export const listComplaints = asyncHandler(async (req, res) => {
   const complaints = await Complaint.find(query)
     .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone roomId")
     .populate("roomId", "roomNumber")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(50);
   return success(res, complaints);
 });
 
@@ -215,7 +216,7 @@ export const createPaymentOrder = asyncHandler(async (req, res) => {
   const payment = await Payment.findOne({ _id: paymentId, tenantId: req.user.id });
   
   if (!payment) throw new AppError("Payment not found", 404);
-  if (payment.status === "paid") throw new AppError("Payment already completed", 400);
+  if (payment.paymentStatus === "paid") throw new AppError("Payment already completed", 400);
 
   const amountInPaise = Math.round(payment.totalAmount * 100);
   
@@ -271,11 +272,11 @@ export const verifyPayment = asyncHandler(async (req, res) => {
       payment.bedId = tenant.bedId;
     }
 
-    payment.status = "paid";
+    payment.paymentStatus = "paid";
     payment.paidDate = new Date();
     payment.paymentMethod = "upi";
     payment.receiptNumber = razorpay_payment_id || `pay_mock_${crypto.randomBytes(8).toString("hex")}`;
-    
+
     payment.razorpay_order_id = razorpay_order_id;
     payment.razorpay_payment_id = razorpay_payment_id || `pay_mock_${crypto.randomBytes(8).toString("hex")}`;
     payment.razorpay_signature = razorpay_signature || "mock_signature";
@@ -305,11 +306,11 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     payment.bedId = tenant.bedId;
   }
 
-  payment.status = "paid";
+  payment.paymentStatus = "paid";
   payment.paidDate = new Date();
   payment.paymentMethod = "upi";
   payment.receiptNumber = razorpay_payment_id;
-  
+
   // Save Razorpay fields on Payment
   payment.razorpay_order_id = razorpay_order_id;
   payment.razorpay_payment_id = razorpay_payment_id;

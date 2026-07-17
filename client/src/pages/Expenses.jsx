@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 import {
   MdAdd, MdDelete, MdEdit, MdClose, MdSearch,
   MdAttachMoney, MdTrendingDown, MdReceipt,
@@ -34,6 +35,7 @@ const CATEGORY_ICONS = {
 const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "card", "other"];
 
 const Expenses = () => {
+  const { user } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +78,7 @@ const Expenses = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, [categoryFilter, debouncedSearch]);
+  useEffect(() => { fetchData(); }, [categoryFilter, debouncedSearch, user?.hostelId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

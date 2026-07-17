@@ -461,8 +461,8 @@ const RoomManagement = () => {
                             key={bed._id}
                             title={
                               isOccupied
-                                ? `Bed ${bed.bedLabel || bed.number} — ${bed.tenantId?.name || bed.tenantId?.personalInfo?.name || "Occupied"} (double-click for details)`
-                                : `Bed ${bed.bedLabel || bed.number} — Available`
+                                ? `Bed ${bed.number} — ${bed.tenantId?.name || bed.tenantId?.personalInfo?.name || "Occupied"} (double-click for details)`
+                                : `Bed ${bed.number} — Available`
                             }
                             onDoubleClick={() => handleBedDoubleClick(bed)}
                             className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${
@@ -580,7 +580,7 @@ const RoomManagement = () => {
               {[
                 { label: "Mobile", value: selectedTenant.phone },
                 { label: "Room", value: selectedTenant.roomId?.roomNumber || "—" },
-                { label: "Bed", value: selectedTenant.bedId?.bedLabel || "—" },
+                { label: "Bed", value: selectedTenant.bedId?.bedNumber || selectedTenant.bedId?.bedLabel || "—" },
                 { label: "Email", value: selectedTenant.email },
                 { label: "Rent", value: `₹${selectedTenant.monthlyRent?.toLocaleString()} /mo`, highlight: true },
               ].map(({ label, value, highlight }) => (

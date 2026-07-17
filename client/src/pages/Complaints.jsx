@@ -44,7 +44,7 @@ const Complaints = () => {
   useEffect(() => {
     if (!user) return;
     fetchComplaints();
-  }, [statusFilter, debouncedSearch, user?.id, user?.role]);
+  }, [statusFilter, debouncedSearch, user?.id, user?.role, user?.hostelId]);
 
   useEffect(() => {
     if (!socket || !user) return;

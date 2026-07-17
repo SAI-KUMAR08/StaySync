@@ -70,15 +70,16 @@ export function derivePaymentStatus(payment, now = new Date()) {
 export async function ensureTenantRentInvoices(tenant, session = null) {
   if (!tenant?.monthlyRent || tenant.monthlyRent <= 0) return [];
 
-  const joinDate = new Date(tenant.joinDate || tenant.createdAt);
+  const joinDate = new Date(tenant.moveInDate || tenant.joinDate || tenant.createdAt);
   const periods = getBillingPeriodsFromJoin(joinDate);
   const opts = session ? { session } : {};
 
   // Single query: find all existing payments for this tenant
-  const existingDocs = await Payment.find(
+  const existingRows = await Payment.find(
     { tenantId: tenant._id },
     { paymentMonth: 1, year: 1, _id: 0 }
-  ).lean().session(session || null).then(rows => new Set(rows.map(r => `${r.paymentMonth}|${r.year}`)));
+  ).session(session || null).lean();
+  const existingDocs = new Set(existingRows.map(r => `${r.paymentMonth}|${r.year}`));
 
   // Gather missing draft payments
   const drafts = periods
@@ -105,7 +106,7 @@ export async function ensureTenantRentInvoices(tenant, session = null) {
   const openPayments = await Payment.find({
     tenantId: tenant._id,
     paymentStatus: { $ne: "paid" },
-  }).lean().session(session || null);
+  }).session(session || null).lean();
 
   const bulkOps = [];
   for (const payment of openPayments) {
@@ -161,15 +162,35 @@ export async function syncPaymentStatusesOnly(ownerId, hostelId) {
  * Full sync: creates missing invoices + refreshes payment statuses.
  * Only call this from the payments page or cron, not from the dashboard.
  */
+/**
+ * Run async tasks with a concurrency limit to avoid overwhelming the DB.
+ */
+async function runWithConcurrency(tasks, limit = 10) {
+  const results = [];
+  const executing = new Set();
+  for (const [index, task] of tasks.entries()) {
+    const p = Promise.resolve().then(() => task(index));
+    results.push(p);
+    executing.add(p);
+    const cleanup = () => executing.delete(p);
+    p.then(cleanup, cleanup);
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+  return Promise.all(results);
+}
+
 export async function syncHostelPaymentStatuses(ownerId, hostelId) {
   // Batch-create invoices per hostel using aggregation
   const activeTenants = await Tenant.find(
     { ownerId, hostelId, isActive: true, monthlyRent: { $gt: 0 } },
-    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, joinDate: 1, createdAt: 1 }
+    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, moveInDate: 1, createdAt: 1 }
   ).lean();
 
-  await Promise.all(
-    activeTenants.map(t => ensureTenantRentInvoices(t))
+  await runWithConcurrency(
+    activeTenants.map((t) => () => ensureTenantRentInvoices(t)),
+    10
   );
 
   // Bulk-update statuses
@@ -179,11 +200,12 @@ export async function syncHostelPaymentStatuses(ownerId, hostelId) {
 export async function ensureHostelRentInvoices(ownerId, hostelId) {
   const tenants = await Tenant.find(
     { ownerId, hostelId, isActive: true, monthlyRent: { $gt: 0 } },
-    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, joinDate: 1, createdAt: 1 }
+    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, moveInDate: 1, createdAt: 1 }
   ).lean();
 
-  await Promise.all(
-    tenants.map(t => ensureTenantRentInvoices(t))
+  await runWithConcurrency(
+    tenants.map((t) => () => ensureTenantRentInvoices(t)),
+    10
   );
 }
 

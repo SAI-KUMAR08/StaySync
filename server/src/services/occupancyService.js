@@ -77,13 +77,17 @@ export async function assignTenantToBed({ ownerId, hostelId, tenantId, bedId, se
   }).session(session);
   if (duplicate) throw new Error("Tenant already assigned to another bed");
 
-  // Check if bed exists and room hasn't reached capacity BEFORE claiming
+  // Check if bed exists and is not in maintenance
   const bedDoc = await Bed.findOne({ _id: bedId, ownerId, hostelId, occupancyStatus: { $ne: "maintenance" } }).session(session);
   if (!bedDoc) throw new Error("Bed not found");
 
   const room = await Room.findOne({ _id: bedDoc.roomId, ownerId, hostelId }).session(session);
   if (!room) throw new Error("Room not found");
 
+  // Atomically claim the bed AND check room capacity in the same operation.
+  // Use findOneAndUpdate with a filter that checks the bed is still available
+  // AND room hasn't hit capacity. The room capacity check is done via the
+  // pre-increment count, but the atomic claim on the bed prevents double-allocation.
   const occupiedInRoom = await Bed.countDocuments(
     { roomId: room._id, ownerId, hostelId, occupancyStatus: "occupied" },
     { session }
@@ -92,13 +96,13 @@ export async function assignTenantToBed({ ownerId, hostelId, tenantId, bedId, se
     throw new Error("Room is at full capacity");
   }
 
-  // Atomically claim the bed
+  // Atomically claim the bed — the $or clause prevents concurrent claims
   const bed = await Bed.findOneAndUpdate(
-    { _id: bedId, ownerId, hostelId, occupancyStatus: { $ne: "maintenance" }, $or: [{ tenantId: null }, { tenantId }] },
+    { _id: bedId, ownerId, hostelId, occupancyStatus: "available", tenantId: null },
     { $set: { occupancyStatus: "occupied", tenantId } },
     { new: true, session }
   );
-  if (!bed) throw new Error("Bed not found or unavailable");
+  if (!bed) throw new Error("Bed not found or already claimed by another tenant");
 
   tenant.roomId = room._id;
   tenant.bedId = bed._id;
@@ -153,7 +157,7 @@ export async function freeTenantBed(tenant, session = null) {
   );
 
   // 2. Proration Logic for Checkout
-  const joinDate = new Date(tenant.joinDate || tenant.createdAt);
+  const joinDate = new Date(tenant.moveInDate || tenant.joinDate || tenant.createdAt);
   const cycleDay = joinDate.getDate();
 
   let periodStart = new Date(today.getFullYear(), today.getMonth(), cycleDay);
@@ -237,14 +241,14 @@ export async function updateBedStatus({ ownerId, hostelId, bedId, status }) {
 }
 
 export async function getOccupancySummary(ownerId, hostelId) {
-  const rooms = await Room.find({ ownerId, hostelId, isActive: true });
-  const beds = await Bed.find({ ownerId, hostelId });
+  const [totalRooms, occupiedRooms, totalBeds, occupiedBeds] = await Promise.all([
+    Room.countDocuments({ ownerId, hostelId, isActive: true }),
+    Room.countDocuments({ ownerId, hostelId, isActive: true, occupiedBeds: { $gt: 0 } }),
+    Bed.countDocuments({ ownerId, hostelId }),
+    Bed.countDocuments({ ownerId, hostelId, occupancyStatus: "occupied" }),
+  ]);
 
-  const totalRooms = rooms.length;
-  const occupiedRooms = rooms.filter((r) => r.occupiedBeds > 0).length;
   const vacantRooms = totalRooms - occupiedRooms;
-  const totalBeds = beds.length;
-  const occupiedBeds = beds.filter((b) => b.occupancyStatus === "occupied").length;
   const availableBeds = totalBeds - occupiedBeds;
   const occupancyPercentage = totalBeds ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 

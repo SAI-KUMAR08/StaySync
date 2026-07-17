@@ -52,8 +52,8 @@ async function buildTenantProfile(tenantOrId) {
     rentAmount: tenant.monthlyRent ?? 0,
     roomDetails: {
       roomId: { number: tenant.roomId?.roomNumber ?? "N/A" },
-      floorId: { number: tenant.floorId?.level ?? tenant.floorId?.name ?? "—" },
-      bedId: { number: tenant.bedId?.bedLabel ?? "—" },
+      floorId: { number: tenant.floorId?.floorNumber ?? "—" },
+      bedId: { number: tenant.bedId?.bedNumber ?? "—" },
     },
   };
 }
@@ -197,6 +197,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
 /**
  * First-time password set WITHOUT OTP verification.
  * Only works when isPasswordSet is false (first login).
+ * SECURITY: Relies on phone number ownership.
  */
 export async function setInitialTenantPassword({ phone, password }) {
   const normalized = normalizePhone(phone);

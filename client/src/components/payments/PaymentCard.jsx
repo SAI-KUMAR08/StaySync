@@ -7,10 +7,10 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
     <div className="flex justify-between items-start mb-6">
       <div>
         <p className="text-[9px] font-bold uppercase tracking-wider text-text-secondary/60 mb-0.5">
-          {payment.month} {payment.year}
+          {payment.paymentMonth || payment.month} {payment.year}
         </p>
         <h5 className="text-3xl font-black font-sans text-text-primary tracking-tighter">
-          ₹{(payment.amount + (payment.fine || 0)).toLocaleString()}
+          ₹{(payment.totalAmount || payment.amount + (payment.fine || 0)).toLocaleString()}
         </h5>
         {payment.fine > 0 && (
           <span className="text-[10px] font-bold text-accent inline-block mt-2 bg-accent-soft px-2 py-1 rounded-lg">

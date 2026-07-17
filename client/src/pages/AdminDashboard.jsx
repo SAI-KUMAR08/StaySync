@@ -12,6 +12,19 @@ import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 
+// ── Trend direction indicator ───
+const TrendBadge = ({ current, previous }) => {
+  if (previous === undefined || previous === null || previous === 0) return null;
+  const pct = ((current - previous) / previous) * 100;
+  if (Math.abs(pct) < 0.01) return null;
+  const isUp = pct > 0;
+  return (
+    <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${isUp ? 'text-emerald-400' : 'text-danger'} bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10`}>
+      <MdTrendingUp size={12} className={isUp ? '' : 'rotate-180'} /> {isUp ? '+' : ''}{pct.toFixed(1)}%
+    </div>
+  );
+};
+
 // ─── Animated counter hook ───
 const useAnimatedNumber = (target, duration = 800) => {
   const [display, setDisplay] = useState(0);
@@ -37,7 +50,7 @@ const useAnimatedNumber = (target, duration = 800) => {
   return display;
 };
 
-const HeroStat = ({ title, value, icon: Icon, subValue, trend, to, prefix = "" }) => {
+const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, to, prefix = "" }) => {
   const isMoney = title.toLowerCase().includes("collection") || title.toLowerCase().includes("revenue");
   const numericVal = isMoney ? parseInt(value?.replace(/[₹,]/g, "") || "0") : parseInt(value) || 0;
   const animated = useAnimatedNumber(numericVal);
@@ -48,6 +61,7 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, to, prefix = "" }
         <div className="w-14 h-14 rounded-[12px] bg-primary flex items-center justify-center shadow-md transition-all duration-300">
           <Icon className="text-2xl text-white" />
         </div>
+        {TrendComponent && <TrendComponent />}
         {trend && (
           <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${trend.startsWith('+') ? 'text-emerald-400' : 'text-danger'} bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10`}>
             <MdTrendingUp size={12} /> {trend}
@@ -174,7 +188,7 @@ const AdminDashboard = () => {
       {/* Bento Grid Stats — ALL cards visible, staggered entrance */}
       <div className="stagger-container grid grid-cols-1 md:grid-cols-4 gap-5">
         {/* Total Residents — Hero card spanning 2 columns */}
-        <HeroStat title="Total Residents" value={stats.totalTenants} icon={MdPeople} trend="+4.2%" subValue="Active" to="/admin/tenants" />
+        <HeroStat title="Total Residents" value={stats.totalTenants} icon={MdPeople} TrendComponent={() => <TrendBadge current={stats.totalTenants} previous={stats.previousTotalTenants} />} subValue="Active" to="/admin/tenants" />
 
         <MiniStat title="Monthly Income" value={stats.monthlyRevenue ?? 0} prefix="₹" icon={MdCurrencyRupee} color="bg-emerald-600" to="/admin/payments" />
         <MiniStat title="Monthly Expenses" value={expenseSummary?.thisMonthTotal ?? 0} prefix="₹" icon={MdReceipt} color="bg-zinc-600" to="/admin/expenses" />

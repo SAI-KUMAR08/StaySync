@@ -16,7 +16,7 @@ export function emitTenantAssigned(req, tenant, bed) {
     tenantId: tenant._id,
     tenantName: tenant.name || tenant.personalInfo?.name,
     bedId: bed?._id,
-    message: `${tenant.name || tenant.personalInfo?.name} assigned to bed ${bed?.bedLabel || ""}`.trim(),
+    message: `${tenant.name || tenant.personalInfo?.name} assigned to bed ${bed?.bedNumber || bed?.bedLabel || ""}`.trim(),
   });
   emitOccupancyUpdate(req, tenant.hostelId);
 }

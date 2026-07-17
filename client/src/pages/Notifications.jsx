@@ -53,7 +53,7 @@ const Notifications = () => {
 
   useEffect(() => {
     fetchNotices();
-  }, [user?.id, user?.role]);
+  }, [user?.id, user?.role, user?.hostelId]);
 
   useEffect(() => {
     if (!socket) return;

@@ -27,7 +27,7 @@ import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
 const router = Router();
 
 router.post("/register", authLimiter, validate(registerSchema), authController.register);
-router.post("/register-owner", authLimiter, validate(registerSchema), authController.register);
+router.post("/register-owner", authLimiter, validate(registerSchema), authController.register); // backward-compat alias
 router.post("/owner/send-otp", authLimiter, validate(ownerSendOtpSchema), authController.sendOwnerOtp);
 router.post("/owner/verify-otp", authLimiter, validate(ownerVerifyOtpSchema), authController.verifyOwnerOtp);
 router.post("/owner/login/send-otp", authLimiter, validate(ownerLoginOtpSchema), authController.sendOwnerLoginOtp);

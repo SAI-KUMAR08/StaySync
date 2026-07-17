@@ -50,10 +50,16 @@ export const AuthProvider = ({ children }) => {
       } else {
         setHostels([]);
       }
-    } catch {
-      sessionStorage.removeItem("token");
-      setUser(null);
-      setHostels([]);
+    } catch (err) {
+      // Only clear auth on real auth failures (401), not transient network errors
+      if (err.response?.status === 401) {
+        sessionStorage.removeItem("token");
+        setUser(null);
+        setHostels([]);
+      } else {
+        // Network/server error — keep the session, user can retry
+        console.warn("fetchUser: non-auth error, retaining session", err.message);
+      }
     } finally {
       setLoading(false);
     }

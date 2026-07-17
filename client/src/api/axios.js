@@ -3,7 +3,7 @@ import { getAxiosBaseURL } from "../config/api.js";
 
 // ── GET response cache (TTL-based, per-URL) ──────────────────
 const cache = new Map();
-const CACHE_TTL = 5000; // 5 seconds
+const CACHE_TTL = 30000; // 30 seconds — balances freshness with avoiding redundant requests
 
 function getCached(url) {
   const entry = cache.get(url);

@@ -9,16 +9,30 @@ function oid(id) {
 }
 
 export async function getDashboardStats(ownerId, hostelId) {
-  const occupancy = await getOccupancySummary(ownerId, hostelId);
+  const now = new Date();
+  const currentMonth = now.toLocaleString("en-US", { month: "long" });
+  const currentYear = now.getFullYear();
 
-  const [activeComplaints, totalTenants, overdueTenants, dues, monthlyRevenue] =
+  // Calculate previous month end for trend comparison
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+  const [occupancy, activeComplaints, totalTenants, previousTotalTenants, overdueTenants, dues, monthlyRevenue] =
     await Promise.all([
+      getOccupancySummary(ownerId, hostelId),
       Complaint.countDocuments({
         ownerId,
         hostelId,
         status: { $in: ["pending", "assigned", "in_progress"] },
       }),
       Tenant.countDocuments({ ownerId, hostelId, isActive: true }),
+      // Active tenants 1 month ago — approximate by subtracting tenants created after last month
+      Tenant.countDocuments({
+        ownerId,
+        hostelId,
+        isActive: true,
+        createdAt: { $lte: prevMonthEnd },
+      }),
       countOverdueTenants(ownerId, hostelId),
       sumOutstandingByStatus(ownerId, hostelId),
       Payment.aggregate([
@@ -27,8 +41,8 @@ export async function getDashboardStats(ownerId, hostelId) {
             ownerId: oid(ownerId),
             hostelId: oid(hostelId),
             paymentStatus: "paid",
-            year: new Date().getFullYear(),
-            paymentMonth: new Date().toLocaleString("en-US", { month: "long" }),
+            year: currentYear,
+            paymentMonth: currentMonth,
           },
         },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
@@ -39,13 +53,13 @@ export async function getDashboardStats(ownerId, hostelId) {
     ...occupancy,
     vacantBeds: occupancy.availableBeds,
     totalTenants,
+    previousTotalTenants,
     activeComplaints,
     overdueTenants,
     overduePayments: dues.overdueCount,
     unpaidPayments: dues.unpaidCount,
     overdueAmount: dues.overdueAmount,
     unpaidAmount: dues.unpaidAmount,
-    pendingPayments: dues.unpaidAmount + dues.overdueAmount,
     monthlyRevenue: monthlyRevenue[0]?.total ?? 0,
   };
 }

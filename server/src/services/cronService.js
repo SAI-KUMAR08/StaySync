@@ -7,86 +7,100 @@ export const initCronJobs = () => {
   cron.schedule("0 0 * * *", async () => {
     console.log("🕒 Running daily rent generation & late fee engine...");
     try {
-      // 1. Rent Generation — iterate per hostel to ensure tenant scoping
-      const hostels = await Hostel.find({ isActive: true });
-      let rentCount = 0;
-
       const now = new Date();
       const currentDay = now.getDate();
       const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const monthStr = now.toLocaleString("default", { month: "long" });
       const year = now.getFullYear();
 
+      // 1. Rent Generation — batch-find all tenants whose billing anniversary is today
+      const hostels = await Hostel.find({ isActive: true }).lean();
+      let rentCount = 0;
+
       for (const hostel of hostels) {
-        const activeTenantsCursor = Tenant.find({ isActive: true, ownerId: hostel.ownerId, hostelId: hostel._id }).cursor();
+        // Find active tenants whose join date anniversary matches today
+        const tenants = await Tenant.find({
+          isActive: true,
+          ownerId: hostel.ownerId,
+          hostelId: hostel._id,
+          monthlyRent: { $gt: 0 },
+        }).select("_id ownerId hostelId bedId monthlyRent moveInDate createdAt").lean();
 
-        for (let tenant = await activeTenantsCursor.next(); tenant != null; tenant = await activeTenantsCursor.next()) {
-          if (!tenant.monthlyRent || tenant.monthlyRent <= 0) continue;
-
-          const joinDate = new Date(tenant.joinDate || tenant.createdAt);
+        const toCreate = [];
+        for (const tenant of tenants) {
+          const joinDate = new Date(tenant.moveInDate || tenant.createdAt);
           const anniversaryDay = joinDate.getDate();
-
           const isAnniversary =
             currentDay === anniversaryDay ||
             (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
 
-          if (isAnniversary) {
-            const exists = await Payment.findOne({
+          if (!isAnniversary) continue;
+
+          // Check if payment already exists for this period
+          const exists = await Payment.findOne({
+            tenantId: tenant._id,
+            paymentMonth: monthStr,
+            year,
+          }).select("_id").lean();
+
+          if (!exists) {
+            const dueDate = new Date(now);
+            dueDate.setDate(dueDate.getDate() + 5);
+            toCreate.push({
+              ownerId: hostel.ownerId,
+              hostelId: hostel._id,
               tenantId: tenant._id,
+              bedId: tenant.bedId,
+              amount: tenant.monthlyRent,
+              fineAmount: 0,
+              totalAmount: tenant.monthlyRent,
               paymentMonth: monthStr,
-              year
+              year,
+              dueDate,
+              paymentStatus: "unpaid",
+              notes: `Monthly rent for cycle starting ${now.toDateString()}`,
             });
+          }
+        }
 
-            if (!exists) {
-              const dueDate = new Date(now);
-              dueDate.setDate(dueDate.getDate() + 5); // 5 days to pay
+        if (toCreate.length > 0) {
+          const createdPayments = await Payment.insertMany(toCreate);
+          rentCount += createdPayments.length;
 
-              const payment = await Payment.create({
-                ownerId: tenant.ownerId,
-                hostelId: tenant.hostelId,
-                tenantId: tenant._id,
-                bedId: tenant.bedId,
-                amount: tenant.monthlyRent,
-                fineAmount: 0,
-                totalAmount: tenant.monthlyRent,
-                paymentMonth: monthStr,
-                year,
-                dueDate,
-                paymentStatus: "unpaid",
-                notes: `Monthly rent for cycle starting ${now.toDateString()}`,
-              });
-
-              await logActivity({
-                ownerId: tenant.ownerId,
-                hostelId: tenant.hostelId,
-                actorId: tenant.ownerId,
+          // Log activities in batch
+          await Promise.all(
+            createdPayments.map((payment) =>
+              logActivity({
+                ownerId: hostel.ownerId,
+                hostelId: hostel._id,
+                actorId: hostel.ownerId,
                 actorRole: "system",
                 action: "rent_generated",
                 entityType: "payment",
                 entityId: payment._id,
-              });
-
-              rentCount++;
-            }
-          }
+              })
+            )
+          );
         }
       }
 
-      // 2. Late Fee Application — per hostel for scoped processing
+      console.log(`✅ Created ${rentCount} new rent invoices today.`);
+
+      // 2. Late Fee Application — batch update per hostel
       let lateCount = 0;
       const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       for (const hostel of hostels) {
-        const unpaidPaymentsCursor = Payment.find({
+        const unpaidPayments = await Payment.find({
           ownerId: hostel.ownerId,
           hostelId: hostel._id,
           paymentStatus: { $in: ["unpaid", "overdue"] },
-        }).cursor();
+        }).select("_id dueDate amount fineAmount totalAmount paymentStatus").lean();
 
-        for (let payment = await unpaidPaymentsCursor.next(); payment != null; payment = await unpaidPaymentsCursor.next()) {
+        const bulkOps = [];
+        for (const payment of unpaidPayments) {
           const dueDate = new Date(payment.dueDate);
           const dueMidnight = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-
           const diffTime = todayMidnight - dueMidnight;
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
@@ -95,21 +109,34 @@ export const initCronJobs = () => {
             const dailyRate = hostel.lateFeeDailyRate ?? 50;
 
             if (diffDays > graceDays) {
-              // Cap late fee at 50% of rent amount to prevent runaway charges
               const rawFine = diffDays * dailyRate;
-              const maxFine = Math.max(payment.amount * 0.5, 0);
-              const fineAmount = Math.min(rawFine, maxFine);
+              const capFine = payment.amount * 0.5; // 50% of base rent max
+              const fineAmount = Math.min(rawFine, capFine);
+
               if (payment.fineAmount !== fineAmount || payment.paymentStatus !== "overdue") {
-                payment.fineAmount = fineAmount;
-                payment.totalAmount = payment.amount + fineAmount;
-                payment.paymentStatus = "overdue";
-                await payment.save();
+                bulkOps.push({
+                  updateOne: {
+                    filter: { _id: payment._id },
+                    update: {
+                      $set: {
+                        fineAmount,
+                        totalAmount: payment.amount + fineAmount,
+                        paymentStatus: "overdue",
+                      },
+                    },
+                  },
+                });
                 lateCount++;
               }
             }
           }
         }
+
+        if (bulkOps.length > 0) {
+          await Payment.bulkWrite(bulkOps);
+        }
       }
+
       console.log(`✅ Updated ${lateCount} overdue invoices with late fees today.`);
     } catch (error) {
       console.error("❌ Error in cron engine:", error);

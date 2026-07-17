@@ -4,6 +4,7 @@ import { MdPayment, MdHistory, MdCheckCircle, MdWarning, MdLock, MdLocalOffer } 
 import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
+import { useAuth } from "../../context/AuthContext";
 import { getApiError } from "../../utils/getApiError";
 import PaymentCard from "./PaymentCard";
 
@@ -20,6 +21,7 @@ const TenantPayments = () => {
   const [error, setError] = useState(null);
   const [processing, setProcessing] = useState(false);
   const { socket } = useSocket();
+  const { user } = useAuth();
 
   const fetchPayments = async () => {
     setError(null);
@@ -30,7 +32,7 @@ const TenantPayments = () => {
       const grouped = data.grouped ?? {};
       setOverdue((grouped.overdue ?? []).map(mapPayment));
       setUnpaid((grouped.unpaid ?? []).map(mapPayment));
-      setPaid((grouped.paid ?? data.payments?.filter((p) => p.status === "paid") ?? []).map(mapPayment));
+      setPaid((grouped.paid ?? data.payments?.filter((p) => (p.paymentStatus || p.status) === "paid") ?? []).map(mapPayment));
     } catch (error) {
       setError(error.response?.data?.message || "Failed to load payments");
       toast.error(getApiError(error));
@@ -113,9 +115,9 @@ const TenantPayments = () => {
           }
         },
         prefill: {
-          name: "Resident",
-          email: "resident@srirama.com",
-          contact: "9999999999",
+          name: user?.name || user?.personalInfo?.name || "Resident",
+          email: user?.email || user?.personalInfo?.email || "",
+          contact: user?.phone || user?.personalInfo?.phone || "",
         },
         theme: { color: "#B45309" },
       };
@@ -249,8 +251,8 @@ const TenantPayments = () => {
                     <MdCheckCircle size={22} />
                   </div>
                   <div>
-                    <p className="font-bold text-text-primary">{p.month} {p.year}</p>
-                    <p className="text-sm text-text-secondary">₹{(p.amount + (p.fine || 0)).toLocaleString()}</p>
+                    <p className="font-bold text-text-primary">{p.paymentMonth || p.month} {p.year}</p>
+                    <p className="text-sm text-text-secondary">₹{(p.totalAmount || p.amount + (p.fine || 0)).toLocaleString()}</p>
                   </div>
                 </div>
                 <span className="badge-emerald text-[9px]">Paid</span>

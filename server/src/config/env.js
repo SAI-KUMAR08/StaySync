@@ -34,7 +34,10 @@ const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
   console.error("Invalid environment variables:", parsed.error.flatten().fieldErrors);
-  // Don't process.exit in serverless — let handler return a clear error instead
+  // Don't process.exit in serverless (Vercel) — let handler return a clear error instead
+  if (!process.env.VERCEL) {
+    throw new Error("Environment validation failed. Check your .env file.");
+  }
 }
 
 /** Resolve MONGO_URI from MONGO_URI or fallback MONGO_URL */

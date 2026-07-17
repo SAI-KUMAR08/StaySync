@@ -174,7 +174,6 @@ export const getDashboard = asyncHandler(async (req, res) => {
   ]);
   
   // Match the frontend property names
-  stats.pendingPayments = stats.overduePayments;
   stats.totalTenants = stats.occupiedBeds; // Approximating since each bed = 1 tenant
 
   // Mask financial data if manager
@@ -182,7 +181,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
     stats.monthlyRevenue = 0;
     stats.overdueAmount = 0;
     stats.unpaidAmount = 0;
-    stats.pendingPayments = 0;
+    stats.overduePayments = 0;
     // Mask chart payments
     if (payments && Array.isArray(payments)) {
       payments.forEach((p) => {
@@ -401,7 +400,7 @@ export const createTenant = asyncHandler(async (req, res) => {
   if (!bed) throw new AppError("Bed not found", 404);
   if (room.floorId?.toString() !== floorId) throw new AppError("Room does not belong to the selected floor", 400);
   if (bed.roomId?.toString() !== roomId) throw new AppError("Bed does not belong to the selected room", 400);
-  if (bed.status !== "available" || bed.tenantId) throw new AppError("Bed is already occupied", 409);
+  if (bed.occupancyStatus !== "available" || bed.tenantId) throw new AppError("Bed is already occupied", 409);
 
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -582,7 +581,8 @@ export const listComplaints = asyncHandler(async (req, res) => {
   const complaints = await Complaint.find(query)
     .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone roomId")
     .populate("roomId", "roomNumber")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .limit(100);
   return success(res, complaints);
 });
 
@@ -653,7 +653,8 @@ export const listPayments = asyncHandler(async (req, res) => {
         { path: "bedId", select: "bedNumber" },
       ],
     })
-    .sort({ dueDate: -1 });
+    .sort({ dueDate: -1 })
+    .limit(200);
   return success(res, payments);
 });
 
@@ -694,22 +695,36 @@ export const updatePayment = asyncHandler(async (req, res) => {
   if (effectiveStatus === "paid" && !updates.paidDate) {
     updates.paidDate = new Date();
   }
-  if (updates.fineAmount !== undefined) {
-    payment.fineAmount = updates.fineAmount;
-    payment.totalAmount = payment.amount + payment.fineAmount;
-  }
-  // Normalize to actual DB field names before assign
+  // Normalize alias field names to actual DB schema names
   if (updates.paymentStatus === undefined && updates.status) {
     updates.paymentStatus = updates.status;
   }
   delete updates.status;
-  Object.assign(payment, updates);
-  await payment.save();
-  return success(res, payment);
+
+  // Compute new totalAmount if fineAmount changes
+  if (updates.fineAmount !== undefined) {
+    payment.fineAmount = updates.fineAmount;
+    payment.totalAmount = payment.amount + payment.fineAmount;
+    await payment.save();
+  } else {
+    await payment.set(updates).save();
+  }
+
+  // Re-fetch to return the up-to-date document with populated references
+  const updated = await Payment.findById(payment._id).populate({
+    path: "tenantId",
+    select: "personalInfo.name personalInfo.email personalInfo.phone monthlyRent roomId floorId bedId",
+    populate: [
+      { path: "roomId", select: "roomNumber" },
+      { path: "floorId", select: "floorName floorNumber" },
+      { path: "bedId", select: "bedNumber" },
+    ],
+  });
+  return success(res, updated);
 });
 
 export const listNotices = asyncHandler(async (req, res) => {
-  const notices = await Notice.find(filter(req)).sort({ createdAt: -1 });
+  const notices = await Notice.find(filter(req)).sort({ createdAt: -1 }).limit(100);
   return success(res, notices);
 });
 

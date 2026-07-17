@@ -345,7 +345,7 @@ const OwnerOnboarding = () => {
         otp,
       });
       await loginVerifiedOwner(res.data.data.user, res.data.data.accessToken);
-      toast.success("Mobile number verified successfully!");
+      toast.success("Email verified successfully!");
       setShowOtpModal(false);
       setStep(2);
     } catch (error) {

@@ -97,12 +97,12 @@ const AdminPayments = () => {
   const currentYear = now.getFullYear();
   const stats = {
     total: payments.reduce((acc, p) => {
-      if (p.status !== "paid") return acc;
-      if (p.month !== currentMonth || p.year !== currentYear) return acc;
-      return acc + p.amount + (p.fine || 0);
+      if (p.paymentStatus !== "paid" && p.status !== "paid") return acc;
+      if ((p.paymentMonth || p.month) !== currentMonth || p.year !== currentYear) return acc;
+      return acc + (p.totalAmount || p.amount) + (p.fine || 0);
     }, 0),
-    pending: payments.filter((p) => p.status === "unpaid").length,
-    overdue: payments.filter((p) => p.status === "overdue").length,
+    pending: payments.filter((p) => (p.paymentStatus || p.status) === "unpaid").length,
+    overdue: payments.filter((p) => (p.paymentStatus || p.status) === "overdue").length,
   };
 
   if (error && payments.length === 0) return <ErrorRetry message={error} onRetry={fetchPayments} />;
@@ -180,7 +180,7 @@ const AdminPayments = () => {
                 </td>
                 <td>
                   <div className="space-y-0.5">
-                    <p className="font-bold text-text-primary text-base tracking-tight">₹{(p.amount + (p.fine || 0)).toLocaleString()}</p>
+                    <p className="font-bold text-text-primary text-base tracking-tight">₹{(p.totalAmount || p.amount + (p.fine || 0)).toLocaleString()}</p>
                     {p.fine > 0 && <p className="text-[9px] text-[#C62828] font-bold tracking-wider uppercase">+ ₹{p.fine} Fine</p>}
                   </div>
                 </td>
@@ -193,12 +193,12 @@ const AdminPayments = () => {
                 <td>
                   <div className="flex items-center gap-2">
                     <span className={`badge ${
-                      p.status === 'paid' ? 'badge-emerald' :
-                      p.status === 'overdue' ? 'badge-accent' : 'badge-amber'
+                      (p.paymentStatus || p.status) === 'paid' ? 'badge-emerald' :
+                      (p.paymentStatus || p.status) === 'overdue' ? 'badge-accent' : 'badge-amber'
                     }`}>
-                      {p.status}
+                      {p.paymentStatus || p.status}
                     </span>
-                    {p.status === "paid" && (
+                    {(p.paymentStatus || p.status) === "paid" && (
                       <span className="badge bg-surface text-text-secondary border-border/50">
                         {(p.paymentMethod || "upi").includes("cash") ? "Cash" : "UPI"}
                       </span>
@@ -207,7 +207,7 @@ const AdminPayments = () => {
                 </td>
                 <td className="text-right">
                   <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {p.status !== 'paid' && (
+                    {(p.paymentStatus || p.status) !== 'paid' && (
                       <>
                         <button onClick={() => handleStatusUpdate(p._id, "paid")}
                           className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl hover:bg-emerald-500 hover:text-white transition-all">

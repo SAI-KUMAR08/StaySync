@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -32,10 +32,10 @@ const TenantDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const overdueDues = payments.reduce((sum, p) => sum + (p.status === "overdue" ? p.amount : 0), 0);
-  const unpaidDues = payments.reduce((sum, p) => sum + (p.status !== "paid" && p.status !== "overdue" ? p.amount : 0), 0);
+  const overdueDues = payments.reduce((sum, p) => sum + ((p.paymentStatus || p.status) === "overdue" ? (p.totalAmount || p.amount) : 0), 0);
+  const unpaidDues = payments.reduce((sum, p) => sum + ((p.paymentStatus || p.status) !== "paid" && (p.paymentStatus || p.status) !== "overdue" ? (p.totalAmount || p.amount) : 0), 0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setError(null);
     try {
       const [notifRes, compRes, payRes, roomRes] = await Promise.all([
@@ -52,19 +52,22 @@ const TenantDashboard = () => {
       console.error(err);
       setError(err.response?.data?.message || "Failed to load dashboard");
     } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
     if (!socket) return;
-    socket.on("payment_completed", () => fetchData());
-    socket.on("complaint_updated", () => fetchData());
-    socket.on("new_notification", () => fetchData());
-    return () => {
-      ["payment_completed", "complaint_updated", "new_notification"].forEach(e => socket.off(e));
+    const handlers = {
+      payment_completed: () => fetchData(),
+      complaint_updated: () => fetchData(),
+      new_notification: () => fetchData(),
     };
-  }, [socket]);
+    Object.entries(handlers).forEach(([event, fn]) => socket.on(event, fn));
+    return () => {
+      Object.entries(handlers).forEach(([event, fn]) => socket.off(event, fn));
+    };
+  }, [socket, fetchData]);
 
   if (error) return <ErrorRetry message={error} onRetry={fetchData} />;
   if (loading) return (
@@ -102,10 +105,10 @@ const TenantDashboard = () => {
       {/* Stats - staggered */}
       <div className="stagger-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
         {[
-          { label: "Assigned Unit", value: `Room ${roomDetails?.room?.roomNumber || roomDetails?.room?.number || user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${roomDetails?.room?.floor || roomDetails?.floorId?.number || user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-primary" },
+          { label: "Assigned Unit", value: `Room ${roomDetails?.room?.roomNumber || roomDetails?.room?.number || user?.roomDetails?.roomId?.number || 'N/A'}`, sub: `Floor ${roomDetails?.room?.floor || roomDetails?.floorId?.number || roomDetails?.floorId?.floorNumber || user?.roomDetails?.floorId?.number || '0'}`, icon: MdMeetingRoom, color: "bg-primary" },
           { label: "Base Rent", value: `₹${(roomDetails?.room?.pricing || roomDetails?.room?.monthlyRent || user?.rentAmount || 0).toLocaleString()}`, sub: "Monthly cycle", icon: MdAttachMoney, color: "bg-emerald-600" },
-          { label: "Overdue", value: `₹${overdueDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status === "overdue").length} month(s)`, icon: MdAssignment, color: "bg-accent" },
-          { label: "Unpaid", value: `₹${unpaidDues.toLocaleString()}`, sub: `${payments.filter((p) => p.status !== "paid" && p.status !== "overdue").length} bill(s)`, icon: MdAttachMoney, color: "bg-amber-600" },
+          { label: "Overdue", value: `₹${overdueDues.toLocaleString()}`, sub: `${payments.filter((p) => (p.paymentStatus || p.status) === "overdue").length} month(s)`, icon: MdAssignment, color: "bg-accent" },
+          { label: "Unpaid", value: `₹${unpaidDues.toLocaleString()}`, sub: `${payments.filter((p) => (p.paymentStatus || p.status) !== "paid" && (p.paymentStatus || p.status) !== "overdue").length} bill(s)`, icon: MdAttachMoney, color: "bg-amber-600" },
           { label: "Support", value: complaints.filter(c => c.status !== 'resolved').length, sub: "Active tickets", icon: MdReportProblem, color: "bg-zinc-600" },
         ].map((card, i) => (
           <div key={card.label} className={i % 2 === 0 ? 'stagger-left' : 'stagger-right'} style={{ animationDelay: `${i * 0.08}s` }}>
@@ -148,22 +151,22 @@ const TenantDashboard = () => {
                   <div key={p._id} className="stagger-enter" style={{ animationDelay: `${i * 0.05}s` }}>
                     <div className="flex items-center justify-between p-4 rounded-2xl bg-surface hover:bg-surface-hover border border-transparent hover:border-border/50 transition-all group">
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center text-lg ${p.status === 'paid' ? 'bg-emerald-500/10 text-success' : 'bg-accent-soft text-primary'}`}>
+                        <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center text-lg ${(p.paymentStatus || p.status) === 'paid' ? 'bg-emerald-500/10 text-success' : 'bg-accent-soft text-primary'}`}>
                           <MdAttachMoney />
                         </div>
                         <div>
-                          <p className="font-semibold text-text-primary text-sm leading-none mb-1">{p.month} {p.year}</p>
+                          <p className="font-semibold text-text-primary text-sm leading-none mb-1">{p.paymentMonth || p.month} {p.year}</p>
                           <p className="text-[8px] font-medium text-text-secondary uppercase tracking-wider">
-                            {p.status === 'paid' ? `Paid on ${new Date(p.paidDate || p.updatedAt).toLocaleDateString()}` : `${p.status} — due ${new Date(p.dueDate).toLocaleDateString()}`}
+                            {(p.paymentStatus || p.status) === 'paid' ? `Paid on ${new Date(p.paidDate || p.updatedAt).toLocaleDateString()}` : `${p.paymentStatus || p.status} — due ${new Date(p.dueDate).toLocaleDateString()}`}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-black font-sans text-text-primary text-sm">₹{p.amount?.toLocaleString()}</p>
                         <span className={`badge mt-1 !text-[7px] ${
-                          p.status === 'paid' ? 'badge-emerald' : p.status === 'overdue' ? 'badge-accent' : 'badge-amber'
+                          (p.paymentStatus || p.status) === 'paid' ? 'badge-emerald' : (p.paymentStatus || p.status) === 'overdue' ? 'badge-accent' : 'badge-amber'
                         }`}>
-                          {p.status}
+                          {p.paymentStatus || p.status}
                         </span>
                       </div>
                     </div>
