@@ -173,7 +173,7 @@ const Login = () => {
               <MdHome className="text-2xl text-white" />
             </div>
 
-            <h1 className="text-4xl font-bold font-sans text-text-primary tracking-tight leading-[1.08] mb-2">
+            <h1 className="text-4xl font-bold font-display text-text-primary tracking-tight leading-[1.08] mb-2">
               Sri Rama
             </h1>
             <p className="text-sm text-text-secondary font-medium mb-7 leading-relaxed">
@@ -214,7 +214,7 @@ const Login = () => {
             <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-md">
               <MdHome className="text-2xl text-white" />
             </div>
-            <h1 className="text-3xl font-bold font-sans text-text-primary tracking-tight">
+            <h1 className="text-3xl font-bold font-display text-text-primary tracking-tight">
               Sri Rama
             </h1>
             <p className="text-[10px] text-text-secondary font-medium uppercase tracking-[0.15em] mt-1">
@@ -224,7 +224,7 @@ const Login = () => {
 
           {/* Desktop title */}
           <div className="hidden lg:block mb-10">
-            <h2 className="text-[1.75rem] font-bold font-sans tracking-tight mb-1 text-text-primary leading-[1.08]">Sign in</h2>
+            <h2 className="text-[1.75rem] font-bold font-display tracking-tight mb-1 text-text-primary leading-[1.08]">Sign in</h2>
             <p className="text-sm text-text-secondary">to your hostel dashboard</p>
           </div>
 
