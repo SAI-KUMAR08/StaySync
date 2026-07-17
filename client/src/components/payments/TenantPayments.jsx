@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
-import { MdPayment, MdHistory, MdCheckCircle, MdWarning, MdLock, MdLocalOffer } from "react-icons/md";
+import { MdPayment, MdHistory, MdCheckCircle, MdWarning } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
@@ -189,54 +189,6 @@ const TenantPayments = () => {
           <p className="text-[#2E7D32] font-bold">All caught up — no pending rent.</p>
         </div>
       )}
-
-      {/* 🪙 Razorpay Online Payment Gateway */}
-      <section className="space-y-4">
-        <h4 className="text-[9px] font-black text-text-secondary uppercase tracking-wider pl-3 flex items-center gap-2">
-          <MdLock size={14} /> Online Payment
-        </h4>
-        <div className="bento-card overflow-hidden bg-surface">
-          <div className="p-6 md:p-8 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-5">
-              <MdPayment className="text-4xl text-primary" />
-            </div>
-            <h3 className="text-2xl font-black font-sans text-text-primary tracking-tight mb-2">
-              Pay Rent Online
-            </h3>
-            <p className="text-text-secondary text-sm max-w-md mx-auto mb-6">
-              Pay your hostel fees securely through our Razorpay-powered payment gateway.
-              Credit cards, debit cards, UPI, and net banking accepted.
-            </p>
-
-            {/* Razorpay Branding */}
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <div className="flex items-center gap-2 px-4 py-2 bg-[#02042B] rounded-xl shadow-md">
-                <svg viewBox="0 0 100 30" className="h-6" fill="white" xmlns="http://www.w3.org/2000/svg">
-                  <text x="5" y="22" fontFamily="sans-serif" fontSize="20" fontWeight="bold" fill="white">R<span fill="#2563EB" style={{fill: '#2563EB'}}>azor</span>pay</text>
-                </svg>
-              </div>
-              <span className="text-text-secondary/40 text-[9px] uppercase tracking-wider font-bold">Powered by</span>
-            </div>
-
-            {/* Security badges */}
-            <div className="flex flex-wrap justify-center gap-6 text-[9px] text-text-secondary/50 font-medium uppercase tracking-wider">
-              <span className="flex items-center gap-1.5">🔒 256-bit SSL</span>
-              <span className="flex items-center gap-1.5">✅ RBI Compliant</span>
-              <span className="flex items-center gap-1.5">⚡ Instant Confirmation</span>
-            </div>
-
-            {/* Blank Razorpay slot */}
-            <div id="razorpay-checkout" className="mt-8 p-8 rounded-2xl border-2 border-dashed border-border/60 bg-zinc-50/50">
-              <p className="text-text-secondary/40 font-medium text-sm">
-                Razorpay Checkout Widget will render here
-              </p>
-              <p className="text-text-secondary/30 text-[10px] mt-1 uppercase tracking-wider">
-                Click "Pay Now" on any pending invoice above to initiate payment
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <section className="space-y-4 pt-6">
         <h4 className="text-[9px] font-black text-text-secondary uppercase tracking-wider pl-3 flex items-center gap-2">

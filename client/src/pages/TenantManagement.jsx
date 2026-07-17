@@ -408,7 +408,7 @@ const TenantManagement = () => {
           </thead>
           <tbody className="divide-y divide-border/40">
             {regularTenants?.map((tenant, i) => (
-              <tr key={tenant._id} className="stagger-enter" style={{ animationDelay: `${i * 0.04}s` }}>
+              <tr key={tenant._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                 <td>
                   <div className="flex items-center gap-3.5">
                     <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
@@ -456,7 +456,7 @@ const TenantManagement = () => {
             ))}
             {/* 🆕 Show temporary tenants in table */}
             {tempTenants.length > 0 && tempTenants.map((tenant, i) => (
-              <tr key={tenant._id} className="stagger-enter bg-primary-light" style={{ animationDelay: `${i * 0.04}s` }}>
+              <tr key={tenant._id} className="stagger-enter bg-primary-light" style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                 <td>
                   <div className="flex items-center gap-3.5">
                     <div className="w-9 h-9 rounded-xl bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm">

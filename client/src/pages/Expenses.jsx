@@ -215,7 +215,7 @@ const Expenses = () => {
           <div className="divide-y divide-border/40">
             {expenses.map((e, i) => (
               <div key={e._id} className="stagger-enter p-5 hover:bg-surface transition-all flex items-center gap-5"
-                style={{ animationDelay: `${i * 0.04}s` }}>
+                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg ${CATEGORIES.find(c => c.id === e.category)?.color || 'bg-white/5 text-text-secondary/60'}`}>
                   {CATEGORY_ICONS[e.category] || "📋"}
                 </div>

@@ -141,7 +141,7 @@ const Notifications = () => {
       ) : (
         <div className="space-y-4">
           {notices.map((n, i) => (
-            <div key={n._id} className="stagger-enter" style={{ animationDelay: `${i * 0.06}s` }}>
+            <div key={n._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
               <article className="bento-card p-6 md:p-7">
                 <div className="flex justify-between items-start gap-4 mb-3">
                   <div>

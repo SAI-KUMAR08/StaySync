@@ -215,7 +215,7 @@ const Complaints = () => {
       {/* Tickets Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {complaints?.map((c, i) => (
-          <div key={c._id} className="stagger-enter" style={{ animationDelay: `${i * 0.05}s` }}>
+          <div key={c._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
             <div className={`bento-card p-6 flex flex-col group h-full relative overflow-hidden border-l-[3px] ${
               c.priority === 'high' || c.priority === 'emergency' ? 'border-l-primary' :
               c.priority === 'low' ? 'border-l-primary/60' : 'border-l-primary'

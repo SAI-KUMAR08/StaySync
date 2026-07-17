@@ -111,7 +111,7 @@ const TenantDashboard = () => {
           { label: "Unpaid", value: `₹${unpaidDues.toLocaleString()}`, sub: `${payments.filter((p) => (p.paymentStatus || p.status) !== "paid" && (p.paymentStatus || p.status) !== "overdue").length} bill(s)`, icon: MdAttachMoney, color: "bg-amber-600" },
           { label: "Support", value: complaints.filter(c => c.status !== 'resolved').length, sub: "Active tickets", icon: MdReportProblem, color: "bg-zinc-600" },
         ].map((card, i) => (
-          <div key={card.label} className={i % 2 === 0 ? 'stagger-left' : 'stagger-right'} style={{ animationDelay: `${i * 0.08}s` }}>
+          <div key={card.label} className={i % 2 === 0 ? 'stagger-left' : 'stagger-right'} style={{ animationDelay: `${Math.min(i * 0.08, 0.3)}s` }}>
             <StatCard {...card} />
           </div>
         ))}
@@ -148,7 +148,7 @@ const TenantDashboard = () => {
                 </div>
               ) : (
                 payments.map((p, i) => (
-                  <div key={p._id} className="stagger-enter" style={{ animationDelay: `${i * 0.05}s` }}>
+                  <div key={p._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
                     <div className="flex items-center justify-between p-4 rounded-2xl bg-surface hover:bg-surface-hover border border-transparent hover:border-border/50 transition-all group">
                       <div className="flex items-center gap-4">
                         <div className={`w-10 h-10 rounded-[14px] flex items-center justify-center text-lg ${(p.paymentStatus || p.status) === 'paid' ? 'bg-emerald-500/10 text-success' : 'bg-accent-soft text-primary'}`}>
@@ -201,7 +201,7 @@ const TenantDashboard = () => {
                 </div>
               ) : (
                 complaints.slice(0, 4).map((c, i) => (
-                  <div key={c._id} className="stagger-enter" style={{ animationDelay: `${i * 0.06}s` }}>
+                  <div key={c._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
                     <div className="flex items-center gap-3 p-3 rounded-2xl bg-surface hover:bg-surface-hover transition-all group border border-transparent hover:border-border/50">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base ${
                         c.status === 'resolved' ? 'bg-emerald-500/10 text-success' :
@@ -251,7 +251,7 @@ const TenantDashboard = () => {
                 </div>
               ) : (
                 notifications.map((n, i) => (
-                  <div key={n._id} className="flex gap-3 items-start stagger-enter" style={{ animationDelay: `${i * 0.07}s` }}>
+                  <div key={n._id} className="flex gap-3 items-start stagger-enter" style={{ animationDelay: `${Math.min(i * 0.07, 0.3)}s` }}>
                     <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0 shadow-[0_0_4px_rgba(245,158,11,0.4)]" />
                     <div>
                       <p className="text-sm font-medium text-text-primary leading-snug">{n.message || n.title}</p>

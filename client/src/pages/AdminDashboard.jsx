@@ -222,7 +222,7 @@ const AdminDashboard = () => {
             </div>
           ) : (
             activities.map((activity, i) => (
-              <div key={activity._id} className="stagger-enter" style={{ animationDelay: `${i * 0.06}s` }}>
+              <div key={activity._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
                 <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/[0.02] transition-all group">
                   <div className="w-11 h-11 rounded-[12px] bg-primary-light text-primary flex items-center justify-center shrink-0 transition-all duration-300">
                     <MdNotificationsActive size={20} />

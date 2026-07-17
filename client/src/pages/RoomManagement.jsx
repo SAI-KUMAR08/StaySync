@@ -407,7 +407,7 @@ const RoomManagement = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
               {floor.rooms.map((room, i) => (
-                <div key={room._id} className="stagger-enter" style={{ animationDelay: `${i * 0.06}s` }}>
+                <div key={room._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
                   <div className="bento-card overflow-hidden group">
 
                     {/* Specs Header */}

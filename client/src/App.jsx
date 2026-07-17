@@ -1,4 +1,4 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
@@ -7,17 +7,24 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./layouts/DashboardLayout";
 
-// Pages
-import Login from "./pages/Login";
-import OwnerOnboarding from "./pages/OwnerOnboarding";
-import AdminDashboard from "./pages/AdminDashboard";
-import TenantDashboard from "./pages/TenantDashboard";
-import TenantManagement from "./pages/TenantManagement";
-import Complaints from "./pages/Complaints";
-import Payments from "./pages/Payments";
-import Notifications from "./pages/Notifications";
-import RoomManagement from "./pages/RoomManagement";
-import Expenses from "./pages/Expenses";
+// Lazy-loaded pages — split into separate chunks, loaded on demand
+const Login = lazy(() => import("./pages/Login"));
+const OwnerOnboarding = lazy(() => import("./pages/OwnerOnboarding"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const TenantDashboard = lazy(() => import("./pages/TenantDashboard"));
+const TenantManagement = lazy(() => import("./pages/TenantManagement"));
+const Complaints = lazy(() => import("./pages/Complaints"));
+const Payments = lazy(() => import("./pages/Payments"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const RoomManagement = lazy(() => import("./pages/RoomManagement"));
+const Expenses = lazy(() => import("./pages/Expenses"));
+
+// Minimal page-level skeleton — shown instantly while chunk loads
+const PageSkeleton = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 function App() {
   return (
@@ -62,11 +69,12 @@ function App() {
               },
             }}
           />
+          <Suspense fallback={<PageSkeleton />}>
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/onboarding" element={<OwnerOnboarding />} />
-            
+
             {/* Owner/Manager Routes */}
             <Route path="/admin" element={
               <ProtectedRoute role={["owner", "manager"]}>
@@ -100,6 +108,7 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </Suspense>
           </ErrorBoundary>
         </SocketProvider>
       </AuthProvider>
