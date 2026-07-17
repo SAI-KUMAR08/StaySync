@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../api/axios";
@@ -289,6 +289,14 @@ const OwnerOnboarding = () => {
 
   const { loginVerifiedOwner } = useAuth();
   const navigate = useNavigate();
+  const cooldownRef = useRef(null);
+
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -303,11 +311,13 @@ const OwnerOnboarding = () => {
   const [floors, setFloors] = useState([]);
 
   const startCooldown = () => {
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
     setCooldown(60);
-    const interval = setInterval(() => {
+    cooldownRef.current = setInterval(() => {
       setCooldown((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
+          clearInterval(cooldownRef.current);
+          cooldownRef.current = null;
           return 0;
         }
         return prev - 1;

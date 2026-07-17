@@ -43,7 +43,7 @@ router.post("/tenant/set-password", otpLimiter, validate(tenantSetPasswordSchema
 router.post("/tenant/set-initial-password", otpLimiter, validate(tenantSetInitialPasswordSchema), authController.tenantSetInitialPassword);
 router.post("/tenant/forgot-password", otpLimiter, validate(forgotPasswordSchema), authController.sendForgotOtp);
 router.post("/tenant/reset-password", otpLimiter, validate(resetPasswordSchema), authController.resetPassword);
-router.post("/refresh", authController.refresh);
+router.post("/refresh", authLimiter, authController.refresh);
 router.post("/logout", authController.logout);
 router.get("/me", authenticate, authController.me);
 router.post("/switch-hostel", authenticate, authLimiter, validate(switchHostelSchema), authController.switchHostel);

@@ -26,6 +26,15 @@ export const initCronJobs = () => {
           monthlyRent: { $gt: 0 },
         }).select("_id ownerId hostelId bedId monthlyRent moveInDate createdAt").lean();
 
+        // Batch: single query to find existing payments instead of N queries
+        const tenantIds = tenants.map(t => t._id);
+        const existingPayments = await Payment.find({
+          tenantId: { $in: tenantIds },
+          paymentMonth: monthStr,
+          year,
+        }).select("tenantId").lean();
+        const existingSet = new Set(existingPayments.map(p => p.tenantId.toString()));
+
         const toCreate = [];
         for (const tenant of tenants) {
           const joinDate = new Date(tenant.moveInDate || tenant.createdAt);
@@ -35,16 +44,9 @@ export const initCronJobs = () => {
             (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
 
           if (!isAnniversary) continue;
+          if (existingSet.has(tenant._id.toString())) continue; // already has invoice
 
-          // Check if payment already exists for this period
-          const exists = await Payment.findOne({
-            tenantId: tenant._id,
-            paymentMonth: monthStr,
-            year,
-          }).select("_id").lean();
-
-          if (!exists) {
-            const dueDate = new Date(now);
+          const dueDate = new Date(now);
             dueDate.setDate(dueDate.getDate() + 5);
             toCreate.push({
               ownerId: hostel.ownerId,
