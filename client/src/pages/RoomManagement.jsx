@@ -229,7 +229,7 @@ const RoomManagement = () => {
               <div className="arch-card p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Hostel Floor Setup</h3>
+                    <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Hostel Floor Setup</h3>
                     <p className="text-xs text-text-secondary/60 font-medium uppercase tracking-wider mt-1">Step 1: Configure Floors</p>
                   </div>
                   <div className="flex gap-2">
@@ -293,7 +293,7 @@ const RoomManagement = () => {
                     <MdLayers size={22} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Hostel Structure</h3>
+                    <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Hostel Structure</h3>
                     <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Step 2: Add Rooms & Beds</p>
                   </div>
                 </div>
@@ -387,7 +387,7 @@ const RoomManagement = () => {
             <div className="w-20 h-20 rounded-3xl bg-surface flex items-center justify-center mb-6">
               <MdMeetingRoom className="text-4xl text-text-secondary/30" />
             </div>
-            <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Empty Inventory</h3>
+            <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Empty Inventory</h3>
             <p className="text-text-secondary font-medium max-w-xs mt-3 mb-6">Start by running the setup wizard to define your hostel's floors and rooms.</p>
             <button onClick={startSetupWizard} className="btn-primary px-8 flex items-center gap-2">
               Configure floors and beds <MdChevronRight size={18} />
@@ -398,7 +398,7 @@ const RoomManagement = () => {
         structure.map((floor) => (
           <section key={floor._id} className="space-y-6 animate-slide-up">
             <div className="flex items-center gap-5 px-2">
-              <div className="bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-black font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10">
+              <div className="bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-bold font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10">
                 Floor {floor.number}
               </div>
               <div className="h-[1px] flex-1 bg-border/80 rounded-full"></div>
@@ -414,7 +414,7 @@ const RoomManagement = () => {
                     <div className="p-6 pb-5 relative">
                       <div className="flex justify-between items-start mb-5">
                         <div className="space-y-1">
-                          <h4 className="text-xl font-black font-sans text-text-primary tracking-tight">Room {room.number}</h4>
+                          <h4 className="text-xl font-bold font-display text-text-primary tracking-tight">Room {room.number}</h4>
                           <div className="flex items-center gap-2">
                             <span className={`badge ${room.type === 'AC' ? 'badge-primary' : 'badge-slate'}`}>
                               {room.type}
@@ -500,7 +500,7 @@ const RoomManagement = () => {
           <div className="modal-card max-w-md p-7">
             <div className="flex justify-between items-start mb-8">
               <div>
-                <h3 className="text-xl font-black font-sans text-text-primary tracking-tight uppercase">
+                <h3 className="text-xl font-bold font-display text-text-primary tracking-tight uppercase">
                   Update Pricing
                 </h3>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Room Pricing</p>
@@ -571,7 +571,7 @@ const RoomManagement = () => {
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">{selectedTenant.name}</h3>
+                <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">{selectedTenant.name}</h3>
                 <p className="text-[9px] font-bold text-primary uppercase tracking-wider mt-1">Resident</p>
               </div>
             </div>

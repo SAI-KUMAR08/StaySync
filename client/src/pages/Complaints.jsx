@@ -291,7 +291,7 @@ const Complaints = () => {
               </div>
             </div>
 
-            <p className="text-xl font-black font-sans text-text-primary/45 tracking-tight mb-2">
+            <p className="text-xl font-bold font-display text-text-primary/45 tracking-tight mb-2">
               {statusFilter || search ? 'No matching tickets' : 'No tickets yet'}
             </p>
             <p className="text-[10px] font-medium text-text-secondary/40 uppercase tracking-[0.2em]">
@@ -310,7 +310,7 @@ const Complaints = () => {
           <div className="modal-card max-w-md">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
               <div>
-                <h4 className="text-lg font-black font-sans text-text-primary tracking-tight">Report Issue</h4>
+                <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Report Issue</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Support Ticket</p>
               </div>
               <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all">

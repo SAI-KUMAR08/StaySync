@@ -240,7 +240,7 @@ const AdminPayments = () => {
         <div className="modal-overlay">
           <div className="modal-card max-w-sm border border-border/50">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
-              <h4 className="text-lg font-black font-sans text-text-primary tracking-tight uppercase">Apply Fine</h4>
+              <h4 className="text-lg font-bold font-display text-text-primary tracking-tight uppercase">Apply Fine</h4>
               <button onClick={() => setShowFineModal(false)} className="text-text-secondary/40 hover:text-accent transition-colors">
                 <MdClose size={22} />
               </button>

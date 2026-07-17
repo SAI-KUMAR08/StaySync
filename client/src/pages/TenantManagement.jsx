@@ -524,7 +524,7 @@ const TenantManagement = () => {
                   {step}
                 </div>
                 <div>
-                  <h4 className="text-lg font-black font-sans text-text-primary tracking-tight">
+                  <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">
                     {reassigningTenant ? "Reassign Bed" : "Onboard Resident"}
                   </h4>
                   <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">{

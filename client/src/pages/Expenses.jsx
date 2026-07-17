@@ -247,7 +247,7 @@ const Expenses = () => {
           <div className="modal-card max-w-md">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
               <div>
-                <h4 className="text-lg font-black font-sans text-text-primary">{editing ? "Edit Expense" : "Add Expense"}</h4>
+                <h4 className="text-lg font-bold font-display text-text-primary">{editing ? "Edit Expense" : "Add Expense"}</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Record a hostel expense</p>
               </div>
               <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all">

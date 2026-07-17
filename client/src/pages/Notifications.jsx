@@ -148,7 +148,7 @@ const Notifications = () => {
                     <span className="text-[9px] font-bold uppercase tracking-wider text-primary">
                       {TYPE_LABELS[n.type] || n.type}
                     </span>
-                    <h3 className="text-lg font-black font-sans text-text-primary mt-1">{n.title}</h3>
+                    <h3 className="text-lg font-bold font-display text-text-primary mt-1">{n.title}</h3>
                   </div>
                   {user?.role === "owner" && (
                     <button type="button" onClick={() => handleDelete(n._id)} className="text-text-secondary/30 hover:text-accent p-1.5 transition-colors">
@@ -172,7 +172,7 @@ const Notifications = () => {
           <form onSubmit={handleSubmit} className="modal-card max-w-lg p-6 md:p-7 space-y-5">
             <div className="flex justify-between items-center">
               <div>
-                <h4 className="text-lg font-black font-sans text-text-primary tracking-tight">Post Notice</h4>
+                <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Post Notice</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Broadcast to residents</p>
               </div>
               <button type="button" onClick={() => setShowForm(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all">
