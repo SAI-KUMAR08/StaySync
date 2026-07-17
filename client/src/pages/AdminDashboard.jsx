@@ -55,9 +55,9 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
 
   const content = (
     <div className="arch-card p-6 md:p-8 relative overflow-hidden col-span-1 md:col-span-2 row-span-1 group cursor-pointer">
-      <div className="flex items-start justify-between mb-5">
-        <div className="w-14 h-14 rounded-xl bg-primary flex items-center justify-center shadow-md">
-          <Icon className="text-2xl text-white" />
+      <div className="flex items-start justify-between mb-6">
+        <div className="w-[72px] h-[72px] rounded-full bg-primary/10 border-2 border-primary/15 flex flex-col items-center justify-center">
+          <Icon className="text-2xl text-primary" />
         </div>
         {TrendComponent && <TrendComponent />}
         {trend && (
