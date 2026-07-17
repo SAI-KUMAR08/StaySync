@@ -10,6 +10,33 @@ import {
 import api from "../api/axios";
 import toast from "react-hot-toast";
 
+// ── Route prefetching — preload JS chunks on hover ──
+const ROUTE_PREFETCH = {
+  "/admin/dashboard": () => import("../pages/AdminDashboard"),
+  "/admin/inventory": () => import("../pages/RoomManagement"),
+  "/admin/tenants": () => import("../pages/TenantManagement"),
+  "/admin/complaints": () => import("../pages/Complaints"),
+  "/admin/payments": () => import("../pages/Payments"),
+  "/admin/expenses": () => import("../pages/Expenses"),
+  "/admin/notifications": () => import("../pages/Notifications"),
+  "/tenant/dashboard": () => import("../pages/TenantDashboard"),
+  "/tenant/complaints": () => import("../pages/Complaints"),
+  "/tenant/payments": () => import("../pages/Payments"),
+  "/tenant/notifications": () => import("../pages/Notifications"),
+};
+
+const ROUTE_DATA_PREFETCH = {
+  "/admin/dashboard": ["/owner/dashboard"],
+  "/admin/tenants": ["/owner/tenants"],
+  "/admin/inventory": ["/owner/structure"],
+  "/admin/complaints": ["/owner/complaints"],
+  "/admin/payments": ["/owner/payments"],
+  "/admin/expenses": ["/owner/expenses/summary"],
+  "/tenant/dashboard": ["/tenant/notifications?limit=5"],
+  "/tenant/complaints": ["/tenant/complaints"],
+  "/tenant/payments": ["/tenant/payments"],
+};
+
 const NAV_ITEMS = {
   owner: [
     { to: "/admin/dashboard", icon: MdDashboard, label: "Overview" },
@@ -93,7 +120,7 @@ const DashboardLayout = () => {
         {/* Brand */}
         <Link
           to={links[0]?.to || "/"}
-          className="w-11 h-11 rounded-[14px] bg-primary flex items-center justify-center mb-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-105 transition-all duration-300"
+          className="w-11 h-11 rounded-[14px] bg-primary flex items-center justify-center mb-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:scale-105 transition-transform duration-300"
         >
           <MdHome className="text-xl text-white" />
         </Link>
@@ -108,7 +135,13 @@ const DashboardLayout = () => {
               <div key={link.to} className="relative group">
                 <Link
                   to={link.to}
-                  className={`flex items-center justify-center w-11 h-11 rounded-[14px] transition-all duration-300 ${
+                  onMouseEnter={() => {
+                    ROUTE_PREFETCH[link.to]?.();
+                    ROUTE_DATA_PREFETCH[link.to]?.forEach(url => {
+                      api.get(url).catch(() => {});
+                    });
+                  }}
+                  className={`flex items-center justify-center w-11 h-11 rounded-[14px] transition-colors duration-300 ${
                     active
                       ? "bg-primary text-white"
                       : "text-text-tertiary hover:text-text-primary hover:bg-white/[0.04]"
@@ -173,7 +206,7 @@ const DashboardLayout = () => {
 
       {/* ═══ MOBILE SIDEBAR ═══ */}
       <aside
-        className={`lg:hidden fixed top-0 left-0 h-full w-72 bg-surface/95 backdrop-blur-xl z-50 transform transition-all duration-300 ease-out shadow-2xl shadow-black/40 border-r border-border ${
+        className={`lg:hidden fixed top-0 left-0 h-full w-72 bg-surface/95 backdrop-blur-xl z-50 transform transition-transform duration-300 ease-out shadow-2xl shadow-black/40 border-r border-border ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -258,11 +291,11 @@ const DashboardLayout = () => {
       </aside>
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <div className="lg:pl-[68px] pb-28 lg:pb-0 transition-all duration-300 relative z-10">
+      <div className="lg:pl-[68px] pb-28 lg:pb-0 transition-[padding] duration-300 relative z-10">
 
         {/* Page header */}
         <header
-          className={`sticky top-0 z-20 transition-all duration-300 ${
+          className={`sticky top-0 z-20 transition-[background,border] duration-300 ${
             scrolled
               ? "bg-background/80 backdrop-blur-xl border-b border-border"
               : "bg-transparent"

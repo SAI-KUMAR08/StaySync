@@ -1,23 +1,28 @@
 import axios from "axios";
 import { getAxiosBaseURL } from "../config/api.js";
 
-// ── GET response cache (TTL-based, per-URL) ──────────────────
+// ── GET response cache (stale-while-revalidate, per-URL) ─────
 const cache = new Map();
-const CACHE_TTL = 30000; // 30 seconds — balances freshness with avoiding redundant requests
+const CACHE_TTL = 30000;   // 30s — data is "fresh"
+const STALE_TTL = 300000;  // 5min — stale data served instantly while re-fetching in background
 
 function getCached(url) {
   const entry = cache.get(url);
   if (!entry) return null;
-  if (Date.now() - entry.ts > CACHE_TTL) {
-    cache.delete(url);
-    return null;
-  }
-  return entry.data;
+  const age = Date.now() - entry.ts;
+  // Fresh: return immediately
+  if (age < CACHE_TTL) return { data: entry.data, stale: false };
+  // Stale but within STALE_TTL: return immediately, trigger background refresh
+  if (age < STALE_TTL) return { data: entry.data, stale: true };
+  // Expired: remove and return null
+  cache.delete(url);
+  return null;
 }
 
 function setCached(url, data) {
   cache.set(url, { data, ts: Date.now() });
-  if (cache.size > 50) {
+  if (cache.size > 100) {
+    // Evict oldest entry
     const oldest = cache.entries().next().value;
     if (oldest) cache.delete(oldest[0]);
   }
@@ -35,17 +40,28 @@ const api = axios.create({
   withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
+// Track background re-fetches per URL to avoid duplicates
+const pendingRefreshes = new Map();
+
+api.interceptors.request.use(async (config) => {
   const token = sessionStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
-  // Cache GET responses — return cached data if fresh
-  if (config.method?.toLowerCase() === "get" && !config._skipCache) {
+  // Stale-while-revalidate for GET requests
+  if (config.method?.toLowerCase() === "get" && !config._skipCache && !config._bgRefresh) {
     const cached = getCached(config.url);
     if (cached) {
-      config._cached = cached;
+      // If stale, trigger a background refresh (once per URL)
+      if (cached.stale && !pendingRefreshes.has(config.url)) {
+        pendingRefreshes.set(config.url, true);
+        api.get(config.url, { _bgRefresh: true, _skipCache: true }).finally(() => {
+          pendingRefreshes.delete(config.url);
+        });
+      }
+      // Return cached data instantly (fresh or stale)
+      config._cached = cached.data;
       config.adapter = () => Promise.resolve({
-        data: cached,
+        data: cached.data,
         status: 200,
         statusText: "OK",
         headers: {},
@@ -57,7 +73,6 @@ api.interceptors.request.use((config) => {
   // Invalidate cache on mutations
   if (config.method && !["get", "head"].includes(config.method.toLowerCase())) {
     const basePath = config.url?.split("?")[0] || "";
-    // Invalidate parent resource paths
     invalidateCache(basePath.replace(/\/[^/]+$/, ""));
   }
 
