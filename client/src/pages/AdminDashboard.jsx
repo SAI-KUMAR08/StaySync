@@ -19,7 +19,7 @@ const TrendBadge = ({ current, previous }) => {
   if (Math.abs(pct) < 0.01) return null;
   const isUp = pct > 0;
   return (
-    <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${isUp ? 'text-emerald-400' : 'text-danger'} bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10`}>
+    <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${isUp ? 'text-emerald-600' : 'text-danger'} bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10`}>
       <MdTrendingUp size={12} className={isUp ? '' : 'rotate-180'} /> {isUp ? '+' : ''}{pct.toFixed(1)}%
     </div>
   );
@@ -56,21 +56,23 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className="bento-card card-shadow p-6 md:p-8 relative overflow-hidden col-span-1 md:col-span-2 row-span-1 group">
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-14 h-14 rounded-[12px] bg-primary flex items-center justify-center shadow-md transition-all duration-300">
-          <Icon className="text-2xl text-white" />
+    <div className="arch-card p-6 md:p-8 relative overflow-hidden col-span-1 md:col-span-2 row-span-1 group">
+      <div className="flex items-start justify-between mb-5">
+        <div className="relative w-14 h-[60px] flex items-center justify-center">
+          <div className="absolute inset-0 bg-primary rounded-[8px] rounded-b-[16px] shadow-md shadow-primary/20"></div>
+          <div className="absolute top-[2px] left-[3px] right-[3px] h-[5px] bg-white/10 rounded-t-[5px]"></div>
+          <Icon className="text-2xl text-white relative z-10" />
         </div>
         {TrendComponent && <TrendComponent />}
         {trend && (
-          <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${trend.startsWith('+') ? 'text-emerald-400' : 'text-danger'} bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10`}>
+          <div className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${trend.startsWith('+') ? 'text-emerald-600' : 'text-danger'} bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/10`}>
             <MdTrendingUp size={12} /> {trend}
           </div>
         )}
       </div>
       <h3 className="text-text-secondary text-[9px] font-bold font-sans uppercase tracking-[0.15em] mb-1">{title}</h3>
       <div className="flex items-baseline gap-2">
-        <span className="text-4xl font-black font-sans text-text-primary tracking-tight">
+        <span className="text-4xl font-bold font-display text-text-primary tracking-tight">
           {prefix}{isMoney ? animated.toLocaleString() : animated}
         </span>
         {subValue && <span className="text-text-secondary font-medium text-xs">{subValue}</span>}
@@ -87,9 +89,11 @@ const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className="bento-card card-shadow p-5 flex items-center gap-4 group">
-      <div className={`w-11 h-11 rounded-[10px] ${color} flex items-center justify-center shadow-md transition-all duration-300`}>
-        <Icon className="text-xl text-white" />
+    <div className="origami-stat flex items-center gap-4 group">
+      <div className={`relative w-11 h-[48px] flex items-center justify-center shrink-0`}>
+        <div className={`absolute inset-0 ${color} rounded-[6px] rounded-b-[14px] shadow-md`}></div>
+        <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-white/10 rounded-t-[4px]"></div>
+        <Icon className="text-xl text-white relative z-10" />
       </div>
       <div>
         <p className="text-[8px] font-bold font-body text-text-secondary uppercase tracking-[0.15em] leading-none mb-1">{title}</p>
@@ -164,7 +168,7 @@ const AdminDashboard = () => {
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className={`bento-card p-6 space-y-4 ${i === 0 ? 'md:col-span-2' : ''}`}>
+          <div key={i} className={`arch-card p-6 space-y-4 ${i === 0 ? 'md:col-span-2' : ''}`}>
             <div className="shimmer w-12 h-12 rounded-[10px]" />
             <div className="shimmer h-3 w-20" />
             <div className="shimmer h-8 w-32 mt-2" />
@@ -178,16 +182,15 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-16">
-      {/* Header with animated entrance */}
+      {/* Header with decorative ornament */}
       <header className="animate-slide-up-big">
-        <div className="section-tag mb-3"><MdQueryStats size={12} /> Pulse</div>
+        <div className="section-ornament-diamond mb-3">Pulse</div>
         <h2 className="section-title">Live <span className="highlight">Overview</span></h2>
-        <p className="text-text-secondary font-medium mt-1">Real-time health and occupancy metrics for your facility.</p>
+        <p className="section-sub">Real-time health and occupancy metrics for your facility.</p>
       </header>
 
-      {/* Bento Grid Stats — ALL cards visible, staggered entrance */}
+      {/* Bento Grid Stats */}
       <div className="stagger-container grid grid-cols-1 md:grid-cols-4 gap-5">
-        {/* Total Residents — Hero card spanning 2 columns */}
         <HeroStat title="Total Residents" value={stats.totalTenants} icon={MdPeople} TrendComponent={() => <TrendBadge current={stats.totalTenants} previous={stats.previousTotalTenants} />} subValue="Active" to="/admin/tenants" />
 
         <MiniStat title="Monthly Income" value={stats.monthlyRevenue ?? 0} prefix="₹" icon={MdCurrencyRupee} color="bg-emerald-600" to="/admin/payments" />
@@ -197,9 +200,11 @@ const AdminDashboard = () => {
       </div>
 
       {/* Support Tickets card */}
-      <div className="bento-card card-shadow p-6 md:p-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+      <div className="arch-card p-6 md:p-8 animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h3 className="text-sm font-bold font-sans text-text-primary uppercase tracking-[0.15em]">Support Tickets</h3>
+          <div className="heading-rule">
+            <h3 className="text-sm font-bold font-body text-text-primary uppercase tracking-[0.15em]">Support Tickets</h3>
+          </div>
           <Link to="/admin/complaints" className="btn-ghost inline-flex items-center gap-1.5 text-xs">
             Full Desk <MdArrowForward size={13} />
           </Link>
@@ -207,7 +212,7 @@ const AdminDashboard = () => {
         <div className="flex flex-wrap gap-2 mb-6">
           {SUPPORT_FILTERS.map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setSupportFilter(id)}
-              className={`px-4 py-2 rounded-[10px] text-[8px] font-bold font-sans uppercase tracking-wider transition-all duration-300 ${
+              className={`px-4 py-2.5 rounded-[14px] text-[8px] font-bold font-sans uppercase tracking-wider transition-all duration-300 ${
                 supportFilter === id ? 'bg-primary text-white shadow-sm shadow-primary/25' : 'bg-white/[0.04] text-text-secondary hover:bg-white/10'
               }`}>
               {label}
@@ -223,9 +228,11 @@ const AdminDashboard = () => {
           ) : (
             activities.map((activity, i) => (
               <div key={activity._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
-                <div className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/[0.02] transition-all group">
-                  <div className="w-11 h-11 rounded-[12px] bg-primary-light text-primary flex items-center justify-center shrink-0 transition-all duration-300">
-                    <MdNotificationsActive size={20} />
+                <div className="flex items-center gap-4 p-4 rounded-[16px] hover:bg-white/[0.02] transition-all group">
+                  <div className="relative w-11 h-[48px] flex items-center justify-center shrink-0">
+                    <div className="absolute inset-0 bg-primary/10 rounded-[6px] rounded-b-[14px]"></div>
+                    <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-primary/10 rounded-t-[4px]"></div>
+                    <MdNotificationsActive className="text-xl text-primary relative z-10" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-text-primary text-sm leading-tight mb-0.5 truncate">{activity.description}</p>
@@ -233,7 +240,7 @@ const AdminDashboard = () => {
                       {activity.tenantId?.name || "Resident"} • {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
-                  <span className="badge-accent shrink-0">
+                  <span className="badge-primary shrink-0">
                     {activity.status?.replace("_", " ")}
                   </span>
                 </div>

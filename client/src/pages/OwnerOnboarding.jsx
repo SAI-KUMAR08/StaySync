@@ -18,13 +18,15 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
 
   return (
   <div className="space-y-8 animate-slide-up">
-    <div className="bento-card p-8 space-y-7">
+    <div className="arch-card p-8 space-y-7">
       <div className="flex items-center gap-4 mb-2">
-        <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-          <MdBusiness size={22} />
+        <div className="relative w-11 h-[48px] flex items-center justify-center">
+          <div className="absolute inset-0 bg-primary/10 rounded-[6px] rounded-b-[14px]"></div>
+          <div className="absolute top-[2px] left-[2px] right-[2px] h-[4px] bg-primary/10 rounded-t-[4px]"></div>
+          <MdBusiness size={22} className="relative z-10 text-primary" />
         </div>
         <div>
-          <h3 className="text-lg font-black font-sans text-text-primary tracking-tight">Organization Profile</h3>
+          <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Organization Profile</h3>
           <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Base Identity</p>
         </div>
       </div>
@@ -105,8 +107,8 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
 
 const Step2HostelConfig = ({ formData, onNext, onBack }) => (
   <div className="space-y-8 animate-slide-up">
-    <div className="bento-card p-8 space-y-5">
-      <h3 className="text-lg font-black font-sans text-text-primary tracking-tight">Hostel Configuration</h3>
+    <div className="arch-card p-8 space-y-5">
+      <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Hostel Configuration</h3>
       <p className="text-sm text-text-secondary">Confirm operational settings before mapping floors and rooms.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
         <div><span className="text-text-secondary font-bold uppercase text-[9px] tracking-wider">Hostel</span><p className="font-bold text-text-primary">{formData.hostelName}</p></div>
@@ -128,9 +130,9 @@ const Step3Floors = ({ floors, setFloors, onNext, onBack }) => {
 
   return (
     <div className="space-y-8 animate-slide-up">
-      <div className="bento-card p-7 flex justify-between items-center">
+      <div className="arch-card p-7 flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-black font-sans text-text-primary tracking-tight">Floor Configuration</h3>
+          <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Floor Configuration</h3>
           <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">{floors.length} floor(s) defined</p>
         </div>
         <button onClick={addFloor} className="btn-primary-sm flex items-center gap-1.5">
@@ -139,7 +141,7 @@ const Step3Floors = ({ floors, setFloors, onNext, onBack }) => {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {floors.map((f) => (
-          <div key={f.number} className="bento-card p-5 text-center">
+          <div key={f.number} className="arch-card p-5 text-center">
             <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Floor</p>
             <p className="text-3xl font-black text-primary">{f.number}</p>
             <p className="text-[9px] text-text-secondary/60 mt-1">{f.rooms.length} rooms</p>
@@ -184,13 +186,13 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 
   return (
     <div className="space-y-8 animate-slide-up">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bento-card p-7 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center arch-card p-7 gap-4">
         <div className="flex items-center gap-4">
           <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
             <MdLayers size={22} />
           </div>
           <div>
-            <h3 className="text-lg font-black font-sans text-text-primary tracking-tight">Hostel Structure</h3>
+            <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Hostel Structure</h3>
             <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Floor & Room Mapping</p>
           </div>
         </div>
@@ -201,7 +203,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 
       <div className="space-y-5">
         {floors.map((floor, fIdx) => (
-          <div key={fIdx} className="bento-card p-7 space-y-5">
+          <div key={fIdx} className="arch-card p-7 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-5">
               <div className="flex items-center gap-3">
                 <span className="w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm">
@@ -403,10 +405,10 @@ const OwnerOnboarding = () => {
 
       <div className="max-w-4xl w-full mx-auto relative z-10 space-y-10">
         <div className="text-center space-y-3">
-          <div className="section-tag inline-flex mb-3">
+          <div className="section-ornament-diamond inline-flex mb-3">
             <MdBusiness /> Partner Onboarding
           </div>
-          <h1 className="text-4xl md:text-5xl font-black font-sans text-text-primary tracking-tighter">
+          <h1 className="text-4xl md:text-5xl font-bold font-display text-text-primary tracking-tighter">
             Build your <span className="text-primary">Digital Command Center</span>
           </h1>
           <p className="text-text-secondary font-medium text-lg max-w-2xl mx-auto">
@@ -442,12 +444,12 @@ const OwnerOnboarding = () => {
       {/* OTP Verification Modal */}
       {showOtpModal && (
         <div className="modal-overlay">
-          <div className="bento-card max-w-md w-full p-8 border border-border/60 shadow-2xl space-y-7 animate-scale-in">
+          <div className="arch-card max-w-md w-full p-8 border border-border/60 shadow-2xl space-y-7 animate-scale-in">
             <div className="text-center space-y-3">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto text-primary">
                 <MdCheckCircle size={28} />
               </div>
-              <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Verify Your Identity</h3>
+              <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Verify Your Identity</h3>
               <p className="text-text-secondary text-sm font-medium">
                 We've sent a 6-digit verification code to <span className="font-bold text-text-primary">{formData.email}</span>.
               </p>

@@ -2,14 +2,14 @@ import React from "react";
 import { MdPayment, MdCalendarToday } from "react-icons/md";
 
 const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
-  <div className="bento-card p-6 md:p-7 relative overflow-hidden">
+  <div className="arch-card p-6 md:p-7 relative overflow-hidden">
     <div className={`absolute top-0 left-0 w-full h-1.5 ${variant === "overdue" ? "bg-primary" : "bg-[#8D6E2A]"}`} />
     <div className="flex justify-between items-start mb-6">
       <div>
         <p className="text-[9px] font-bold uppercase tracking-wider text-text-secondary/60 mb-0.5">
           {payment.paymentMonth || payment.month} {payment.year}
         </p>
-        <h5 className="text-3xl font-black font-sans text-text-primary tracking-tighter">
+        <h5 className="text-3xl font-bold font-display text-text-primary tracking-tighter">
           ₹{(payment.totalAmount || payment.amount + (payment.fine || 0)).toLocaleString()}
         </h5>
         {payment.fine > 0 && (

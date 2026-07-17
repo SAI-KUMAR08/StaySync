@@ -253,7 +253,7 @@ const TenantManagement = () => {
 
   if (loading) return (
     <div className="space-y-5" role="status" aria-label="Loading residents">
-      <div className="bento-card overflow-hidden">
+      <div className="arch-card overflow-hidden">
         <div className="bg-background/80 border-b border-border/60 px-6 py-4">
           <div className="flex gap-12">
             <div className="shimmer h-3 w-14" />
@@ -285,7 +285,7 @@ const TenantManagement = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div>
-          <div className="section-tag mb-3">
+          <div className="section-ornament-diamond mb-3">
             <MdPeople /> Residents
           </div>
           <h2 className="section-title">Resident <span>Management</span></h2>
@@ -339,7 +339,7 @@ const TenantManagement = () => {
 
       {/* 🆕 Temporary Allotments Section */}
       {tempTenants.length > 0 && (
-        <div className="bento-card-accent p-5">
+        <div className="arch-card-accent p-5">
           <div className="flex items-center gap-2 mb-5">
             <MdSwapHoriz className="text-2xl text-primary" />
             <div>
@@ -394,8 +394,8 @@ const TenantManagement = () => {
       )}
 
       {/* Table */}
-      <div className="bento-card overflow-hidden overflow-x-auto">
-        <table className="bento-table">
+      <div className="arch-card overflow-hidden overflow-x-auto">
+        <table className="heritage-table">
           <thead>
             <tr>
               <th>Resident</th>

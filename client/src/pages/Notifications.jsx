@@ -100,7 +100,7 @@ const Notifications = () => {
     return (
       <div className="max-w-3xl mx-auto space-y-4" role="status" aria-label="Loading notices">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="bento-card p-7 space-y-4">
+          <div key={i} className="arch-card p-7 space-y-4">
             <div className="shimmer h-4 w-20" />
             <div className="shimmer h-5 w-44" />
             <div className="shimmer h-4 w-full" />
@@ -116,7 +116,7 @@ const Notifications = () => {
     <div className="max-w-3xl mx-auto space-y-8 pb-20">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
         <div>
-          <div className="section-tag mb-3">
+          <div className="section-ornament-diamond mb-3">
             <MdAnnouncement /> Notices
           </div>
           <h2 className="section-title">Hostel <span className="highlight">Notices</span></h2>
@@ -134,7 +134,7 @@ const Notifications = () => {
       </header>
 
       {notices.length === 0 ? (
-        <div className="bento-card p-16 text-center border border-dashed border-border/60">
+        <div className="arch-card p-16 text-center border border-dashed border-border/60">
           <MdNotifications className="text-4xl mx-auto mb-4 opacity-20 text-text-secondary" />
           <p className="font-bold text-text-secondary/60">No notices yet</p>
         </div>
@@ -142,7 +142,7 @@ const Notifications = () => {
         <div className="space-y-4">
           {notices.map((n, i) => (
             <div key={n._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
-              <article className="bento-card p-6 md:p-7">
+              <article className="arch-card p-6 md:p-7">
                 <div className="flex justify-between items-start gap-4 mb-3">
                   <div>
                     <span className="text-[9px] font-bold uppercase tracking-wider text-primary">

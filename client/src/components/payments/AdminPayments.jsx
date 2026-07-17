@@ -13,7 +13,7 @@ import { getApiError } from "../../utils/getApiError";
 import { useDebounce } from "../../hooks/useDebounce";
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => (
-  <div className="bento-card p-5 flex items-center gap-4">
+  <div className="arch-card p-5 flex items-center gap-4">
     <div className={`w-11 h-11 rounded-2xl ${color} flex items-center justify-center`}>
       <Icon className="text-xl text-white" />
     </div>
@@ -117,7 +117,7 @@ const AdminPayments = () => {
       {/* Header & Stats */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
-          <div className="section-tag mb-3">
+          <div className="section-ornament-diamond mb-3">
             <MdPayment /> Collections
           </div>
           <h3 className="section-title">Financials</h3>
@@ -153,8 +153,8 @@ const AdminPayments = () => {
       </div>
 
       {/* Payments Table */}
-      <div className="bento-card overflow-hidden overflow-x-auto">
-        <table className="bento-table">
+      <div className="arch-card overflow-hidden overflow-x-auto">
+        <table className="heritage-table">
           <thead>
             <tr>
               <th>Resident</th>

@@ -139,7 +139,7 @@ const Expenses = () => {
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="bento-card p-6 space-y-4">
+          <div key={i} className="arch-card p-6 space-y-4">
             <div className="shimmer h-10 w-10 rounded-2xl" />
             <div className="shimmer h-3 w-24" />
             <div className="shimmer h-7 w-20" />
@@ -153,7 +153,7 @@ const Expenses = () => {
     <div className="space-y-8 pb-16">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
-          <div className="section-tag mb-3"><MdTrendingDown size={12} /> Expenses</div>
+          <div className="section-ornament-diamond mb-3"><MdTrendingDown size={12} /> Expenses</div>
           <h2 className="section-title">Expense <span className="highlight">Tracker</span></h2>
           <p className="section-sub">Track and manage all hostel operational expenses</p>
         </div>
@@ -166,21 +166,21 @@ const Expenses = () => {
       {/* Summary Cards */}
       {summary && (
         <div className="stagger-container grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="bento-card p-5 flex items-center gap-4">
+          <div className="arch-card p-5 flex items-center gap-4">
             <div className="w-11 h-11 rounded-[16px] bg-red-500/10 text-[#C62828] flex items-center justify-center"><MdTrendingDown size={22} /></div>
             <div>
               <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Total Expenses</p>
               <p className="text-xl font-black text-text-primary">₹{summary.totalExpenses?.toLocaleString()}</p>
             </div>
           </div>
-          <div className="bento-card p-5 flex items-center gap-4">
+          <div className="arch-card p-5 flex items-center gap-4">
             <div className="w-11 h-11 rounded-[16px] bg-primary-light text-primary flex items-center justify-center"><MdCalendarToday size={22} /></div>
             <div>
               <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">This Month</p>
               <p className="text-xl font-black text-text-primary">₹{summary.thisMonthTotal?.toLocaleString()}</p>
             </div>
           </div>
-          <div className="bento-card p-5 flex items-center gap-4">
+          <div className="arch-card p-5 flex items-center gap-4">
             <div className="w-11 h-11 rounded-[16px] bg-green-500/10 text-[#2E7D32] flex items-center justify-center"><MdReceipt size={22} /></div>
             <div>
               <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Total Entries</p>
@@ -205,7 +205,7 @@ const Expenses = () => {
       </div>
 
       {/* Expense List */}
-      <div className="bento-card overflow-hidden">
+      <div className="arch-card overflow-hidden">
         {expenses.length === 0 ? (
           <div className="py-20 text-center">
             <MdAttachMoney className="text-5xl mx-auto mb-3 text-text-tertiary" />

@@ -195,7 +195,7 @@ const TenantPayments = () => {
           <MdHistory size={14} /> Paid History
         </h4>
         {paid.length > 0 ? (
-          <div className="bento-card overflow-hidden">
+          <div className="arch-card overflow-hidden">
             {paid.map((p, i) => (
               <div key={p._id} className={`flex items-center justify-between p-6 ${i < paid.length - 1 ? "border-b border-border/50" : ""}`}>
                 <div className="flex items-center gap-5">

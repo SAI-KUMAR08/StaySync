@@ -143,7 +143,7 @@ const Complaints = () => {
     <div role="status" aria-label="Loading tickets">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {[...Array(6)].map((_, i) => (
-          <div key={i} className="bento-card p-6 space-y-4">
+          <div key={i} className="arch-card p-6 space-y-4">
             <div className="flex justify-between items-start">
               <div className="shimmer h-5 w-18 rounded-lg" />
               <div className="shimmer h-4 w-12 rounded-lg" />
@@ -169,7 +169,7 @@ const Complaints = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
-          <div className="section-tag mb-3">
+          <div className="section-ornament-diamond mb-3">
             <MdReportProblem /> Support
           </div>
           <h2 className="section-title">Support <span className="highlight">Desk</span></h2>
@@ -216,7 +216,7 @@ const Complaints = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {complaints?.map((c, i) => (
           <div key={c._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
-            <div className={`bento-card p-6 flex flex-col group h-full relative overflow-hidden border-l-[3px] ${
+            <div className={`arch-card p-6 flex flex-col group h-full relative overflow-hidden border-l-[3px] ${
               c.priority === 'high' || c.priority === 'emergency' ? 'border-l-primary' :
               c.priority === 'low' ? 'border-l-primary/60' : 'border-l-primary'
             }`}>

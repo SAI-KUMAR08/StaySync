@@ -183,7 +183,7 @@ const RoomManagement = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="bento-card overflow-hidden">
+          <div key={i} className="arch-card overflow-hidden">
             <div className="p-7 pb-5 space-y-4">
               <div className="shimmer h-5 w-28" />
               <div className="shimmer h-3 w-18" />
@@ -209,7 +209,7 @@ const RoomManagement = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
         <div>
-          <div className="section-tag mb-3">
+          <div className="section-ornament-diamond mb-3">
             <MdLayers /> Facility Inventory
           </div>
           <h2 className="section-title">Inventory <span>Management</span></h2>
@@ -226,7 +226,7 @@ const RoomManagement = () => {
         isSettingUp ? (
           setupStep === 1 ? (
             <div className="space-y-8 animate-slide-up">
-              <div className="bento-card p-8 space-y-6">
+              <div className="arch-card p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-black font-sans text-text-primary tracking-tight">Hostel Floor Setup</h3>
@@ -287,7 +287,7 @@ const RoomManagement = () => {
             </div>
           ) : (
             <div className="space-y-8 animate-slide-up">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center bento-card p-7 gap-4">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center arch-card p-7 gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center">
                     <MdLayers size={22} />
@@ -304,7 +304,7 @@ const RoomManagement = () => {
 
               <div className="space-y-5">
                 {setupFloors.map((floor, fIdx) => (
-                  <div key={fIdx} className="bento-card p-7 space-y-5">
+                  <div key={fIdx} className="arch-card p-7 space-y-5">
                     <div className="flex justify-between items-center border-b border-border/50 pb-5">
                       <div className="flex items-center gap-3">
                         <span className="w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm">
@@ -383,7 +383,7 @@ const RoomManagement = () => {
             </div>
           )
         ) : (
-          <div className="bento-card p-16 flex flex-col items-center justify-center text-center">
+          <div className="arch-card p-16 flex flex-col items-center justify-center text-center">
             <div className="w-20 h-20 rounded-3xl bg-surface flex items-center justify-center mb-6">
               <MdMeetingRoom className="text-4xl text-text-secondary/30" />
             </div>
@@ -408,7 +408,7 @@ const RoomManagement = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
               {floor.rooms.map((room, i) => (
                 <div key={room._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
-                  <div className="bento-card overflow-hidden group">
+                  <div className="arch-card overflow-hidden group">
 
                     {/* Specs Header */}
                     <div className="p-6 pb-5 relative">
@@ -559,7 +559,7 @@ const RoomManagement = () => {
       {/* Tenant QuickView Modal */}
       {selectedTenant && (
         <div className="modal-overlay" onClick={() => setSelectedTenant(null)}>
-          <div className="bento-card max-w-sm w-full p-8 border border-border/60 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
+          <div className="arch-card max-w-sm w-full p-8 border border-border/60 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelectedTenant(null)} className="absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-2xl transition-all">
               <MdClose size={18} />
             </button>
