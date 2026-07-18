@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   MdDashboard, MdPeople, MdReportProblem,
   MdPayment, MdNotifications, MdLogout, MdMenu, MdClose,
   MdLayers, MdAnnouncement, MdAdd, MdHome, MdAttachMoney,
-  MdChevronRight
+  MdChevronRight, MdDarkMode, MdLightMode
 } from "react-icons/md";
 import api from "../api/axios";
 import toast from "react-hot-toast";
@@ -64,6 +65,7 @@ const NAV_ITEMS = {
 
 const DashboardLayout = () => {
   const { user, hostels, switchHostel, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
@@ -114,87 +116,176 @@ const DashboardLayout = () => {
       )}
 
       {/* ═══ DESKTOP SIDEBAR ═══ */}
-      <nav className="hidden lg:flex fixed left-0 top-0 h-full z-50 flex-col items-center py-5 px-3 gap-1 bg-surface/90 backdrop-blur-xl border-r border-border">
-        {/* Brand letter */}
-        <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center mb-6 shadow-md">
-          <span className="text-sm font-bold font-display text-white">SR</span>
-        </div>
-        {/* Nav items */}
-        <div className="flex-1 flex flex-col items-center gap-1.5">
-          {links.map((link) => {
-            const active = location.pathname === link.to;
-            return (
-              <div key={link.to} className="relative group">
+      {theme === "theme-2" ? (
+        /* ── Corporate: wide sidebar with labels ── */
+        <nav className="hidden lg:flex fixed left-0 top-0 h-full z-50 flex-col py-5 px-4 bg-surface/90 backdrop-blur-xl border-r border-border w-52">
+          <div className="flex items-center gap-3 px-3 mb-8">
+            <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-xs font-bold font-display text-white">SR</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-text-primary leading-tight">Sri Rama</p>
+              <p className="text-[7px] text-text-tertiary font-medium uppercase tracking-wider">Management</p>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col gap-1">
+            {links.map((link) => {
+              const active = location.pathname === link.to;
+              return (
                 <Link
+                  key={link.to}
                   to={link.to}
                   onMouseEnter={() => {
                     ROUTE_PREFETCH[link.to]?.();
-                    ROUTE_DATA_PREFETCH[link.to]?.forEach(url => {
-                      api.get(url).catch(() => {});
-                    });
+                    ROUTE_DATA_PREFETCH[link.to]?.forEach(url => api.get(url).catch(() => {}));
                   }}
-                  className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                     active
-                      ? "bg-primary text-white shadow-md"
-                      : "text-text-tertiary hover:text-text-primary hover:bg-black/[0.04]"
+                      ? "bg-primary text-white"
+                      : "text-text-secondary hover:text-text-primary hover:bg-black/[0.04]"
                   }`}
                 >
-                  <link.icon className={`text-xl transition-all duration-300 ${active ? "scale-110" : ""}`} />
+                  <link.icon className="text-lg shrink-0" />
+                  <span>{link.label}</span>
                 </Link>
-                {active && (
-                  <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary" />
-                )}
-                {/* Tooltip */}
-                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
-                    {link.label}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
+              );
+            })}
+          </div>
+          <div className="border-t border-border pt-2 mt-2 space-y-1">
+            <button onClick={toggleTheme}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-black/[0.04] transition-all">
+              {theme === "theme-2" ? <MdLightMode className="text-lg shrink-0" /> : <MdDarkMode className="text-lg shrink-0" />}
+              <span>Switch Theme</span>
+            </button>
+            <button onClick={() => { logout(); navigate("/login"); }}
+              className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-primary hover:bg-primary/5 transition-all">
+              <MdLogout className="text-lg shrink-0" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </nav>
+      ) : (
+        /* ── Warm: icon-only sidebar with tooltips ── */
+        <nav className="hidden lg:flex fixed left-0 top-0 h-full z-50 flex-col items-center py-5 px-3 gap-1 bg-surface/90 backdrop-blur-xl border-r border-border">
+          {/* Brand letter */}
+          <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center mb-6 shadow-md">
+            <span className="text-sm font-bold font-display text-white">SR</span>
+          </div>
+          {/* Nav items */}
+          <div className="flex-1 flex flex-col items-center gap-1.5">
+            {links.map((link) => {
+              const active = location.pathname === link.to;
+              return (
+                <div key={link.to} className="relative group">
+                  <Link
+                    to={link.to}
+                    onMouseEnter={() => {
+                      ROUTE_PREFETCH[link.to]?.();
+                      ROUTE_DATA_PREFETCH[link.to]?.forEach(url => {
+                        api.get(url).catch(() => {});
+                      });
+                    }}
+                    className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 ${
+                      active
+                        ? "bg-primary text-white shadow-md"
+                        : "text-text-tertiary hover:text-text-primary hover:bg-black/[0.04]"
+                    }`}
+                  >
+                    <link.icon className={`text-xl transition-all duration-300 ${active ? "scale-110" : ""}`} />
+                  </Link>
+                  {active && (
+                    <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary" />
+                  )}
+                  {/* Tooltip */}
+                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
+                      {link.label}
+                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+
+          <div className="w-8 h-px bg-border mb-2" />
+          {/* Theme toggle */}
+          <div className="relative group">
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-11 h-11 rounded-xl text-text-tertiary hover:text-accent hover:bg-accent/10 transition-all"
+              title="Toggle theme"
+            >
+              {theme === "theme-2" ? <MdLightMode className="text-lg" /> : <MdDarkMode className="text-lg" />}
+            </button>
+            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
+                Switch Theme
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
               </div>
-            );
-          })}
-        </div>
-
-        <div className="w-8 h-px bg-border mb-2" />
-
-        {/* Logout */}
-        <div className="relative group">
-          <button
-            onClick={() => { logout(); navigate("/login"); }}
-            className="flex items-center justify-center w-11 h-11 rounded-xl text-text-tertiary hover:text-primary hover:bg-primary/10 transition-all"
-          >
-            <MdLogout className="text-lg" />
-          </button>
-          <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
-              Sign Out
-              <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
             </div>
           </div>
-        </div>
-      </nav>
+
+          {/* Logout */}
+          <div className="relative group">
+            <button
+              onClick={() => { logout(); navigate("/login"); }}
+              className="flex items-center justify-center w-11 h-11 rounded-xl text-text-tertiary hover:text-primary hover:bg-primary/10 transition-all"
+            >
+              <MdLogout className="text-lg" />
+            </button>
+            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
+                Sign Out
+                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
+              </div>
+            </div>
+          </div>
+        </nav>
+      )}
 
       {/* ═══ MOBILE BOTTOM NAV ═══ */}
-      <nav className="lg:hidden fixed bottom-4 left-4 right-4 z-50 bg-white/85 backdrop-blur-xl border border-black/5 px-2 py-2 rounded-2xl shadow-xl">
-        <div className="flex items-center justify-around">
-          {links.slice(0, 5).map((link) => {
-            const active = location.pathname === link.to;
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all ${
-                  active ? "text-white bg-primary shadow-md" : "text-text-tertiary"
-                }`}
-              >
-                <link.icon size={20} />
-                <span className="text-[6px] font-bold uppercase tracking-wider">{link.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {theme === "theme-2" ? (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-border px-1 py-1">
+          <div className="flex items-center justify-around">
+            {links.slice(0, 5).map((link) => {
+              const active = location.pathname === link.to;
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded transition-all ${
+                    active ? "text-primary bg-primary-light" : "text-text-tertiary"
+                  }`}
+                >
+                  <link.icon size={18} />
+                  <span className="text-[7px] font-semibold">{link.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      ) : (
+        <nav className="lg:hidden fixed bottom-4 left-4 right-4 z-50 bg-white/85 backdrop-blur-xl border border-black/5 px-2 py-2 rounded-2xl shadow-xl">
+          <div className="flex items-center justify-around">
+            {links.slice(0, 5).map((link) => {
+              const active = location.pathname === link.to;
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all ${
+                    active ? "text-white bg-primary shadow-md" : "text-text-tertiary"
+                  }`}
+                >
+                  <link.icon size={20} />
+                  <span className="text-[6px] font-bold uppercase tracking-wider">{link.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
 
       {/* ═══ MOBILE SIDEBAR ═══ */}
       <aside
@@ -272,7 +363,14 @@ const DashboardLayout = () => {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-border space-y-1">
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-4 py-3 text-text-secondary/50 hover:text-accent hover:bg-accent/5 rounded-xl transition-all text-sm"
+          >
+            {theme === "theme-2" ? <MdLightMode className="text-lg" /> : <MdDarkMode className="text-lg" />}
+            {theme === "theme-1" ? "Corporate Theme" : "Warm Theme"}
+          </button>
           <button
             onClick={() => { logout(); navigate("/login"); }}
             className="w-full flex items-center gap-3 px-4 py-3 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all text-sm"
@@ -283,7 +381,7 @@ const DashboardLayout = () => {
       </aside>
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <div className="lg:pl-[68px] pb-28 lg:pb-0 transition-[padding] duration-300 relative z-10">
+      <div className={`${theme === "theme-2" ? "lg:pl-[208px]" : "lg:pl-[68px]"} pb-28 lg:pb-0 transition-[padding] duration-300 relative z-10`}>
 
         {/* Page header */}
         <header

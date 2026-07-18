@@ -10,6 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import toast from "react-hot-toast";
 
 // ── Trend badge ───
@@ -53,6 +54,7 @@ const useAnimatedNumber = (target, duration = 1000) => {
 
 // ── Vivanta-inspired stat block: large number + label ──
 const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
+  const { theme } = useTheme();
   const cleaned = String(value).replace(/[^0-9.-]/g, "");
   const numericVal = parseFloat(cleaned) || 0;
   const animated = useAnimatedNumber(numericVal);
@@ -60,7 +62,7 @@ const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
   return (
     <div className="flex flex-col items-center py-6 px-2">
       {Icon && (
-        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center mb-3">
+        <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-full"} bg-primary/10 border border-primary/15 flex items-center justify-center mb-3`}>
           <Icon className="text-lg text-primary" />
         </div>
       )}
@@ -77,12 +79,13 @@ const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
 
 // ── Main stat card ──
 const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, to, prefix = "" }) => {
+  const { theme } = useTheme();
   const isMoney = title.toLowerCase().includes("collection") || title.toLowerCase().includes("revenue");
   const numericVal = isMoney ? parseInt(value?.replace(/[₹,]/g, "") || "0") : parseInt(value) || 0;
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className="bg-white rounded-2xl border border-border p-7 md:p-8 hover:shadow-lg transition-all duration-300 col-span-1 md:col-span-2">
+    <div className={`${theme === "theme-2" ? "bg-white rounded-lg border border-border p-6 hover:border-[rgba(0,0,0,0.12)]" : "bg-white rounded-2xl border border-border p-7 md:p-8 hover:shadow-lg"} transition-all duration-300 col-span-1 md:col-span-2`}>
       <div className="flex items-start justify-between mb-5">
         <div className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/15 flex flex-col items-center justify-center">
           <Icon className="text-2xl text-primary" />
@@ -108,12 +111,13 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
 
 // ── Mini stat card ──
 const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
+  const { theme } = useTheme();
   const cleaned = String(value).replace(/[^0-9.-]/g, "");
   const numericVal = parseFloat(cleaned) || 0;
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className="bg-white rounded-2xl border border-border p-5 flex items-center gap-4 hover:shadow-md transition-all duration-300">
+    <div className={`${theme === "theme-2" ? "bg-white rounded-lg border border-border p-4 flex items-center gap-3 hover:border-[rgba(0,0,0,0.12)]" : "bg-white rounded-2xl border border-border p-5 flex items-center gap-4 hover:shadow-md"} transition-all duration-300`}>
       <div className={`w-11 h-11 rounded-xl ${color} flex items-center justify-center shadow-sm`}>
         <Icon className="text-xl text-white" />
       </div>
@@ -134,9 +138,11 @@ const SUPPORT_FILTERS = [
 ];
 
 const AdminDashboard = () => {
+  const { theme } = useTheme();
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [expenseSummary, setExpenseSummary] = useState(null);
+  const [financialOverview, setFinancialOverview] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -157,12 +163,14 @@ const AdminDashboard = () => {
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      const [statsRes, expRes] = await Promise.all([
+      const [statsRes, expRes, finRes] = await Promise.all([
         api.get("/owner/dashboard"),
         api.get("/owner/expenses/summary"),
+        api.get("/owner/financial-overview").catch(() => ({ data: { data: null } })),
       ]);
       setStats(statsRes.data.data.stats || null);
       setExpenseSummary(expRes.data.data || null);
+      if (finRes.data.data) setFinancialOverview(finRes.data.data);
       await fetchComplaints(supportFilterRef.current);
     } catch (error) {
       console.error(error);
@@ -218,6 +226,39 @@ const AdminDashboard = () => {
             <StatBadge value={stats.monthlyRevenue ?? 0} label="Monthly Income" prefix="₹" />
             <StatBadge value={expenseSummary?.thisMonthTotal ?? 0} label="Monthly Expenses" prefix="₹" />
             <StatBadge value={stats.activeComplaints} label="Active Tickets" />
+          </div>
+        </div>
+      )}
+
+      {/* ── Multi-Hostel Financial Overview ── */}
+      {financialOverview && (
+        <div className={`${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-white border border-border overflow-hidden ${financialOverview.hostelCount > 1 ? '' : 'hidden'}`}>
+          <div className={`px-6 py-5 border-b border-border/50 flex items-center justify-between`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary flex items-center justify-center`}>
+                <MdAttachMoney size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">Multi-Hostel Financial Overview</h3>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">{financialOverview.hostelCount} properties active this month</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
+            <div className="p-6 text-center">
+              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Total Income</p>
+              <p className="text-2xl font-black text-emerald-600">₹{financialOverview.totalIncome.toLocaleString()}</p>
+            </div>
+            <div className="p-6 text-center">
+              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Total Expenses</p>
+              <p className="text-2xl font-black text-danger">₹{financialOverview.totalExpenses.toLocaleString()}</p>
+            </div>
+            <div className="p-6 text-center">
+              <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Net Position</p>
+              <p className={`text-2xl font-black ${financialOverview.net >= 0 ? 'text-emerald-600' : 'text-danger'}`}>
+                ₹{financialOverview.net.toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
       )}

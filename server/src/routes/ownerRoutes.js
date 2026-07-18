@@ -32,6 +32,7 @@ router.use(authenticate, authorize("owner", "manager"), ownerScope);
 
 // ── Dashboard & Overview ─────────────────────────────────
 router.get("/dashboard", requirePermission(PERMISSIONS.READ_DASHBOARD), owner.getDashboard);
+router.get("/financial-overview", requirePermission(PERMISSIONS.READ_DASHBOARD), owner.getFinancialOverview);
 router.get("/occupancy", requirePermission(PERMISSIONS.READ_OCCUPANCY), owner.getOccupancy);
 router.get("/hostel", requirePermission(PERMISSIONS.READ_HOSTEL), owner.getHostel);
 router.get("/structure", requirePermission(PERMISSIONS.READ_HOSTEL), owner.getHostelStructure);

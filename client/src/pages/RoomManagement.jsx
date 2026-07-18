@@ -11,10 +11,12 @@ import ErrorRetry from "../components/ErrorRetry";
 import { normalizeStructure } from "../utils/normalizeStructure";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
+import { useTheme } from "../context/ThemeContext";
 
 const RoomManagement = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
+  const { theme } = useTheme();
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -178,8 +180,8 @@ const RoomManagement = () => {
   if (loading) return (
     <div className="space-y-8" role="status" aria-label="Loading inventory">
       <div className="flex items-center gap-6 px-2">
-        <div className="shimmer h-9 w-28 rounded-2xl" />
-        <div className="h-[2px] flex-1 bg-border rounded-full" />
+        <div className={`shimmer h-9 w-28 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"}`} />
+        <div className={`h-[2px] flex-1 bg-border ${theme === "theme-2" ? "rounded-md" : "rounded-full"}`} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
@@ -195,7 +197,7 @@ const RoomManagement = () => {
             </div>
             <div className="p-7 pt-5">
               <div className="flex gap-3">
-                {[...Array(3)].map((_, j) => <div key={j} className="shimmer w-12 h-12 rounded-2xl" />)}
+                {[...Array(3)].map((_, j) => <div key={j} className={`shimmer w-12 h-12 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"}`} />)}
               </div>
             </div>
           </div>
@@ -236,13 +238,13 @@ const RoomManagement = () => {
                     <button
                       onClick={removeSetupFloor}
                       disabled={setupFloors.length <= 1}
-                      className="px-4 py-2 bg-surface hover:bg-background disabled:opacity-50 text-text-secondary text-xs font-bold uppercase tracking-wider rounded-xl transition-all"
+                      className={`px-4 py-2 bg-surface hover:bg-background disabled:opacity-50 text-text-secondary text-xs font-bold uppercase tracking-wider ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
                     >
                       Remove Floor
                     </button>
                     <button
                       onClick={addSetupFloor}
-                      className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all flex items-center gap-1"
+                      className={`px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold uppercase tracking-wider ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all flex items-center gap-1`}
                     >
                       <MdAdd size={14} /> Add Floor
                     </button>
@@ -251,7 +253,7 @@ const RoomManagement = () => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {setupFloors.map((f) => (
-                    <div key={f.number} className="bg-background/50 p-5 rounded-3xl border border-border/50 text-center">
+                    <div key={f.number} className={`bg-background/50 p-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} border border-border/50 text-center`}>
                       <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Floor</p>
                       <p className="text-3xl font-black text-primary mt-1">{f.number}</p>
                     </div>
@@ -289,7 +291,7 @@ const RoomManagement = () => {
             <div className="space-y-8 animate-slide-up">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center arch-card p-7 gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center">
+                  <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary text-white flex items-center justify-center`}>
                     <MdLayers size={22} />
                   </div>
                   <div>
@@ -297,7 +299,7 @@ const RoomManagement = () => {
                     <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Step 2: Add Rooms & Beds</p>
                   </div>
                 </div>
-                <button onClick={addSetupFloor} className="bg-text-primary text-white px-5 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all text-xs uppercase tracking-wider">
+                <button onClick={addSetupFloor} className={`bg-text-primary text-white px-5 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} font-bold flex items-center gap-2 hover:opacity-90 transition-all text-xs uppercase tracking-wider`}>
                   <MdAdd size={14} /> Add Floor
                 </button>
               </div>
@@ -307,7 +309,7 @@ const RoomManagement = () => {
                   <div key={fIdx} className="arch-card p-7 space-y-5">
                     <div className="flex justify-between items-center border-b border-border/50 pb-5">
                       <div className="flex items-center gap-3">
-                        <span className="w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm">
+                        <span className={`w-9 h-9 ${theme === "theme-2" ? "rounded-md" : "rounded-full"} bg-text-primary text-white flex items-center justify-center font-bold text-sm`}>
                           {floor.number}
                         </span>
                         <h4 className="font-bold text-text-primary">Floor Details</h4>
@@ -319,7 +321,7 @@ const RoomManagement = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                       {floor.rooms.map((room, rIdx) => (
-                        <div key={rIdx} className="p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all">
+                        <div key={rIdx} className={`p-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all`}>
                           <button
                             onClick={() => removeSetupRoom(fIdx, rIdx)}
                             className="absolute top-3 right-3 text-text-secondary/30 hover:text-[#C62828] opacity-0 group-hover:opacity-100 transition-all"
@@ -363,7 +365,7 @@ const RoomManagement = () => {
                         </div>
                       ))}
                       {floor.rooms.length === 0 && (
-                        <div className="col-span-full py-8 text-center border-2 border-dashed border-border/50 rounded-2xl text-text-secondary/40 font-medium italic text-sm">
+                        <div className={`col-span-full py-8 text-center border-2 border-dashed border-border/50 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} text-text-secondary/40 font-medium italic text-sm`}>
                           No rooms added to this floor yet.
                         </div>
                       )}
@@ -384,7 +386,7 @@ const RoomManagement = () => {
           )
         ) : (
           <div className="arch-card p-16 flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-3xl bg-surface flex items-center justify-center mb-6">
+            <div className={`w-20 h-20 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} bg-surface flex items-center justify-center mb-6`}>
               <MdMeetingRoom className="text-4xl text-text-secondary/30" />
             </div>
             <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Empty Inventory</h3>
@@ -398,10 +400,10 @@ const RoomManagement = () => {
         structure.map((floor) => (
           <section key={floor._id} className="space-y-6 animate-slide-up">
             <div className="flex items-center gap-5 px-2">
-              <div className="bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-bold font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10">
+              <div className={`bg-primary text-white px-6 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} text-[9px] font-bold font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10`}>
                 Floor {floor.number}
               </div>
-              <div className="h-[1px] flex-1 bg-border/80 rounded-full"></div>
+              <div className={`h-[1px] flex-1 bg-border/80 ${theme === "theme-2" ? "rounded-md" : "rounded-full"}`}></div>
               <p className="text-[9px] font-medium text-text-secondary uppercase tracking-wider">{floor.rooms.length} Units</p>
             </div>
 
@@ -428,7 +430,7 @@ const RoomManagement = () => {
                             setFormData({ number: room.number, floorId: floor._id, sharingType: room.sharingType, price: room.price, type: room.type || "Non-AC" });
                             setShowModal(true);
                           }}
-                          className="w-9 h-9 flex items-center justify-center bg-card text-text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all rounded-xl border border-border/60"
+                          className={`w-9 h-9 flex items-center justify-center bg-card text-text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} border border-border/60`}
                         >
                           <MdEdit size={16} />
                         </button>
@@ -505,7 +507,7 @@ const RoomManagement = () => {
                 </h3>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Room Pricing</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-xl transition-all">
+              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}>
                 <MdClose size={18} />
               </button>
             </div>
@@ -560,13 +562,13 @@ const RoomManagement = () => {
       {selectedTenant && (
         <div className="modal-overlay" onClick={() => setSelectedTenant(null)}>
           <div className="arch-card max-w-sm w-full p-8 border border-border/60 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedTenant(null)} className="absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-2xl transition-all">
+            <button onClick={() => setSelectedTenant(null)} className={`absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} transition-all`}>
               <MdClose size={18} />
             </button>
 
             <div className="flex flex-col items-center text-center space-y-4 mb-6">
-              <div className="w-20 h-20 rounded-full bg-primary p-0.5 shadow-md">
-                <div className="w-full h-full rounded-full bg-card flex items-center justify-center text-2xl font-black text-text-primary">
+              <div className={`w-20 h-20 ${theme === "theme-2" ? "rounded-md" : "rounded-full"} bg-primary p-0.5 shadow-md`}>
+                <div className={`w-full h-full ${theme === "theme-2" ? "rounded-md" : "rounded-full"} bg-card flex items-center justify-center text-2xl font-black text-text-primary`}>
                   {selectedTenant.name?.[0]?.toUpperCase()}
                 </div>
               </div>
@@ -576,7 +578,7 @@ const RoomManagement = () => {
               </div>
             </div>
 
-            <div className="space-y-3 bg-surface p-5 rounded-2xl border border-border/50">
+            <div className={`space-y-3 bg-surface p-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} border border-border/50`}>
               {[
                 { label: "Mobile", value: selectedTenant.phone },
                 { label: "Room", value: selectedTenant.roomId?.roomNumber || "—" },

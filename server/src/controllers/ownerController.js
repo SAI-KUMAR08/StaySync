@@ -194,6 +194,65 @@ export const getDashboard = asyncHandler(async (req, res) => {
   return success(res, { stats, charts: { occupancy, payments, complaints } });
 });
 
+export const getFinancialOverview = asyncHandler(async (req, res) => {
+  const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
+  const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
+  const currentYear = new Date().getFullYear();
+
+  // Find all hostels for this owner
+  const hostels = await mongoose.model("Hostel").find({ ownerId: resolvedOwnerId, isActive: true }).select("_id name");
+  const hostelIds = hostels.map(h => h._id);
+
+  if (hostelIds.length === 0) {
+    return success(res, { totalIncome: 0, totalExpenses: 0, net: 0, hostelCount: 0, hostels: [] });
+  }
+
+  // Total income - all paid payments across ALL hostels
+  const incomeAgg = await mongoose.model("Payment").aggregate([
+    {
+      $match: {
+        ownerId: new mongoose.Types.ObjectId(resolvedOwnerId),
+        paymentStatus: "paid",
+        year: currentYear,
+        paymentMonth: currentMonth,
+      },
+    },
+    { $group: { _id: "$hostelId", total: { $sum: "$totalAmount" } } },
+  ]);
+
+  // Total expenses - all expenses across ALL hostels (current month)
+  const expenseAgg = await mongoose.model("Expense").aggregate([
+    {
+      $match: {
+        ownerId: new mongoose.Types.ObjectId(resolvedOwnerId),
+        date: {
+          $gte: new Date(currentYear, new Date().getMonth(), 1),
+          $lt: new Date(currentYear, new Date().getMonth() + 1, 1),
+        },
+      },
+    },
+    { $group: { _id: "$hostelId", total: { $sum: "$amount" } } },
+  ]);
+
+  const totalIncome = incomeAgg.reduce((sum, h) => sum + h.total, 0);
+  const totalExpenses = expenseAgg.reduce((sum, h) => sum + h.total, 0);
+
+  // Per-hostel breakdown
+  const hostelData = hostels.map(h => ({
+    name: h.name,
+    income: incomeAgg.find(i => i._id.equals(h._id))?.total || 0,
+    expenses: expenseAgg.find(e => e._id.equals(h._id))?.total || 0,
+  }));
+
+  return success(res, {
+    totalIncome,
+    totalExpenses,
+    net: totalIncome - totalExpenses,
+    hostelCount: hostelIds.length,
+    hostels: hostelData,
+  });
+});
+
 export const listRooms = asyncHandler(async (req, res) => {
   const rooms = await Room.find({ ...filter(req), isActive: true })
     .populate("floorId", "floorName floorNumber")

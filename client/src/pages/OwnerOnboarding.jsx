@@ -5,12 +5,27 @@ import api from "../api/axios";
 import {
   MdAdd, MdDelete, MdChevronRight, MdChevronLeft,
   MdCheckCircle, MdMeetingRoom, MdBusiness,
-  MdLayers, MdAccountCircle, MdVisibility, MdVisibilityOff, MdHome
+  MdLayers, MdAccountCircle, MdVisibility, MdVisibilityOff, MdHome, MdEmail
 } from "react-icons/md";
 import toast from "react-hot-toast";
+import { useTheme } from "../context/ThemeContext";
 
-const Step1Information = ({ formData, setFormData, onNext }) => {
+const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp, onVerifyOtp, onResendOtp }) => {
+  const { theme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otp, setOtp] = useState("");
+
+  const handleSendOtp = async () => {
+    if (!formData.email) return toast.error("Enter email first");
+    setShowOtpInput(true);
+    await onSendOtp();
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) return toast.error("Enter 6-digit code");
+    await onVerifyOtp(otp);
+  };
 
   const isPasswordValid = (pwd) => {
     return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(pwd);
@@ -20,7 +35,7 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
   <div className="space-y-8 animate-slide-up">
     <div className="arch-card p-8 space-y-7">
       <div className="flex items-center gap-4 mb-2">
-        <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+        <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary/10 text-primary flex items-center justify-center`}>
           <MdBusiness size={22} />
         </div>
         <div>
@@ -40,10 +55,63 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
           <input type="text" className="field-input" placeholder="Your Full Name"
             value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 md:col-span-2">
           <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Work Email</label>
-          <input type="email" className="field-input" placeholder="owner@example.com"
-            value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+          <div className="flex gap-2">
+            <input type="email" className="field-input flex-1" placeholder="owner@example.com"
+              value={formData.email} onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setShowOtpInput(false); }}
+              disabled={emailState.verified} />
+            {emailState.verified ? (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 font-bold text-xs whitespace-nowrap">
+                <MdCheckCircle size={18} /> Verified
+              </div>
+            ) : showOtpInput ? (
+              <button
+                type="button"
+                disabled={emailState.sending}
+                onClick={handleSendOtp}
+                className="btn-primary-sm whitespace-nowrap"
+              >
+                {emailState.sending ? "Sending..." : "Resend OTP"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!formData.email || emailState.sending}
+                onClick={handleSendOtp}
+                className="btn-primary-sm whitespace-nowrap"
+              >
+                {emailState.sending ? "Sending..." : "Send OTP"}
+              </button>
+            )}
+          </div>
+          {showOtpInput && !emailState.verified && (
+            <div className="flex items-center gap-3 mt-2 animate-fade-in">
+              <input
+                type="text"
+                maxLength="6"
+                autoFocus
+                placeholder="000000"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="field-input !w-32 text-center tracking-[0.5em] font-bold"
+              />
+              <button
+                type="button"
+                disabled={otp.length !== 6 || emailState.verifying}
+                onClick={handleVerifyOtp}
+                className="btn-primary-sm"
+              >
+                {emailState.verifying ? "Verifying..." : "Verify"}
+              </button>
+              {emailState.cooldown > 0 && (
+                <span className="text-[9px] text-text-secondary/50 font-bold uppercase tracking-wider">Resend in {emailState.cooldown}s</span>
+              )}
+            </div>
+          )}
+          {emailState.error && (
+            <p className="text-[9px] text-danger font-bold mt-1 ml-1">{emailState.error}</p>
+          )}
         </div>
         <div className="space-y-1.5">
           <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Contact Phone</label>
@@ -55,7 +123,7 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
           <div className="grid grid-cols-3 gap-3">
             {['Boys', 'Girls', 'Co-living'].map(type => (
               <button key={type} type="button" onClick={() => setFormData({ ...formData, hostelType: type })}
-                className={`py-3 rounded-xl text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
+                className={`py-3 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
                   formData.hostelType === type ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-card text-text-secondary/50 border-border/60 hover:border-border'
                 }`}>
                 {type}
@@ -85,9 +153,9 @@ const Step1Information = ({ formData, setFormData, onNext }) => {
     </div>
     <div className="space-y-5">
       <button onClick={onNext}
-        disabled={!formData.name || !formData.email || !formData.phone || !isPasswordValid(formData.password) || !formData.hostelName || !formData.address}
+        disabled={!formData.name || !formData.email || !formData.phone || !isPasswordValid(formData.password) || !formData.hostelName || !formData.address || !emailState.verified}
         className="btn-primary w-full py-4 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
-        Continue to Structure <MdChevronRight size={22} />
+        {emailState.verified ? <>Continue to Structure <MdChevronRight size={22} /></> : "Verify email to continue"}
       </button>
 
       <div className="text-center">
@@ -155,6 +223,7 @@ const Step3Floors = ({ floors, setFloors, onNext, onBack }) => {
 };
 
 const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
+  const { theme } = useTheme();
   const addFloor = () => {
     setFloors([...floors, { number: floors.length + 1, rooms: [] }]);
   };
@@ -186,7 +255,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
     <div className="space-y-8 animate-slide-up">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center arch-card p-7 gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+          <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary/10 text-primary flex items-center justify-center`}>
             <MdLayers size={22} />
           </div>
           <div>
@@ -204,7 +273,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
           <div key={fIdx} className="arch-card p-7 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-5">
               <div className="flex items-center gap-3">
-                <span className="w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm">
+                <span className={`w-9 h-9 ${theme === "theme-2" ? "rounded-md" : "rounded-full"} bg-text-primary text-white flex items-center justify-center font-bold text-sm`}>
                   {floor.number}
                 </span>
                 <h4 className="font-bold text-text-primary">Floor Details</h4>
@@ -216,7 +285,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {floor.rooms.map((room, rIdx) => (
-                <div key={rIdx} className="p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all">
+                <div key={rIdx} className={`p-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all`}>
                   <button onClick={() => removeRoom(fIdx, rIdx)} className="absolute top-3 right-3 text-text-secondary/30 hover:text-accent opacity-0 group-hover:opacity-100 transition-all">
                     <MdDelete size={18} />
                   </button>
@@ -257,7 +326,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
                 </div>
               ))}
               {floor.rooms.length === 0 && (
-                <div className="col-span-full py-8 text-center border-2 border-dashed border-border/50 rounded-2xl text-text-secondary/40 font-medium italic text-sm">
+                <div className={`col-span-full py-8 text-center border-2 border-dashed border-border/50 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} text-text-secondary/40 font-medium italic text-sm`}>
                   No rooms added to this floor yet.
                 </div>
               )}
@@ -281,11 +350,16 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 const OwnerOnboarding = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const { theme } = useTheme();
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+
+  // Email verification state for Step1Information
+  const [emailState, setEmailState] = useState({ verified: false, sending: false, verifying: false, cooldown: 0, error: "" });
+  const emailCooldownRef = useRef(null);
 
   const { loginVerifiedOwner } = useAuth();
   const navigate = useNavigate();
@@ -326,6 +400,10 @@ const OwnerOnboarding = () => {
   };
 
   const handleStep1Submit = async () => {
+    if (!emailState.verified) {
+      toast.error("Please verify your email first");
+      return;
+    }
     setOtpLoading(true);
     try {
       const res = await api.post("/auth/owner/send-otp", formData);
@@ -362,6 +440,51 @@ const OwnerOnboarding = () => {
       toast.error(error.response?.data?.message || "Invalid or expired OTP");
     } finally {
       setOtpLoading(false);
+    }
+  };
+
+  const startEmailCooldown = () => {
+    if (emailCooldownRef.current) clearInterval(emailCooldownRef.current);
+    setEmailState(prev => ({ ...prev, cooldown: 60 }));
+    emailCooldownRef.current = setInterval(() => {
+      setEmailState(prev => {
+        if (prev.cooldown <= 1) {
+          clearInterval(emailCooldownRef.current);
+          emailCooldownRef.current = null;
+          return { ...prev, cooldown: 0 };
+        }
+        return { ...prev, cooldown: prev.cooldown - 1 };
+      });
+    }, 1000);
+  };
+
+  const handleSendEmailOtp = async () => {
+    setEmailState(prev => ({ ...prev, sending: true, error: "" }));
+    try {
+      await api.post("/auth/owner/send-otp", formData);
+      toast.success("OTP sent to your email!");
+      startEmailCooldown();
+    } catch (error) {
+      const msg = error.response?.data?.message || error.message || "Failed to send OTP";
+      setEmailState(prev => ({ ...prev, error: msg }));
+      toast.error(msg);
+    } finally {
+      setEmailState(prev => ({ ...prev, sending: false }));
+    }
+  };
+
+  const handleVerifyEmailOtp = async (otp) => {
+    setEmailState(prev => ({ ...prev, verifying: true, error: "" }));
+    try {
+      await api.post("/auth/owner/verify-otp", { email: formData.email, otp });
+      setEmailState(prev => ({ ...prev, verified: true }));
+      toast.success("Email verified successfully!");
+    } catch (error) {
+      const msg = error.response?.data?.message || "Invalid OTP";
+      setEmailState(prev => ({ ...prev, error: msg }));
+      toast.error(msg);
+    } finally {
+      setEmailState(prev => ({ ...prev, verifying: false }));
     }
   };
 
@@ -423,7 +546,7 @@ const OwnerOnboarding = () => {
             { id: 4, label: "Rooms", icon: MdMeetingRoom },
           ].map((s) => (
             <div key={s.id} className="flex items-center gap-2">
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
+              <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} flex items-center justify-center transition-all ${
                 step >= s.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card text-text-secondary/40 border border-border/60"
               }`}>
                 <s.icon size={20} />
@@ -433,7 +556,15 @@ const OwnerOnboarding = () => {
           ))}
         </div>
 
-        {step === 1 && <Step1Information formData={formData} setFormData={setFormData} onNext={handleStep1Submit} />}
+        {step === 1 && <Step1Information
+          formData={formData}
+          setFormData={setFormData}
+          onNext={handleStep1Submit}
+          emailState={emailState}
+          onSendOtp={handleSendEmailOtp}
+          onVerifyOtp={handleVerifyEmailOtp}
+          onResendOtp={handleSendEmailOtp}
+        />}
         {step === 2 && <Step2HostelConfig formData={formData} onBack={() => setStep(1)} onNext={() => { if (floors.length === 0) setFloors([{ number: 1, rooms: [] }]); setStep(3); }} />}
         {step === 3 && <Step3Floors floors={floors} setFloors={setFloors} onBack={() => setStep(2)} onNext={() => setStep(4)} />}
         {step === 4 && <Step4Rooms floors={floors} setFloors={setFloors} onBack={() => setStep(3)} onSubmit={handleSubmit} loading={loading} />}

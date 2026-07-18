@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   MdReportProblem, MdCheckCircle, MdHourglassEmpty, MdAdd,
   MdSearch, MdChevronRight, MdClose, MdFlag
@@ -28,6 +29,7 @@ const PriorityBadge = ({ priority }) => {
 const Complaints = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
+  const { theme } = useTheme();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -154,7 +156,7 @@ const Complaints = () => {
             </div>
             <div className="flex justify-between items-center pt-4 border-t border-border/40">
               <div className="flex items-center gap-3">
-                <div className="shimmer w-9 h-9 rounded-xl" />
+                <div className={`shimmer w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"}`} />
                 <div className="shimmer h-3 w-14" />
               </div>
             </div>
@@ -198,14 +200,14 @@ const Complaints = () => {
             { id: "resolved", label: "Resolved" },
           ].map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setStatusFilter(id)}
-              className={`relative px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-wider transition-all duration-300 ${
+              className={`relative px-5 py-3 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} font-bold text-[10px] uppercase tracking-wider transition-all duration-300 ${
                 (statusFilter === id)
                   ? 'text-primary border border-primary/30 scale-105 shadow-sm shadow-primary/5'
                   : 'bg-card text-text-secondary/60 border border-border/60 hover:border-primary/30 hover:text-text-primary/80'
               }`}>
               {label}
               {statusFilter === id && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] h-[3px] bg-primary/30 rounded-full" />
+                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] h-[3px] bg-primary/30 ${theme === "theme-2" ? "rounded-md" : "rounded-full"}`} />
               )}
             </button>
           ))}
@@ -241,7 +243,7 @@ const Complaints = () => {
 
               <div className="mt-5 pt-4 border-t border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-surface flex items-center justify-center font-bold text-text-secondary/50 border border-border/50">
+                  <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-surface flex items-center justify-center font-bold text-text-secondary/50 border border-border/50`}>
                     {c.tenantId?.name?.[0]?.toUpperCase() || c.tenantId?.personalInfo?.name?.[0]?.toUpperCase() || 'T'}
                   </div>
                   <div>
@@ -253,10 +255,10 @@ const Complaints = () => {
                 {user.role === "owner" && (
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {c.status === 'pending' && (
-                      <button onClick={() => handleStatusUpdate(c._id, "in_progress")} className="p-2 bg-primary-light text-primary rounded-xl hover:bg-secondary hover:text-white transition-all"><MdHourglassEmpty size={16} /></button>
+                      <button onClick={() => handleStatusUpdate(c._id, "in_progress")} className={`p-2 bg-primary-light text-primary ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-secondary hover:text-white transition-all`}><MdHourglassEmpty size={16} /></button>
                     )}
                     {c.status !== 'resolved' && (
-                      <button onClick={() => handleStatusUpdate(c._id, "resolved")} className="p-2 bg-green-500/10 text-green-700 rounded-xl hover:bg-emerald-500 hover:text-white transition-all"><MdCheckCircle size={16} /></button>
+                      <button onClick={() => handleStatusUpdate(c._id, "resolved")} className={`p-2 bg-green-500/10 text-green-700 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-emerald-500 hover:text-white transition-all`}><MdCheckCircle size={16} /></button>
                     )}
                   </div>
                 )}
@@ -277,16 +279,16 @@ const Complaints = () => {
               </div>
 
               {/* Floating satellite icons */}
-              <div className="absolute -top-5 -left-9 w-11 h-11 rounded-xl bg-primary-light flex items-center justify-center border border-accent/10" style={{ animationDuration: '4s' }}>
+              <div className={`absolute -top-5 -left-9 w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light flex items-center justify-center border border-accent/10`} style={{ animationDuration: '4s' }}>
                 <MdFlag className="text-lg text-accent/40" />
               </div>
-              <div className="absolute -bottom-5 -right-7 w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center border border-secondary/10" style={{ animationDuration: '5s', animationDelay: '0.6s' }}>
+              <div className={`absolute -bottom-5 -right-7 w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light flex items-center justify-center border border-secondary/10`} style={{ animationDuration: '5s', animationDelay: '0.6s' }}>
                 <MdCheckCircle className="text-base text-secondary/40" />
               </div>
-              <div className="absolute top-1 -right-14 w-9 h-9 rounded-xl bg-primary-light flex items-center justify-center border border-primary/10" style={{ animationDuration: '3.5s', animationDelay: '1.2s' }}>
+              <div className={`absolute top-1 -right-14 w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light flex items-center justify-center border border-primary/10`} style={{ animationDuration: '3.5s', animationDelay: '1.2s' }}>
                 <MdHourglassEmpty className="text-base text-primary/40" />
               </div>
-              <div className="absolute -bottom-3 -left-11 w-8 h-8 rounded-xl bg-card flex items-center justify-center border border-border/50" style={{ animationDuration: '4.5s', animationDelay: '0.3s' }}>
+              <div className={`absolute -bottom-3 -left-11 w-8 h-8 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-card flex items-center justify-center border border-border/50`} style={{ animationDuration: '4.5s', animationDelay: '0.3s' }}>
                 <MdAdd className="text-sm text-text-tertiary/40" />
               </div>
             </div>
@@ -313,7 +315,7 @@ const Complaints = () => {
                 <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Report Issue</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Support Ticket</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all">
+              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
                 <MdClose size={20} />
               </button>
             </div>
@@ -339,7 +341,7 @@ const Complaints = () => {
                     { id: "high", label: "High" },
                   ].map(({ id, label }) => (
                     <button key={id} type="button" onClick={() => setFormData({...formData, priority: id})}
-                      className={`py-3 rounded-xl text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
+                      className={`py-3 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
                         formData.priority === id ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-card text-text-secondary/50 border-border/60 hover:border-border'
                       }`}>
                       {label}

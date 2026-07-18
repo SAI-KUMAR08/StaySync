@@ -1,8 +1,11 @@
 import React from "react";
+import { useTheme } from "../../context/ThemeContext";
 import { MdPayment, MdCalendarToday } from "react-icons/md";
 
-const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
-  <div className="arch-card p-6 md:p-7 relative overflow-hidden">
+const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => {
+  const { theme } = useTheme();
+  return (
+    <div className={`arch-card ${theme === "theme-2" ? "p-5" : "p-6 md:p-7"} relative overflow-hidden`}>
     <div className={`absolute top-0 left-0 w-full h-1.5 ${variant === "overdue" ? "bg-primary" : "bg-[#8D6E2A]"}`} />
     <div className="flex justify-between items-start mb-6">
       <div>
@@ -24,7 +27,7 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
         {variant === "overdue" ? "overdue" : "unpaid"}
       </span>
     </div>
-    <div className="flex items-center gap-2 text-sm text-text-secondary font-semibold mb-6 bg-surface p-4 rounded-2xl border border-border/50">
+    <div className={`flex items-center gap-2 text-sm text-text-secondary font-semibold mb-6 bg-surface p-4 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} border border-border/50`}>
       <MdCalendarToday className="text-text-secondary/40" size={16} />
       Due {new Date(payment.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
     </div>
@@ -36,6 +39,7 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => (
       </button>
     )}
   </div>
-);
+  );
+};
 
 export default PaymentCard;

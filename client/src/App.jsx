@@ -3,9 +3,55 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./layouts/DashboardLayout";
+
+const ThemeAwareToaster = () => {
+  const { theme } = useTheme();
+  const isCorporate = theme === "theme-2";
+  return (
+    <Toaster
+      position="top-right"
+      gutter={10}
+      containerClassName="toast-container"
+      toastOptions={{
+        className: "toast-custom",
+        duration: 3500,
+        style: {
+          background: isCorporate ? "rgba(17, 24, 39, 0.92)" : "rgba(28, 24, 20, 0.85)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          border: isCorporate ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(255, 255, 255, 0.08)",
+          borderLeft: isCorporate ? "3px solid #1A56DB" : "3px solid #B8860B",
+          borderRadius: isCorporate ? "8px" : "16px",
+          color: "#F5F0EB",
+          padding: "16px 20px",
+          fontSize: "0.875rem",
+          fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+          boxShadow: isCorporate
+            ? "0 8px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(26, 86, 219, 0.1)"
+            : "0 12px 40px -8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(184, 134, 11, 0.08)",
+        },
+        success: {
+          duration: 3000,
+          iconTheme: {
+            primary: isCorporate ? "#1A56DB" : "#B8860B",
+            secondary: "#1C1814",
+          },
+        },
+        error: {
+          duration: 4000,
+          iconTheme: {
+            primary: isCorporate ? "#DC2626" : "#C62828",
+            secondary: "#1C1814",
+          },
+        },
+      }}
+    />
+  );
+};
 
 // Lazy-loaded pages — split into separate chunks, loaded on demand
 const Login = lazy(() => import("./pages/Login"));
@@ -32,83 +78,49 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <ErrorBoundary>
-          <Toaster
-            position="top-right"
-            gutter={10}
-            containerClassName="toast-container"
-            toastOptions={{
-              className: "toast-custom",
-              duration: 3500,
-              style: {
-                background: "rgba(28, 24, 20, 0.85)",
-                backdropFilter: "blur(24px)",
-                WebkitBackdropFilter: "blur(24px)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderLeft: "3px solid #B8860B",
-                borderRadius: "16px",
-                color: "#F5F0EB",
-                padding: "16px 20px",
-                fontSize: "0.875rem",
-                fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
-                boxShadow:
-                  "0 12px 40px -8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(184, 134, 11, 0.08)",
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: "#B8860B",
-                  secondary: "#1C1814",
-                },
-              },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: "#C62828",
-                  secondary: "#1C1814",
-                },
-              },
-            }}
-          />
-          <Suspense fallback={<PageSkeleton />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/onboarding" element={<OwnerOnboarding />} />
+            <ThemeProvider>
+              <ThemeAwareToaster />
+              <Suspense fallback={<PageSkeleton />}>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/onboarding" element={<OwnerOnboarding />} />
 
-            {/* Owner/Manager Routes */}
-            <Route path="/admin" element={
-              <ProtectedRoute role={["owner", "manager"]}>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="inventory" element={<RoomManagement />} />
-              <Route path="tenants" element={<TenantManagement />} />
-              <Route path="complaints" element={<Complaints />} />
-              <Route path="payments" element={<Payments />} />
-              <Route path="expenses" element={<Expenses />} />
-              <Route path="notifications" element={<Notifications />} />
-            </Route>
+                  {/* Owner/Manager Routes */}
+                  <Route path="/admin" element={
+                    <ProtectedRoute role={["owner", "manager"]}>
+                      <DashboardLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="inventory" element={<RoomManagement />} />
+                    <Route path="tenants" element={<TenantManagement />} />
+                    <Route path="complaints" element={<Complaints />} />
+                    <Route path="payments" element={<Payments />} />
+                    <Route path="expenses" element={<Expenses />} />
+                    <Route path="notifications" element={<Notifications />} />
+                  </Route>
 
-            {/* Tenant Routes */}
-            <Route path="/tenant" element={
-              <ProtectedRoute role="tenant">
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<TenantDashboard />} />
-              <Route path="complaints" element={<Complaints />} />
-              <Route path="payments" element={<Payments />} />
-              <Route path="notifications" element={<Notifications />} />
-            </Route>
+                  {/* Tenant Routes */}
+                  <Route path="/tenant" element={
+                    <ProtectedRoute role="tenant">
+                      <DashboardLayout />
+                    </ProtectedRoute>
+                  }>
+                    <Route index element={<Navigate to="dashboard" replace />} />
+                    <Route path="dashboard" element={<TenantDashboard />} />
+                    <Route path="complaints" element={<Complaints />} />
+                    <Route path="payments" element={<Payments />} />
+                    <Route path="notifications" element={<Notifications />} />
+                  </Route>
 
-            {/* Fallback */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-          </Suspense>
+                  {/* Fallback */}
+                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  <Route path="*" element={<Navigate to="/login" replace />} />
+                </Routes>
+              </Suspense>
+            </ThemeProvider>
           </ErrorBoundary>
         </SocketProvider>
       </AuthProvider>
