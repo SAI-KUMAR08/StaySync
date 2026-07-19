@@ -39,8 +39,8 @@ const TrendBadge = ({ current, previous }) => {
   if (Math.abs(pct) < 0.5) return null;
   const up = pct > 0;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${up ? "text-emerald-600" : "text-red-500"}`}>
-      <MdTrendingUp size={11} className={up ? "" : "rotate-180"} />
+    <span className={`inline-flex items-center gap-1 text-xs font-medium ${up ? "text-success" : "text-danger"}`}>
+      <MdTrendingUp size={12} className={up ? "" : "rotate-180"} />
       {up ? "+" : ""}{Math.abs(pct).toFixed(1)}%
     </span>
   );
@@ -51,17 +51,15 @@ const StatCard = ({ label, value, icon: Icon, href, prefix = "", suffix = "", tr
   const numeric = parseInt(String(value ?? 0).replace(/[^0-9.-]/g, "") || "0") || 0;
   const animated = useAnimatedNumber(numeric);
   const card = (
-    <div className="bg-white rounded-xl border border-border/60 p-5 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:border-border transition-all duration-200 h-full flex flex-col">
+    <div className="card card-md card-hover h-full flex flex-col">
       <div className="flex items-center justify-between mb-3">
-        <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
+        <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center">
           <Icon className="text-lg text-primary" />
         </div>
         {trend && <TrendBadge current={numeric} previous={trend} />}
       </div>
-      <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">
-        {label}
-      </p>
-      <p className="text-[26px] font-bold font-numeric text-text-primary tracking-tight leading-none">
+      <p className="text-xs font-medium text-text-tertiary mb-0.5">{label}</p>
+      <p className="text-2xl font-semibold font-numeric text-text-primary tracking-tight leading-none">
         {prefix}{animated.toLocaleString()}{suffix}
       </p>
     </div>
@@ -100,16 +98,17 @@ const AdminDashboard = () => {
     );
   }, []);
 
-  // Fetch selected-hostel dashboard data
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      const [s, e] = await Promise.all([
+      const [s, e, f] = await Promise.all([
         api.get("/owner/dashboard"),
         api.get("/owner/expenses/summary"),
+        api.get("/owner/financial-overview").catch(() => ({ data: { data: null } })),
       ]);
       setStats(s.data.data.stats || null);
       setExpenseSummary(e.data.data || null);
+      if (f.data.data) setFinancialOverview(f.data.data);
       await fetchComplaints(supRef.current);
     } catch (err) {
       console.error(err);
@@ -119,7 +118,6 @@ const AdminDashboard = () => {
     }
   }, [fetchComplaints]);
 
-  // Fetch all-hostels summary table data (independent of selected hostel)
   const fetchHostelSummaries = useCallback(async () => {
     try {
       const res = await api.get("/owner/hostels-summary");
@@ -127,7 +125,6 @@ const AdminDashboard = () => {
     } catch { /* non-critical */ }
   }, []);
 
-  // Clear stale dashboard state when hostel changes
   useEffect(() => {
     setStats(null);
     setExpenseSummary(null);
@@ -135,15 +132,12 @@ const AdminDashboard = () => {
   }, [user?.hostelId]);
 
   useEffect(() => { fetchData(); }, [fetchData, user?.hostelId]);
-
-  // Fetch all-hostels summary on mount and when hostels list changes
   useEffect(() => { fetchHostelSummaries(); }, [fetchHostelSummaries, hostels?.length]);
 
   useEffect(() => {
     if (!loading) fetchComplaints(supportFilter).catch(() => {});
   }, [loading, supportFilter, fetchComplaints]);
 
-  // Socket events
   useEffect(() => {
     if (!socket) return;
     const refresh = () => { fetchData(); fetchHostelSummaries(); };
@@ -168,30 +162,25 @@ const AdminDashboard = () => {
 
   if (loading && !stats) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-border/60 p-5 space-y-3">
-              <div className="shimmer w-9 h-9 rounded-lg" />
-              <div className="shimmer h-3 w-20" />
-              <div className="shimmer h-7 w-28" />
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="card card-md">
+            <div className="skeleton w-9 h-9 rounded-lg mb-3" />
+            <div className="skeleton h-3 w-20 mb-2" />
+            <div className="skeleton h-7 w-28" />
+          </div>
+        ))}
       </div>
     );
   }
 
-  return (
-    <div className="space-y-8 pb-20">
-      {/* ── Section header — original pre-overhaul style ── */}
-      <div className="animate-slide-up-big">
-        <div className="section-ornament-diamond mb-4">Overview</div>
-        <h2 className="section-title"><span className="highlight">Overview</span></h2>
-        <p className="section-sub">Real-time health and occupancy metrics for your facility.</p>
-      </div>
+  const totalIncome = hostelSummaries.reduce((s, h) => s + (h.monthlyIncome || 0), 0);
+  const totalExpenses = hostelSummaries.reduce((s, h) => s + (h.monthlyExpenses || 0), 0);
+  const net = totalIncome - totalExpenses;
 
-      {/* ── Overview Cards + Total Unpaid (same grid, same size) ── */}
+  return (
+    <div className="space-y-6">
+      {/* ── Overview Cards ── */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
@@ -216,14 +205,14 @@ const AdminDashboard = () => {
             href="/admin/expenses"
           />
           {hostelSummaries.length > 0 && (
-            <div className="bg-white rounded-xl border border-border/60 p-5 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:border-border transition-all duration-200 h-full flex flex-col">
+            <div className="card card-md card-hover h-full flex flex-col">
               <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
+                <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center">
                   <MdAttachMoney className="text-lg text-primary" />
                 </div>
               </div>
-              <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">Total Unpaid Bills</p>
-              <p className="text-[26px] font-bold font-numeric text-text-primary tracking-tight leading-none">
+              <p className="text-xs font-medium text-text-tertiary mb-0.5">Total Unpaid Bills</p>
+              <p className="text-2xl font-semibold font-numeric text-text-primary tracking-tight leading-none">
                 ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
               </p>
               <p className="text-xs text-text-tertiary mt-auto pt-2">
@@ -234,72 +223,58 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* ── Multi-Hostel Financial Overview ── */}
-      {hostelSummaries.length > 0 && (() => {
-        const totalIncome = hostelSummaries.reduce((s, h) => s + (h.monthlyIncome || 0), 0);
-        const totalExpenses = hostelSummaries.reduce((s, h) => s + (h.monthlyExpenses || 0), 0);
-        const net = totalIncome - totalExpenses;
-        return (
-        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
-          <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center">
-                <MdAttachMoney size={20} />
-              </div>
+      {/* ── Multi-Hostel Section ── */}
+      {hostelSummaries.length > 0 && (
+        <div className="card">
+          <div className="px-5 py-4 border-b border-border-light">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-text-primary">Multi-Hostel Financial Overview</h3>
-                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">{hostelSummaries.length} properties active this month</p>
+                <h3 className="text-sm font-semibold text-text-primary">Multi-Hostel Financial Overview</h3>
+                <p className="text-xs text-text-tertiary mt-0.5">{hostelSummaries.length} properties active this month</p>
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-            <div className="bg-emerald-50/60 rounded-xl border border-emerald-100/80 p-5 text-center">
-              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1.5">Total Income</p>
-              <p className="text-2xl font-black font-numeric text-emerald-600">₹{totalIncome.toLocaleString()}</p>
+          <div className="grid grid-cols-3 divide-x divide-border-light">
+            <div className="p-5 text-center">
+              <p className="text-xs font-medium text-text-tertiary mb-1">Total Income</p>
+              <p className="text-xl font-semibold font-numeric text-success">₹{totalIncome.toLocaleString()}</p>
             </div>
-            <div className="bg-red-50/60 rounded-xl border border-red-100/80 p-5 text-center">
-              <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1.5">Total Expenses</p>
-              <p className="text-2xl font-black font-numeric text-red-500">₹{totalExpenses.toLocaleString()}</p>
+            <div className="p-5 text-center">
+              <p className="text-xs font-medium text-text-tertiary mb-1">Total Expenses</p>
+              <p className="text-xl font-semibold font-numeric text-danger">₹{totalExpenses.toLocaleString()}</p>
             </div>
-            <div className="bg-blue-50/60 rounded-xl border border-blue-100/80 p-5 text-center">
-              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1.5">Net Position</p>
-              <p className={`text-2xl font-black font-numeric ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                ₹{net.toLocaleString()}
+            <div className="p-5 text-center">
+              <p className="text-xs font-medium text-text-tertiary mb-1">Net Position</p>
+              <p className={`text-xl font-semibold font-numeric ${net >= 0 ? "text-success" : "text-danger"}`}>
+                {net >= 0 ? "+" : ""}₹{net.toLocaleString()}
               </p>
             </div>
           </div>
         </div>
-        );
-      })()}
+      )}
 
-      {/* Support Desk */}
-      <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
-        <div className="px-6 pt-5 pb-1">
-          <div className="flex items-center justify-between mb-4">
+      {/* ── Support Desk ── */}
+      <div className="card">
+        <div className="px-5 py-4 border-b border-border-light">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">
-                Support Desk
-              </p>
-              <h3 className="text-base font-bold font-display text-text-primary mt-0.5">
-                Recent Tickets
-              </h3>
+              <p className="text-xs font-semibold text-primary">Support Desk</p>
+              <h3 className="text-sm font-semibold text-text-primary mt-0.5">Recent Tickets</h3>
             </div>
             <Link
               to="/admin/complaints"
-              className="text-xs font-medium text-text-tertiary hover:text-primary transition-colors inline-flex items-center gap-1"
+              className="btn btn-ghost btn-sm"
             >
-              View all <MdArrowForward size={13} />
+              View all <MdArrowForward size={14} />
             </Link>
           </div>
-          <div className="flex flex-wrap gap-1.5 pb-4 border-b border-border/40">
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-border-light">
             {SUPPORT_FILTERS.map(({ id, label }) => (
               <button
                 key={id || "all"}
                 onClick={() => setSupportFilter(id)}
-                className={`px-3.5 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
-                  supportFilter === id
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-transparent text-text-tertiary border border-border/60 hover:border-border hover:text-text-secondary"
+                className={`btn btn-sm ${
+                  supportFilter === id ? "btn-primary" : "btn-secondary"
                 }`}
               >
                 {label}
@@ -307,39 +282,35 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
-        <div className="px-6 pb-5 pt-3">
+        <div className="p-5">
           {activities.length === 0 ? (
-            <div className="py-12 text-center">
-              <MdCheckCircle className="text-4xl mx-auto mb-2 text-emerald-500/20" />
-              <p className="text-sm font-medium text-text-tertiary/50">No open tickets</p>
+            <div className="empty-state">
+              <MdCheckCircle className="empty-state-icon" />
+              <p className="empty-state-title">All clear</p>
+              <p className="empty-state-desc">No open support tickets</p>
             </div>
           ) : (
             <div className="space-y-1">
               {activities.map((a) => (
                 <div
                   key={a._id}
-                  className="flex items-center gap-3.5 p-3 rounded-lg hover:bg-black/[0.02] transition-all"
+                  className="flex items-center gap-3.5 p-3 rounded-lg hover:bg-neutral-50 transition-all"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center shrink-0">
                     <MdReportProblem size={16} className="text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text-primary truncate">{a.title || a.description}</p>
-                    <p className="text-[10px] text-text-tertiary mt-0.5">
+                    <p className="text-xs text-text-tertiary mt-0.5">
                       {a.tenantId?.name || a.tenantId?.personalInfo?.name || "Resident"}
                       {" · "}
-                      {new Date(a.createdAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                     </p>
                   </div>
-                  <span className={`shrink-0 text-[10px] font-medium px-2.5 py-1 rounded-md capitalize ${
-                    a.status === "pending"
-                      ? "bg-amber-50 text-amber-700"
-                      : a.status === "in_progress" || a.status === "assigned"
-                      ? "bg-blue-50 text-blue-700"
-                      : "bg-emerald-50 text-emerald-700"
+                  <span className={`badge ${
+                    a.status === "pending" ? "badge-warning" :
+                    a.status === "in_progress" || a.status === "assigned" ? "badge-info" :
+                    "badge-success"
                   }`}>
                     {a.status.replace("_", " ")}
                   </span>

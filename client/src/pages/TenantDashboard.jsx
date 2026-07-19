@@ -15,7 +15,7 @@ import toast from "react-hot-toast";
 const StatCard = ({ label, value, sub, icon: Icon, color }) => {
   
   return (
-    <div className={`arch-card p-6 md:p-7 group`}>
+    <div className={`card card-lg group`}>
       <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center mb-5 shadow-md`}>
         <Icon className="text-2xl text-white" />
       </div>

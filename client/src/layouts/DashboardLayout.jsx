@@ -5,12 +5,10 @@ import {
   MdDashboard, MdPeople, MdReportProblem,
   MdPayment, MdNotifications, MdLogout, MdMenu, MdClose,
   MdLayers, MdAnnouncement, MdHome, MdAttachMoney, MdRestaurant,
-  MdChevronRight
+  MdChevronRight, MdSearch, MdMoreVert,
 } from "react-icons/md";
 import HostelSwitcher from "../components/HostelSwitcher";
-import toast from "react-hot-toast";
 
-// ── Route prefetching — preload JS chunks on hover ──
 const ROUTE_PREFETCH = {
   "/admin/dashboard": () => import("../pages/AdminDashboard"),
   "/admin/inventory": () => import("../pages/RoomManagement"),
@@ -27,293 +25,189 @@ const ROUTE_PREFETCH = {
   "/tenant/notifications": () => import("../pages/Notifications"),
 };
 
-const ROUTE_DATA_PREFETCH = {
-  "/admin/dashboard": ["/owner/dashboard"],
-  "/admin/tenants": ["/owner/tenants"],
-  "/admin/inventory": ["/owner/structure"],
-  "/admin/complaints": ["/owner/complaints"],
-  "/admin/payments": ["/owner/payments"],
-  "/admin/expenses": ["/owner/expenses/summary"],
-  "/admin/tenants/*": ["/owner/tenants"],
-  "/admin/meal-timings": ["/owner/meal-timings"],
-  "/tenant/dashboard": ["/tenant/notifications?limit=5"],
-  "/tenant/meal-timings": ["/tenant/meal-timings"],
-  "/tenant/complaints": ["/tenant/complaints"],
-  "/tenant/payments": ["/tenant/payments"],
-};
-
-const NAV_ITEMS = {
+const NAV_GROUPS = {
   owner: [
-    { to: "/admin/dashboard", icon: MdDashboard, label: "Overview" },
-    { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
-    { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
-    { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
-    { to: "/admin/payments", icon: MdPayment, label: "Payments" },
-    { to: "/admin/expenses", icon: MdAttachMoney, label: "Expenses" },
-    { to: "/admin/meal-timings", icon: MdRestaurant, label: "Meals" },
-    { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
+    { group: "Overview", items: [
+      { to: "/admin/dashboard", icon: MdDashboard, label: "Dashboard" },
+    ]},
+    { group: "Management", items: [
+      { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
+      { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
+      { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
+    ]},
+    { group: "Finance", items: [
+      { to: "/admin/payments", icon: MdPayment, label: "Payments" },
+      { to: "/admin/expenses", icon: MdAttachMoney, label: "Expenses" },
+    ]},
+    { group: "Settings", items: [
+      { to: "/admin/meal-timings", icon: MdRestaurant, label: "Meals" },
+      { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
+    ]},
   ],
   manager: [
-    { to: "/admin/dashboard", icon: MdDashboard, label: "Overview" },
-    { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
-    { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
-    { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
-    { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
+    { group: "Overview", items: [
+      { to: "/admin/dashboard", icon: MdDashboard, label: "Dashboard" },
+    ]},
+    { group: "Management", items: [
+      { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
+      { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
+      { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
+    ]},
+    { group: "Settings", items: [
+      { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
+    ]},
   ],
   tenant: [
-    { to: "/tenant/dashboard", icon: MdDashboard, label: "My Space" },
-    { to: "/tenant/complaints", icon: MdReportProblem, label: "Support" },
-    { to: "/tenant/payments", icon: MdPayment, label: "Payments" },
-    { to: "/tenant/meal-timings", icon: MdRestaurant, label: "Meals" },
-    { to: "/tenant/notifications", icon: MdAnnouncement, label: "Notices" },
+    { group: "Overview", items: [
+      { to: "/tenant/dashboard", icon: MdDashboard, label: "My Space" },
+    ]},
+    { group: "Support", items: [
+      { to: "/tenant/complaints", icon: MdReportProblem, label: "Support" },
+      { to: "/tenant/payments", icon: MdPayment, label: "Payments" },
+    ]},
+    { group: "Settings", items: [
+      { to: "/tenant/meal-timings", icon: MdRestaurant, label: "Meals" },
+      { to: "/tenant/notifications", icon: MdAnnouncement, label: "Notices" },
+    ]},
   ],
 };
 
 const DashboardLayout = () => {
   const { user, hostels, switchHostel, logout } = useAuth();
-  const theme = "theme-1";
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [location]);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  useEffect(() => { setSidebarOpen(false); }, [location]);
 
   const roleKey = user?.role === "owner" ? "owner" : user?.role === "manager" ? "manager" : "tenant";
-  const links = NAV_ITEMS[roleKey] || [];
+  const navGroups = NAV_GROUPS[roleKey] || [];
 
-  const getPageTitle = () => {
-    const path = location.pathname.split("/").pop();
-    const match = links.find((l) => l.to.endsWith(path));
-    return match?.label || path.charAt(0).toUpperCase() + path.slice(1);
+  const getPageLabel = () => {
+    for (const g of navGroups) {
+      for (const item of g.items) {
+        if (location.pathname === item.to) return item.label;
+      }
+    }
+    return "Dashboard";
   };
 
-  const activeLink = links.find((l) => location.pathname === l.to);
+  const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background">
 
-      {/* Mobile overlay */}
+      {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-        />
+        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/30 z-40 lg:hidden" />
       )}
 
-      {/* ═══ DESKTOP SIDEBAR ═══ */}
-      {/* Icon-only sidebar with tooltips */}
-        <nav className="hidden lg:flex fixed left-0 top-0 h-full z-50 flex-col items-center py-5 px-3 gap-1 bg-surface/90 backdrop-blur-xl border-r border-border">
-          {/* Brand letter */}
-          <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center mb-6 shadow-md">
-            <span className="text-sm font-bold font-display text-white">SR</span>
+      {/* ═══ SIDEBAR ═══ */}
+      <aside className={`
+        fixed top-0 left-0 h-full z-50
+        bg-white border-r border-border
+        flex flex-col
+        transition-all duration-300 ease-out
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        lg:translate-x-0 lg:w-60
+      `}>
+        {/* Brand */}
+        <div className="px-5 h-14 flex items-center gap-3 border-b border-border flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+            <MdHome className="text-white" size={16} />
           </div>
-          {/* Nav items */}
-          <div className="flex-1 flex flex-col items-center gap-1.5">
-            {links.map((link) => {
-              const active = location.pathname === link.to;
-              return (
-                <div key={link.to} className="relative group">
-                  <Link
-                    to={link.to}
-                    onMouseEnter={() => {
-                      ROUTE_PREFETCH[link.to]?.();
-                      ROUTE_DATA_PREFETCH[link.to]?.forEach(url => {
-                        api.get(url).catch(() => {});
-                      });
-                    }}
-                    className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-300 ${
-                      active
-                        ? "bg-primary text-white shadow-md"
-                        : "text-text-tertiary hover:text-text-primary hover:bg-black/[0.04]"
-                    }`}
-                  >
-                    <link.icon className={`text-xl transition-all duration-300 ${active ? "scale-110" : ""}`} />
-                  </Link>
-                  {active && (
-                    <div className="absolute -left-[14px] top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-primary" />
-                  )}
-                  {/* Tooltip */}
-                  <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
-                      {link.label}
-                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-text-primary leading-tight">Sri Rama</p>
+            <p className="text-[9px] text-text-tertiary font-medium uppercase tracking-wider">Hostel Manager</p>
           </div>
-
-          <div className="w-8 h-px bg-border mb-2" />
-
-          {/* Logout */}
-          <div className="relative group">
-            <button
-              onClick={() => { logout(); navigate("/login"); }}
-              className="flex items-center justify-center w-11 h-11 rounded-xl text-text-tertiary hover:text-primary hover:bg-primary/10 transition-all"
-            >
-              <MdLogout className="text-lg" />
-            </button>
-            <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <div className="bg-surface text-text-primary text-[10px] font-bold font-sans uppercase tracking-wider px-3 py-2 rounded-xl whitespace-nowrap shadow-lg border border-border">
-                Sign Out
-                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface" />
-              </div>
-            </div>
-          </div>
-        </nav>
-
-      {/* ═══ MOBILE BOTTOM NAV ═══ */}
-      <nav className="lg:hidden fixed bottom-4 left-4 right-4 z-50 bg-white/85 backdrop-blur-xl border border-black/5 px-2 py-2 rounded-2xl shadow-xl">
-          <div className="flex items-center justify-around">
-            {links.slice(0, 5).map((link) => {
-              const active = location.pathname === link.to;
-              return (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all ${
-                    active ? "text-white bg-primary shadow-md" : "text-text-tertiary"
-                  }`}
-                >
-                  <link.icon size={20} />
-                  <span className="text-[6px] font-bold uppercase tracking-wider">{link.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
-      {/* ═══ MOBILE SIDEBAR ═══ */}
-      <aside
-        className={`lg:hidden fixed top-0 left-0 h-full w-72 bg-surface/95 backdrop-blur-xl z-50 transform transition-transform duration-300 ease-out shadow-2xl border-r border-border ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-6 pb-4 border-b border-border flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-md">
-              <MdHome className="text-lg text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold font-display text-text-primary leading-none">
-                Sri Rama
-              </h1>
-              <p className="text-[7px] text-text-tertiary/50 uppercase tracking-[0.15em] font-semibold mt-0.5">
-                Hostel Management
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="p-2 text-text-tertiary hover:text-text-primary rounded-xl hover:bg-black/[0.04] transition-all"
-          >
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-text-tertiary hover:text-text-primary">
             <MdClose size={18} />
           </button>
         </div>
 
+        {/* Hostel Switcher */}
         {user?.role === "owner" && hostels?.length > 0 && (
-          <div className="px-4 pt-4 pb-3 border-b border-border/50">
-            <p className="text-[7px] text-text-tertiary/50 font-bold uppercase tracking-[0.12em] mb-2 ml-1">
-              Hostel
-            </p>
-            <HostelSwitcher
-              hostels={hostels}
-              activeHostelId={user?.hostelId}
-              onSwitch={switchHostel}
-            />
+          <div className="px-3 pt-3 pb-2 border-b border-border flex-shrink-0">
+            <HostelSwitcher hostels={hostels} activeHostelId={user?.hostelId} onSwitch={switchHostel} />
           </div>
         )}
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {links.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all ${
-                location.pathname === link.to
-                  ? "bg-primary/10 text-primary font-bold"
-                  : "text-text-secondary/50 hover:text-text-primary hover:bg-black/[0.04]"
-              }`}
-            >
-              <link.icon className="text-xl" />
-              <span className="text-sm">{link.label}</span>
-            </Link>
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {navGroups.map((group) => (
+            <div key={group.group}>
+              <p className="px-3 mb-1.5 text-[9px] font-semibold text-text-tertiary uppercase tracking-widest">
+                {group.group}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.to);
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onMouseEnter={() => ROUTE_PREFETCH[item.to]?.()}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 relative group ${
+                        active
+                          ? "bg-primary-light text-primary font-semibold"
+                          : "text-text-secondary hover:text-text-primary hover:bg-neutral-50"
+                      }`}
+                    >
+                      <item.icon size={18} className={active ? "text-primary" : "text-text-tertiary"} />
+                      <span>{item.label}</span>
+                      {active && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div className="p-3 border-t border-border space-y-1">
+        {/* Logout */}
+        <div className="px-3 py-3 border-t border-border flex-shrink-0">
           <button
             onClick={() => { logout(); navigate("/login"); }}
-            className="w-full flex items-center gap-3 px-4 py-3 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all text-sm"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-tertiary hover:text-danger hover:bg-danger-bg transition-all w-full"
           >
-            <MdLogout className="text-lg" /> Sign Out
+            <MdLogout size={18} />
+            <span>Sign out</span>
           </button>
         </div>
       </aside>
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <div className="lg:pl-[68px] pb-28 lg:pb-0 transition-[padding] duration-300 relative z-10">
+      <div className="lg:ml-60 min-h-screen flex flex-col">
 
-        {/* Page header */}
-        <header
-          className={`sticky top-0 z-20 transition-all duration-300 ${
-            scrolled
-              ? "bg-background/80 backdrop-blur-xl border-b border-border"
-              : "bg-transparent"
-          }`}
-        >
-          <div className="flex items-center justify-between px-4 md:px-8 lg:px-10 py-4 max-w-[1440px] mx-auto">
+        {/* ═══ TOP NAVBAR ═══ */}
+        <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-lg border-b border-border">
+          <div className="flex items-center justify-between px-4 lg:px-6 h-14 max-w-[1440px] mx-auto w-full">
+
+            {/* Left */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2.5 rounded-xl bg-surface border border-border text-text-secondary hover:text-text-primary transition-all"
+                className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-neutral-100 transition-all"
               >
-                <MdMenu size={18} />
+                <MdMenu size={20} />
               </button>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-primary-light text-primary flex items-center justify-center">
-                  {(() => {
-                    const Icon = activeLink?.icon || MdDashboard;
-                    return <Icon size={18} />;
-                  })()}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-text-tertiary/60">
-                    <span className="font-medium uppercase tracking-wider">
-                      {user?.role === "owner" ? "Owner" : user?.role === "manager" ? "Manager" : "Resident"}
-                    </span>
-                    <MdChevronRight size={10} />
-                    <span className="font-bold text-text-secondary">{getPageTitle()}</span>
-                  </div>
-                  <h2 className="text-xl font-bold font-display text-text-primary tracking-tight leading-tight">
-                    {getPageTitle()}
-                  </h2>
-                </div>
+              <div className="flex items-center gap-2 text-xs text-text-tertiary">
+                <span className="font-medium">{user?.role === "owner" ? "Owner" : user?.role === "manager" ? "Manager" : "Resident"}</span>
+                <MdChevronRight size={12} />
+                <span className="font-semibold text-text-secondary">{getPageLabel()}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Right */}
+            <div className="flex items-center gap-2">
               {user?.role === "owner" && hostels?.length > 0 && (
                 <div className="hidden md:flex">
-                  <HostelSwitcher
-                    hostels={hostels}
-                    activeHostelId={user?.hostelId}
-                    onSwitch={switchHostel}
-                  />
+                  <HostelSwitcher hostels={hostels} activeHostelId={user?.hostelId} onSwitch={switchHostel} />
                 </div>
               )}
-              {/* User avatar */}
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-xs shadow-md">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-semibold text-xs shadow-sm">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
             </div>
@@ -321,10 +215,35 @@ const DashboardLayout = () => {
         </header>
 
         {/* Content */}
-        <div className="px-4 md:px-8 lg:px-10 py-6 max-w-[1440px] mx-auto">
+        <main className="flex-1 px-4 lg:px-6 py-6 max-w-[1440px] mx-auto w-full">
           <Outlet />
-        </div>
+        </main>
       </div>
+
+      {/* ═══ MOBILE BOTTOM NAV ═══ */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-border px-2 pb-safe">
+        <div className="flex items-center justify-around h-14">
+          {(() => {
+            const allItems = navGroups.flatMap(g => g.items);
+            const visible = allItems.slice(0, 5);
+            return visible.map((item) => {
+              const active = isActive(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg transition-all ${
+                    active ? "text-primary" : "text-text-tertiary"
+                  }`}
+                >
+                  <item.icon size={20} />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider">{item.label}</span>
+                </Link>
+              );
+            });
+          })()}
+        </div>
+      </nav>
     </div>
   );
 };
