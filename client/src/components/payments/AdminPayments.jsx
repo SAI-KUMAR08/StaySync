@@ -9,17 +9,15 @@ import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
-import { useTheme } from "../../context/ThemeContext";
 import { getApiError } from "../../utils/getApiError";
 import { useDebounce } from "../../hooks/useDebounce";
 
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => {
-  const { theme } = useTheme();
   
   return (
-    <div className={`arch-card ${theme === "theme-2" ? "p-4 flex items-center gap-3" : "p-5 flex items-center gap-4"}`}>
-      <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} ${color} flex items-center justify-center`}>
+    <div className={`arch-card p-5 flex items-center gap-4`}>
+      <div className={`w-11 h-11 rounded-2xl ${color} flex items-center justify-center`}>
         <Icon className="text-xl text-white" />
       </div>
       <div>
@@ -42,7 +40,6 @@ const AdminPayments = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [fineAmount, setFineAmount] = useState(0);
   const { socket } = useSocket();
-  const { theme } = useTheme();
 
   // Payment Requests
   const [paymentRequests, setPaymentRequests] = useState([]);
@@ -180,7 +177,7 @@ const AdminPayments = () => {
         <div className="flex gap-2">
           {['all', 'paid', 'unpaid', 'overdue'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s === 'all' ? '' : s)}
-              className={`px-6 py-3 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} font-bold text-[9px] uppercase tracking-[0.12em] transition-all ${
+              className={`px-6 py-3 rounded-2xl font-bold text-[9px] uppercase tracking-[0.12em] transition-all ${
                 (statusFilter === s || (s === 'all' && statusFilter === ''))
                   ? 'bg-text-primary text-white shadow-lg shadow-text-primary/20'
                   : 'bg-card text-text-secondary/60 border border-border/60 hover:border-border'
@@ -208,7 +205,7 @@ const AdminPayments = () => {
               <tr key={p._id} className="group">
                 <td>
                   <div className="flex items-center gap-3.5">
-                    <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary/5 text-primary flex items-center justify-center font-black text-base`}>
+                    <div className={`w-10 h-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center font-black text-base`}>
                       {p.tenantId?.name?.[0]?.toUpperCase() || p.tenantId?.personalInfo?.name?.[0]?.toUpperCase() || 'T'}
                     </div>
                     <div>
@@ -249,11 +246,11 @@ const AdminPayments = () => {
                     {(p.paymentStatus || p.status) !== 'paid' && (
                       <>
                         <button onClick={() => handleStatusUpdate(p._id, "paid")}
-                          className={`p-2.5 bg-emerald-500/10 text-emerald-400 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-emerald-500 hover:text-white transition-all`}>
+                          className={`p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl hover:bg-emerald-500 hover:text-white transition-all`}>
                           <MdCheckCircle size={18} />
                         </button>
                         <button onClick={() => { setSelectedPayment(p); setFineAmount(p.fine || 0); setShowFineModal(true); }}
-                          className={`p-2.5 bg-primary-light text-primary ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-primary-hover hover:text-white transition-all`}>
+                          className={`p-2.5 bg-primary-light text-primary rounded-xl hover:bg-primary-hover hover:text-white transition-all`}>
                           <MdAddCircleOutline size={18} />
                         </button>
                       </>
@@ -309,12 +306,12 @@ const AdminPayments = () => {
                 </div>
                 <div className="flex gap-2 shrink-0 ml-4">
                   <button onClick={() => handleReviewRequest(req._id, "approved")}
-                    className={`p-2.5 bg-emerald-500/10 text-emerald-500 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-emerald-500 hover:text-white transition-all`}
+                    className={`p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500 hover:text-white transition-all`}
                     title="Approve">
                     <MdThumbUp size={16} />
                   </button>
                   <button onClick={() => handleReviewRequest(req._id, "rejected")}
-                    className={`p-2.5 bg-red-500/10 text-red-500 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-red-500 hover:text-white transition-all`}
+                    className={`p-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all`}
                     title="Reject">
                     <MdThumbDown size={16} />
                   </button>
@@ -339,7 +336,7 @@ const AdminPayments = () => {
               <div className="space-y-2 text-center">
                 <label className="form-label">Fine Amount (₹)</label>
                 <input type="number" required autoFocus min="0"
-                  className={`w-full py-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} border border-transparent bg-surface outline-none font-black text-3xl text-center text-[#C62828] focus:bg-card focus:border-rose-100 focus:ring-4 focus:ring-rose-50 transition-all tracking-tighter`}
+                  className={`w-full py-5 rounded-3xl border border-transparent bg-surface outline-none font-black text-3xl text-center text-[#C62828] focus:bg-card focus:border-rose-100 focus:ring-4 focus:ring-rose-50 transition-all tracking-tighter`}
                   value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} />
               </div>
               <p className="text-[9px] text-text-secondary/60 text-center font-medium uppercase tracking-wider">

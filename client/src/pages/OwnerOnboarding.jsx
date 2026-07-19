@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import api from "../api/axios";
 import {
   MdAdd, MdDelete, MdChevronRight, MdChevronLeft,
@@ -12,7 +11,6 @@ import toast from "react-hot-toast";
 
 
 const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp, onVerifyOtp, onResendOtp }) => {
-  const { theme } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
@@ -36,7 +34,7 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
   <div className="space-y-8 animate-slide-up">
     <div className="arch-card p-8 space-y-7">
       <div className="flex items-center gap-4 mb-2">
-        <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary/10 text-primary flex items-center justify-center`}>
+        <div className={`w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center`}>
           <MdBusiness size={22} />
         </div>
         <div>
@@ -124,7 +122,7 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
           <div className="grid grid-cols-3 gap-3">
             {['Boys', 'Girls', 'Co-living'].map(type => (
               <button key={type} type="button" onClick={() => setFormData({ ...formData, hostelType: type })}
-                className={`py-3 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
+                className={`py-3 rounded-xl text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
                   formData.hostelType === type ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-card text-text-secondary/50 border-border/60 hover:border-border'
                 }`}>
                 {type}
@@ -224,7 +222,6 @@ const Step3Floors = ({ floors, setFloors, onNext, onBack }) => {
 };
 
 const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
-  const { theme } = useTheme();
   const addFloor = () => {
     setFloors([...floors, { number: floors.length + 1, rooms: [] }]);
   };
@@ -256,7 +253,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
     <div className="space-y-8 animate-slide-up">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center arch-card p-7 gap-4">
         <div className="flex items-center gap-4">
-          <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary/10 text-primary flex items-center justify-center`}>
+          <div className={`w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center`}>
             <MdLayers size={22} />
           </div>
           <div>
@@ -274,7 +271,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
           <div key={fIdx} className="arch-card p-7 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-5">
               <div className="flex items-center gap-3">
-                <span className={`w-9 h-9 ${theme === "theme-2" ? "rounded-md" : "rounded-full"} bg-text-primary text-white flex items-center justify-center font-bold text-sm`}>
+                <span className={`w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm`}>
                   {floor.number}
                 </span>
                 <h4 className="font-bold text-text-primary">Floor Details</h4>
@@ -286,7 +283,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {floor.rooms.map((room, rIdx) => (
-                <div key={rIdx} className={`p-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all`}>
+                <div key={rIdx} className={`p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all`}>
                   <button onClick={() => removeRoom(fIdx, rIdx)} className="absolute top-3 right-3 text-text-secondary/30 hover:text-accent opacity-0 group-hover:opacity-100 transition-all">
                     <MdDelete size={18} />
                   </button>
@@ -327,7 +324,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
                 </div>
               ))}
               {floor.rooms.length === 0 && (
-                <div className={`col-span-full py-8 text-center border-2 border-dashed border-border/50 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} text-text-secondary/40 font-medium italic text-sm`}>
+                <div className={`col-span-full py-8 text-center border-2 border-dashed border-border/50 rounded-2xl text-text-secondary/40 font-medium italic text-sm`}>
                   No rooms added to this floor yet.
                 </div>
               )}
@@ -351,7 +348,6 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
 const OwnerOnboarding = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const { theme } = useTheme();
 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState("");
@@ -547,7 +543,7 @@ const OwnerOnboarding = () => {
             { id: 4, label: "Rooms", icon: MdMeetingRoom },
           ].map((s) => (
             <div key={s.id} className="flex items-center gap-2">
-              <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} flex items-center justify-center transition-all ${
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
                 step >= s.id ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-card text-text-secondary/40 border border-border/60"
               }`}>
                 <s.icon size={20} />

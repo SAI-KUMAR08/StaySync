@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import {
   MdAdd, MdDelete, MdEdit, MdClose, MdSearch,
   MdAttachMoney, MdTrendingDown, MdReceipt,
@@ -38,7 +37,6 @@ const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "card", "other"];
 
 const Expenses = () => {
   const { user } = useAuth();
-  const { theme } = useTheme();
 
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -144,7 +142,7 @@ const Expenses = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="arch-card p-6 space-y-4">
-            <div className={`shimmer h-10 w-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"}`} />
+            <div className={`shimmer h-10 w-10 rounded-2xl`} />
             <div className="shimmer h-3 w-24" />
             <div className="shimmer h-7 w-20" />
           </div>
@@ -220,7 +218,7 @@ const Expenses = () => {
             {expenses.map((e, i) => (
               <div key={e._id} className="stagger-enter p-5 hover:bg-surface transition-all flex items-center gap-5"
                 style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
-                <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} flex items-center justify-center text-lg ${CATEGORIES.find(c => c.id === e.category)?.color || 'bg-white/5 text-text-secondary/60'}`}>
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg ${CATEGORIES.find(c => c.id === e.category)?.color || 'bg-white/5 text-text-secondary/60'}`}>
                   {CATEGORY_ICONS[e.category] || "📋"}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -232,10 +230,10 @@ const Expenses = () => {
                   <p className="text-[9px] text-text-secondary font-medium capitalize">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => handleEdit(e)} className={`p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}>
+                  <button onClick={() => handleEdit(e)} className={`p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}>
                     <MdEdit size={16} />
                   </button>
-                  <button onClick={() => handleDelete(e._id)} className={`p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}>
+                  <button onClick={() => handleDelete(e._id)} className={`p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft rounded-xl transition-all`}>
                     <MdDelete size={16} />
                   </button>
                 </div>
@@ -254,7 +252,7 @@ const Expenses = () => {
                 <h4 className="text-lg font-bold font-display text-text-primary">{editing ? "Edit Expense" : "Add Expense"}</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Record a hostel expense</p>
               </div>
-              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
+              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
                 <MdClose size={20} />
               </button>
             </div>

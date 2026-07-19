@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import {
   MdRestaurant, MdAdd, MdEdit, MdDelete, MdClose,
   MdAccessTime, MdMenuBook,
@@ -24,7 +23,6 @@ const ITEM_PRESETS = [
 
 const MealTimings = () => {
   const { user } = useAuth();
-  const { theme } = useTheme();
   const isOwner = user?.role === "owner" || user?.role === "manager";
 
   const [timings, setTimings] = useState([]);
@@ -215,11 +213,11 @@ const MealTimings = () => {
                       {isOwner && (
                         <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => handleEdit(meal)}
-                            className={`p-1.5 bg-surface text-text-secondary/50 hover:text-primary ${theme === "theme-2" ? "rounded-md" : "rounded-lg"} transition-all`}>
+                            className={`p-1.5 bg-surface text-text-secondary/50 hover:text-primary rounded-lg transition-all`}>
                             <MdEdit size={14} />
                           </button>
                           <button onClick={() => handleDelete(meal._id)}
-                            className={`p-1.5 bg-surface text-text-secondary/50 hover:text-red-500 ${theme === "theme-2" ? "rounded-md" : "rounded-lg"} transition-all`}>
+                            className={`p-1.5 bg-surface text-text-secondary/50 hover:text-red-500 rounded-lg transition-all`}>
                             <MdDelete size={14} />
                           </button>
                         </div>
@@ -265,7 +263,7 @@ const MealTimings = () => {
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Meal Schedule Configuration</p>
               </div>
               <button onClick={() => setShowModal(false)}
-                className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
+                className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
                 <MdClose size={20} />
               </button>
             </div>

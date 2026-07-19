@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import {
   MdAdd, MdDelete, MdPhone, MdCalendarToday,
   MdSearch, MdFilterList, MdClose, MdPeople, MdHotel,
@@ -20,7 +19,6 @@ import { useDebounce } from "../hooks/useDebounce";
 
 
 const TenantManagement = () => {
-  const { theme } = useTheme();
   const COUNTRY_CODES = [
     { code: "+91", label: "IN", flag: "🇮🇳" },
     { code: "+1", label: "US", flag: "🇺🇸" },
@@ -282,7 +280,7 @@ const TenantManagement = () => {
         {[...Array(4)].map((_, i) => (
           <div key={i} className="px-6 py-4 border-b border-border/40 flex items-center gap-12">
             <div className="flex items-center gap-4 flex-1">
-              <div className={`shimmer w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"}`} />
+              <div className={`shimmer w-9 h-9 rounded-xl`} />
               <div className="space-y-2">
                 <div className="shimmer h-4 w-28" />
                 <div className="shimmer h-3 w-18" />
@@ -290,7 +288,7 @@ const TenantManagement = () => {
             </div>
             <div className="shimmer h-4 w-24" />
             <div className="shimmer h-4 w-14" />
-            <div className={`shimmer h-5 w-12 ${theme === "theme-2" ? "rounded-md" : "rounded-full"}`} />
+            <div className={`shimmer h-5 w-12 rounded-full`} />
           </div>
         ))}
       </div>
@@ -335,7 +333,7 @@ const TenantManagement = () => {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className={`flex gap-1.5 bg-surface/50 p-1 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"}`}>
+        <div className={`flex gap-1.5 bg-surface/50 p-1 rounded-2xl`}>
           {[
             { id: "", label: "All" },
             { id: "active", label: "Active" },
@@ -343,7 +341,7 @@ const TenantManagement = () => {
             { id: "temporary", label: "Temporary" },
           ].map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setFilter(id)}
-              className={`px-4 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-[9px] font-bold font-sans uppercase tracking-wider transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-[9px] font-bold font-sans uppercase tracking-wider transition-all ${
                 filter === id
                   ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-text-secondary/60 hover:text-text-secondary hover:bg-surface-hover/50"
@@ -372,10 +370,10 @@ const TenantManagement = () => {
             {tempTenants.map(t => {
               const roomReady = hasPreferredRoomAvailable(t);
               return (
-                <div key={t._id} className={`p-4 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-surface border border-border/50 hover:shadow-md transition-all`}>
+                <div key={t._id} className={`p-4 rounded-2xl bg-surface border border-border/50 hover:shadow-md transition-all`}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 ${theme === "theme-2" ? "rounded-md" : "rounded-full"} bg-primary-light text-primary flex items-center justify-center text-xs font-bold`}>
+                      <div className={`w-8 h-8 rounded-full bg-primary-light text-primary flex items-center justify-center text-xs font-bold`}>
                         {t.name?.[0] || 'T'}
                       </div>
                       <div>
@@ -399,14 +397,14 @@ const TenantManagement = () => {
                     <button
                       onClick={() => handleConvertToPermanent(t)}
                       disabled={!roomReady}
-                      className={`flex-1 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500/20 border border-emerald-500/15 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed`}
+                      className={`flex-1 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500/20 border border-emerald-500/15 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed`}
                     >
                       <MdCheckCircle size={14} /> {roomReady ? "Make Permanent" : "No Room Available"}
                     </button>
                     {roomReady && (
                       <button
                         onClick={() => handleFixTempTenant(t)}
-                        className={`px-3 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 border border-primary/15 transition-all`}
+                        className={`px-3 py-2.5 rounded-xl bg-primary-light text-primary text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 border border-primary/15 transition-all`}
                         title="Manually select a specific room"
                       >
                         <MdHotel size={14} />
@@ -439,7 +437,7 @@ const TenantManagement = () => {
                 <td>
                   <div className="flex items-center gap-3.5">
                     <Link to={`/admin/tenants/${tenant._id}`} className="flex items-center gap-3.5 group">
-                      <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary/10 text-primary flex items-center justify-center font-bold text-sm`}>
+                      <div className={`w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm`}>
                         {(tenant.name?.[0] || "T").toUpperCase()}
                       </div>
                       <div>
@@ -471,13 +469,13 @@ const TenantManagement = () => {
                   <div className="flex justify-end gap-1.5">
                     <button
                       onClick={() => handleReassignStart(tenant)}
-                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
+                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}
                     >
                       <MdHotel size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete(tenant._id)}
-                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
+                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light rounded-xl transition-all`}
                     >
                       <MdDelete size={18} />
                     </button>
@@ -491,7 +489,7 @@ const TenantManagement = () => {
                 <td>
                   <div className="flex items-center gap-3.5">
                     <Link to={`/admin/tenants/${tenant._id}`} className="flex items-center gap-3.5 group">
-                      <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm`}>
+                      <div className={`w-9 h-9 rounded-xl bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm`}>
                         {(tenant.name?.[0] || "T").toUpperCase()}
                       </div>
                       <div>
@@ -524,7 +522,7 @@ const TenantManagement = () => {
                     {hasPreferredRoomAvailable(tenant) && (
                       <button
                         onClick={() => handleConvertToPermanent(tenant)}
-                        className={`p-2 text-emerald-500 hover:bg-emerald-500/10 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
+                        className={`p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all`}
                         title="Make Permanent"
                       >
                         <MdCheckCircle size={18} />
@@ -532,13 +530,13 @@ const TenantManagement = () => {
                     )}
                     <button
                       onClick={() => handleReassignStart(tenant)}
-                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
+                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}
                     >
                       <MdHotel size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete(tenant._id)}
-                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
+                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light rounded-xl transition-all`}
                     >
                       <MdDelete size={18} />
                     </button>
@@ -564,7 +562,7 @@ const TenantManagement = () => {
           <div className="modal-card max-w-xl max-h-[90vh] flex flex-col">
             <div className="p-6 md:p-7 border-b border-border/60 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary text-white flex items-center justify-center font-bold text-lg shadow-md shadow-primary/20`}>
+                <div className={`w-10 h-10 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-lg shadow-md shadow-primary/20`}>
                   {step}
                 </div>
                 <div>
@@ -579,7 +577,7 @@ const TenantManagement = () => {
                   }</p>
                 </div>
               </div>
-              <button onClick={() => { setShowModal(false); setReassigningTenant(null); }} className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all border border-transparent hover:border-accent/20`}>
+              <button onClick={() => { setShowModal(false); setReassigningTenant(null); }} className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all border border-transparent hover:border-accent/20`}>
                 <MdClose size={20} />
               </button>
             </div>
@@ -656,23 +654,23 @@ const TenantManagement = () => {
                           reader.readAsDataURL(file);
                         }
                       }}
-                      className={`border-2 border-dashed border-border/60 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} p-6 text-center cursor-pointer hover:border-primary/40 transition-all bg-surface/30`}
+                      className={`border-2 border-dashed border-border/60 rounded-2xl p-6 text-center cursor-pointer hover:border-primary/40 transition-all bg-surface/30`}
                       onClick={() => document.getElementById('idProofInput').click()}
                     >
                       {formData.idProof ? (
                         <div className="relative inline-block">
-                          <img src={formData.idProof} alt="ID Proof" className={`max-h-28 mx-auto ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"}`} />
+                          <img src={formData.idProof} alt="ID Proof" className={`max-h-28 mx-auto rounded-xl`} />
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); setFormData({...formData, idProof: ""}); }}
-                            className={`absolute -top-2 -right-2 w-6 h-6 bg-danger text-white ${theme === "theme-2" ? "rounded-md" : "rounded-full"} text-xs font-bold hover:scale-110 transition-all`}
+                            className={`absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full text-xs font-bold hover:scale-110 transition-all`}
                           >
                             ×
                           </button>
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <div className={`w-12 h-12 mx-auto ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary/10 text-primary flex items-center justify-center`}>
+                          <div className={`w-12 h-12 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center`}>
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                             </svg>
@@ -730,7 +728,7 @@ const TenantManagement = () => {
                           <div className="grid grid-cols-4 gap-2">
                             {[1, 2, 3, 4, 6].map(type => (
                               <button key={type} type="button" onClick={() => setPreferredSharing(type)}
-                                className={`py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
+                                className={`py-2.5 rounded-xl text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
                                   preferredSharing === type
                                     ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
                                     : 'bg-surface text-text-secondary border-border/60 hover:border-primary/30'
@@ -756,7 +754,7 @@ const TenantManagement = () => {
                   <p className="text-text-secondary/70 font-medium text-center mb-2 text-xs uppercase tracking-wider">Select Room Capacity</p>
                   <div className="grid grid-cols-2 gap-4">
                     {[1, 2, 3, 4, 6].map(type => (
-                      <button key={type} onClick={() => handleSharingSelect(type)} className={`p-6 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} border-2 border-border/50 hover:border-primary/40 hover:bg-primary/[0.02] transition-all group text-left`}>
+                      <button key={type} onClick={() => handleSharingSelect(type)} className={`p-6 rounded-3xl border-2 border-border/50 hover:border-primary/40 hover:bg-primary/[0.02] transition-all group text-left`}>
                         <MdPeople className="text-3xl text-border mb-3 group-hover:text-primary/40 transition-colors" />
                         <p className="text-lg font-bold font-display text-text-primary">{type} Sharing</p>
                         <p className="text-[9px] font-medium text-text-secondary uppercase tracking-wider mt-1">
@@ -776,7 +774,7 @@ const TenantManagement = () => {
                   <p className="text-text-secondary/70 font-medium text-center mb-2 text-xs uppercase tracking-wider">Available Units ({selectedSharing} Sharing)</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2">
                     {availableRooms.map(room => (
-                      <button key={room._id} onClick={() => handleRoomSelect(room)} className={`p-5 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} border-2 border-border/50 hover:border-primary/40 hover:bg-primary/[0.02] transition-all text-left`}>
+                      <button key={room._id} onClick={() => handleRoomSelect(room)} className={`p-5 rounded-3xl border-2 border-border/50 hover:border-primary/40 hover:bg-primary/[0.02] transition-all text-left`}>
                         <div className="flex justify-between items-start mb-2">
                           <span className="badge-primary">ROOM {room.number}</span>
                           <span className="text-[9px] font-medium text-text-secondary uppercase">Floor {room.floorNumber}</span>
@@ -803,7 +801,7 @@ const TenantManagement = () => {
               {step === 4 && (
                 <div className="space-y-6">
                   {isTemporary && (
-                    <div className={`p-4 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary-light border border-primary/20 flex items-start gap-3`}>
+                    <div className={`p-4 rounded-2xl bg-primary-light border border-primary/20 flex items-start gap-3`}>
                       <MdSwapHoriz className="text-2xl text-primary shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm font-bold text-amber-200">Temporary Assignment</p>
@@ -819,7 +817,7 @@ const TenantManagement = () => {
                           key={bed._id}
                           disabled={bed.status === 'occupied'}
                           onClick={() => setFormData({...formData, bedId: bed._id})}
-                          className={`w-20 h-20 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} border-2 flex flex-col items-center justify-center transition-all relative ${
+                          className={`w-20 h-20 rounded-3xl border-2 flex flex-col items-center justify-center transition-all relative ${
                             bed.status === 'occupied'
                               ? 'bg-surface border-border/40 text-text-secondary/30 cursor-not-allowed'
                               : formData.bedId === bed._id
@@ -829,7 +827,7 @@ const TenantManagement = () => {
                         >
                           <MdHotel size={24} />
                           <span className="text-[10px] font-bold mt-1">Bed {bed.number}</span>
-                          {formData.bedId === bed._id && <MdCheckCircle className={`absolute -top-2 -right-2 text-xl text-primary bg-card ${theme === "theme-2" ? "rounded-md" : "rounded-full"}`} />}
+                          {formData.bedId === bed._id && <MdCheckCircle className={`absolute -top-2 -right-2 text-xl text-primary bg-card rounded-full`} />}
                         </button>
                       ))}
                   </div>

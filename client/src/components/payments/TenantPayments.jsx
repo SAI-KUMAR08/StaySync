@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
-import { useTheme } from "../../context/ThemeContext";
 import { getApiError } from "../../utils/getApiError";
 import PaymentCard from "./PaymentCard";
 
@@ -25,7 +24,6 @@ const TenantPayments = () => {
   const [error, setError] = useState(null);
   const { socket } = useSocket();
   const { user } = useAuth();
-  const { theme } = useTheme();
 
   // Payment request flow
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -105,7 +103,7 @@ const TenantPayments = () => {
   return (
     <div className="space-y-10 pb-20 max-w-4xl mx-auto">
       <div className="text-center space-y-3">
-        <div className={`w-16 h-16 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-primary/10 flex items-center justify-center mx-auto mb-4`}>
+        <div className={`w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4`}>
           <MdPayment className="text-3xl text-primary" />
         </div>
         <h3 className="section-title">Rent & <span>Dues</span></h3>
@@ -148,7 +146,7 @@ const TenantPayments = () => {
       )}
 
       {overdue.length === 0 && unpaid.length === 0 && (
-        <div className={`text-center py-14 bg-green-500/5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} border border-emerald-500/10`}>
+        <div className={`text-center py-14 bg-green-500/5 rounded-xl border border-emerald-500/10`}>
           <MdCheckCircle className="text-4xl text-[#2E7D32] mx-auto mb-3" />
           <p className="text-[#2E7D32] font-bold">All caught up — no pending rent.</p>
         </div>
@@ -163,7 +161,7 @@ const TenantPayments = () => {
             {paid.map((p, i) => (
               <div key={p._id} className={`flex items-center justify-between p-6 ${i < paid.length - 1 ? "border-b border-border/50" : ""}`}>
                 <div className="flex items-center gap-5">
-                  <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-emerald-500/10 text-[#2E7D32] flex items-center justify-center`}>
+                  <div className={`w-10 h-10 rounded-2xl bg-emerald-500/10 text-[#2E7D32] flex items-center justify-center`}>
                     <MdCheckCircle size={22} />
                   </div>
                   <div>
@@ -190,7 +188,7 @@ const TenantPayments = () => {
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">For admin approval</p>
               </div>
               <button onClick={() => setShowRequestModal(false)}
-                className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
+                className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
                 <MdClose size={20} />
               </button>
             </div>

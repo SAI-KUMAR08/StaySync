@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import {
   MdMeetingRoom, MdAttachMoney, MdNotifications,
   MdReportProblem, MdBed, MdChevronRight, MdHistory,
@@ -14,11 +13,10 @@ import ErrorRetry from "../components/ErrorRetry";
 import toast from "react-hot-toast";
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => {
-  const { theme } = useTheme();
   
   return (
-    <div className={`${theme === "theme-2" ? "arch-card p-5 group" : "arch-card p-6 md:p-7 group"}`}>
-      <div className={`w-12 h-12 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} ${color} flex items-center justify-center mb-5 shadow-md`}>
+    <div className={`arch-card p-6 md:p-7 group`}>
+      <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center mb-5 shadow-md`}>
         <Icon className="text-2xl text-white" />
       </div>
       <h3 className="text-text-secondary text-[8px] font-bold font-sans uppercase tracking-[0.15em] mb-1.5">{label}</h3>
@@ -30,7 +28,6 @@ const StatCard = ({ label, value, sub, icon: Icon, color }) => {
 
 const TenantDashboard = () => {
   const { user } = useAuth();
-  const { theme } = useTheme();
   const { socket } = useSocket();
   const [notifications, setNotifications] = useState([]);
   const [complaints, setComplaints] = useState([]);
@@ -79,9 +76,9 @@ const TenantDashboard = () => {
   if (error) return <ErrorRetry message={error} onRetry={fetchData} />;
   if (loading) return (
     <div className="space-y-5">
-      <div className={`shimmer h-24 w-full ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"}`} />
+      <div className={`shimmer h-24 w-full rounded-2xl`} />
       <div className="grid grid-cols-5 gap-5">
-        {[...Array(5)].map((_, i) => <div key={i} className={`shimmer h-40 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"}`} />)}
+        {[...Array(5)].map((_, i) => <div key={i} className={`shimmer h-40 rounded-2xl`} />)}
       </div>
     </div>
   );

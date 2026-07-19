@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
-import { ThemeProvider } from "./context/ThemeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -76,8 +75,6 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <ErrorBoundary>
-            <ThemeProvider>
-              <ThemeAwareToaster />
               <Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   {/* Public Routes */}
@@ -121,7 +118,6 @@ function App() {
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 </Routes>
               </Suspense>
-            </ThemeProvider>
           </ErrorBoundary>
         </SocketProvider>
       </AuthProvider>

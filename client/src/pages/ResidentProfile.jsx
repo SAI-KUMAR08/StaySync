@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import {
   MdPerson, MdPhone, MdEmail, MdCalendarToday, MdMeetingRoom,
   MdHotel, MdBadge, MdCheckCircle, MdClose, MdArrowBack,
@@ -30,7 +29,6 @@ const StatusBadge = ({ active, temporary }) => {
 const ResidentProfile = () => {
   const { id } = useParams();
   const { user } = useAuth();
-  const { theme } = useTheme();
   const [tenant, setTenant] = useState(null);
   const [payments, setPayments] = useState([]);
   const [history, setHistory] = useState([]);
@@ -104,7 +102,7 @@ const ResidentProfile = () => {
       {/* Profile Header */}
       <div className="arch-card p-8">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-          <div className={`w-20 h-20 ${theme === "theme-2" ? "rounded-xl" : "rounded-2xl"} bg-primary/10 flex items-center justify-center text-3xl font-black text-primary`}>
+          <div className={`w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center text-3xl font-black text-primary`}>
             {tenant.name?.[0]?.toUpperCase() || "T"}
           </div>
           <div className="flex-1">

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
 import {
   MdNotifications,
@@ -26,7 +25,6 @@ const TYPE_LABELS = {
 const Notifications = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const { theme } = useTheme();
 
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +136,7 @@ const Notifications = () => {
       </header>
 
       {notices.length === 0 ? (
-        <div className={`arch-card p-16 text-center border ${theme === "theme-2" ? "border-border/60" : "border-dashed border-border/60"}`}>
+        <div className={`arch-card p-16 text-center border border-dashed border-border/60`}>
           <MdNotifications className="text-4xl mx-auto mb-4 opacity-20 text-text-secondary" />
           <p className="font-bold text-text-secondary/60">No notices yet</p>
         </div>
@@ -179,7 +177,7 @@ const Notifications = () => {
                 <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Post Notice</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Broadcast to residents</p>
               </div>
-              <button type="button" onClick={() => setShowForm(false)} className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
+              <button type="button" onClick={() => setShowForm(false)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
                 <MdClose size={20} />
               </button>
             </div>
