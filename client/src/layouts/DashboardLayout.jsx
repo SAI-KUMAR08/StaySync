@@ -125,13 +125,6 @@ const DashboardLayout = () => {
           </button>
         </div>
 
-        {/* Hostel Switcher */}
-        {user?.role === "owner" && hostels?.length > 0 && (
-          <div className="px-3 pt-3 pb-2 border-b border-border flex-shrink-0">
-            <HostelSwitcher hostels={hostels} activeHostelId={user?.hostelId} onSwitch={switchHostel} />
-          </div>
-        )}
-
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
           {navGroups.map((group) => (
