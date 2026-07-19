@@ -174,7 +174,7 @@ const AdminDashboard = () => {
             <StatBadge value={stats.totalTenants} label="Active Residents" icon={MdPeople} trend={<TrendBadge current={stats.totalTenants} previous={stats.previousTotalTenants} />} />
             <StatBadge value={stats.monthlyRevenue ?? 0} label="Monthly Income" prefix="₹" />
             <StatBadge value={expenseSummary?.thisMonthTotal ?? 0} label="Monthly Expenses" prefix="₹" />
-            <StatBadge value={stats.unpaidPayments ?? 0} label="Unpaid Bills" />
+            <StatBadge value={stats.activeComplaints} label="Active Tickets" />
           </div>
         </div>
       )}
