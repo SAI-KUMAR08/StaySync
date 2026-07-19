@@ -94,8 +94,34 @@ const TenantPayments = () => {
   if (error) return <ErrorRetry message={error} onRetry={fetchPayments} />;
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-text-secondary/40 font-bold animate-pulse uppercase tracking-wider text-xs">
-        Loading Payment Portal...
+      <div className="space-y-6" role="status" aria-label="Loading payments">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card card-md">
+              <div className="skeleton w-9 h-9 rounded-lg mb-3" />
+              <div className="skeleton h-3 w-20 mb-2" />
+              <div className="skeleton h-7 w-28" />
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="px-5 py-4 border-b border-border-light">
+            <div className="skeleton h-4 w-40" />
+          </div>
+          <div className="divide-y divide-border-light">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="px-5 py-4 flex items-center gap-4">
+                <div className="skeleton w-9 h-9 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton h-4 w-28" />
+                  <div className="skeleton h-3 w-20" />
+                </div>
+                <div className="skeleton h-4 w-16" />
+                <div className="skeleton h-5 w-14 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
