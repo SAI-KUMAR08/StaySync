@@ -4,7 +4,7 @@ import ErrorRetry from "../components/ErrorRetry";
 import {
   MdPeople, MdReportProblem, MdAttachMoney,
   MdCheckCircle, MdTrendingUp, MdCurrencyRupee,
-  MdArrowForward, MdHotel,
+  MdArrowForward,
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
@@ -104,14 +104,12 @@ const AdminDashboard = () => {
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      const [s, e, f] = await Promise.all([
+      const [s, e] = await Promise.all([
         api.get("/owner/dashboard"),
         api.get("/owner/expenses/summary"),
-        api.get("/owner/financial-overview").catch(() => ({ data: { data: null } })),
       ]);
       setStats(s.data.data.stats || null);
       setExpenseSummary(e.data.data || null);
-      if (f.data.data) setFinancialOverview(f.data.data);
       await fetchComplaints(supRef.current);
     } catch (err) {
       console.error(err);
@@ -211,8 +209,32 @@ const AdminDashboard = () => {
         </div>
       )}
 
+      {/* ── Total Unpaid Bills (all hostels) ── */}
+      {hostelSummaries.length > 0 && (
+        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
+          <div className="px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                <MdAttachMoney size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Total Unpaid Bills</p>
+                <p className="text-2xl font-black text-amber-600">
+                  ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-text-tertiary/60">
+                {hostelSummaries.reduce((s, h) => s + (h.unpaidCount || 0), 0)} outstanding bills
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Multi-Hostel Financial Overview ── */}
-      {financialOverview && (
+      {hostelSummaries.length > 0 && (
         <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
           <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -221,106 +243,68 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-text-primary">Multi-Hostel Financial Overview</h3>
-                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">{financialOverview.hostelCount} properties active this month</p>
+                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">{hostelSummaries.length} properties active this month</p>
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
-            <div className="p-6 text-center">
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Total Income</p>
-              <p className="text-2xl font-black text-emerald-600">₹{(financialOverview.totalIncome ?? 0).toLocaleString()}</p>
-            </div>
-            <div className="p-6 text-center">
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Total Expenses</p>
-              <p className="text-2xl font-black text-red-500">₹{(financialOverview.totalExpenses ?? 0).toLocaleString()}</p>
-            </div>
-            <div className="p-6 text-center">
-              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Net Position</p>
-              <p className={`text-2xl font-black ${(financialOverview.net ?? 0) >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                ₹{(financialOverview.net ?? 0).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── All Hostels Summary Table ── */}
-      {hostelSummaries.length > 0 && (
-        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
-          <div className="px-6 pt-5 pb-4 border-b border-border/40">
-            <div className="flex items-center gap-2">
-              <MdHotel className="text-primary shrink-0" size={18} />
-              <h3 className="text-base font-bold font-display text-text-primary">
-                All Hostels Summary
-              </h3>
-              <span className="text-[10px] font-medium text-text-tertiary/60 bg-black/[0.04] px-2 py-0.5 rounded-full ml-1">
-                {hostelSummaries.length}
-              </span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/40 bg-black/[0.02]">
-                  <th className="text-left px-6 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Hostel</th>
-                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Residents</th>
-                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Income</th>
-                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Expenses</th>
-                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Net</th>
-                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Unpaid</th>
-                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Beds</th>
-                  <th className="text-right px-6 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Occupancy</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/30">
-                {hostelSummaries.map((h) => {
-                  const net = h.monthlyIncome - h.monthlyExpenses;
-                  return (
-                    <tr key={h._id} className="hover:bg-black/[0.02] transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
-                            {(h.name || "H")[0].toUpperCase()}
-                          </div>
-                          <span className="font-semibold text-text-primary">{h.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-right font-semibold text-text-primary tabular-nums">{h.activeResidents}</td>
-                      <td className="px-4 py-4 text-right font-semibold text-text-primary tabular-nums">{h.monthlyIncome > 0 ? `₹${h.monthlyIncome.toLocaleString()}` : "—"}</td>
-                      <td className="px-4 py-4 text-right font-semibold text-text-primary tabular-nums">{h.monthlyExpenses > 0 ? `₹${h.monthlyExpenses.toLocaleString()}` : "—"}</td>
-                      <td className={`px-4 py-4 text-right font-semibold tabular-nums ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+          <div className="divide-y divide-border/40">
+            {hostelSummaries.map((h) => {
+              const net = h.monthlyIncome - h.monthlyExpenses;
+              return (
+                <div key={h._id} className="px-6 py-4 flex items-center justify-between hover:bg-black/[0.02] transition-colors">
+                  <div className="flex items-center gap-3 min-w-[140px]">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                      {(h.name || "H")[0].toUpperCase()}
+                    </div>
+                    <span className="font-semibold text-text-primary text-sm">{h.name}</span>
+                  </div>
+                  <div className="flex items-center gap-6 md:gap-10 text-xs">
+                    <div className="text-center">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Residents</p>
+                      <p className="font-bold text-text-primary tabular-nums">{h.activeResidents}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Income</p>
+                      <p className="font-bold text-emerald-600 tabular-nums">₹{h.monthlyIncome.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Expenses</p>
+                      <p className="font-bold text-red-500 tabular-nums">₹{h.monthlyExpenses.toLocaleString()}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Net</p>
+                      <p className={`font-bold tabular-nums ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
                         {net >= 0 ? "+" : ""}₹{net.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-4 text-right">
-                        {h.unpaidCount > 0 ? (
-                          <span className="font-semibold text-amber-600 tabular-nums">
-                            ₹{h.unpaidAmount.toLocaleString()}
-                            <span className="text-[10px] text-amber-500/70 ml-1">({h.unpaidCount})</span>
-                          </span>
-                        ) : (
-                          <span className="text-text-tertiary/50">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-right text-text-primary tabular-nums">
-                        <span className="font-semibold">{h.occupiedBeds}</span>
-                        <span className="text-text-tertiary/60">/{h.totalBeds}</span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`inline-flex text-[11px] font-semibold px-2 py-0.5 rounded ${
-                          h.occupancyRate >= 90
-                            ? "text-emerald-600 bg-emerald-50"
-                            : h.occupancyRate >= 50
-                            ? "text-amber-600 bg-amber-50"
-                            : "text-text-tertiary/60 bg-black/[0.04]"
-                        }`}>
-                          {h.occupancyRate}%
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Unpaid</p>
+                      <p className="font-bold text-amber-600 tabular-nums">
+                        {h.unpaidAmount > 0 ? `₹${h.unpaidAmount.toLocaleString()}` : "—"}
+                      </p>
+                    </div>
+                    <div className="text-center min-w-[44px]">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Beds</p>
+                      <p className="font-bold text-text-primary tabular-nums">
+                        {h.occupiedBeds}<span className="text-text-tertiary/60 font-medium">/{h.totalBeds}</span>
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Occ.</p>
+                      <span className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded ${
+                        h.occupancyRate >= 90
+                          ? "text-emerald-600 bg-emerald-50"
+                          : h.occupancyRate >= 50
+                          ? "text-amber-600 bg-amber-50"
+                          : "text-text-tertiary/60 bg-black/[0.04]"
+                      }`}>
+                        {h.occupancyRate}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
