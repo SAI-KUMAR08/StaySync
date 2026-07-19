@@ -62,7 +62,7 @@ const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
   return (
     <div className="flex flex-col items-center py-6 px-2">
       {Icon && (
-        <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-full"} bg-primary/10 border border-primary/15 flex items-center justify-center mb-3`}>
+        <div className={`w-10 h-10 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center mb-3`}>
           <Icon className="text-lg text-primary" />
         </div>
       )}
@@ -85,7 +85,7 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className={`${theme === "theme-2" ? "bg-white rounded-lg border border-border p-6 hover:border-[rgba(0,0,0,0.12)]" : "bg-white rounded-2xl border border-border p-7 md:p-8 hover:shadow-lg"} transition-all duration-300 col-span-1 md:col-span-2`}>
+    <div className={`bg-white rounded-2xl border border-border p-7 md:p-8 hover:shadow-lg transition-all duration-300 col-span-1 md:col-span-2`}>
       <div className="flex items-start justify-between mb-5">
         <div className="w-14 h-14 rounded-full bg-primary/10 border-2 border-primary/15 flex flex-col items-center justify-center">
           <Icon className="text-2xl text-primary" />
@@ -117,7 +117,7 @@ const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
   const animated = useAnimatedNumber(numericVal);
 
   const content = (
-    <div className={`${theme === "theme-2" ? "bg-white rounded-lg border border-border p-4 flex items-center gap-3 hover:border-[rgba(0,0,0,0.12)]" : "bg-white rounded-2xl border border-border p-5 flex items-center gap-4 hover:shadow-md"} transition-all duration-300`}>
+    <div className={`bg-white rounded-2xl border border-border p-5 flex items-center gap-4 hover:shadow-md transition-all duration-300`}>
       <div className={`w-11 h-11 rounded-xl ${color} flex items-center justify-center shadow-sm`}>
         <Icon className="text-xl text-white" />
       </div>
@@ -232,10 +232,10 @@ const AdminDashboard = () => {
 
       {/* ── Multi-Hostel Financial Overview ── */}
       {financialOverview && (
-        <div className={`${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} bg-white border border-border overflow-hidden ${financialOverview.hostelCount > 1 ? '' : 'hidden'}`}>
+        <div className={`rounded-2xl bg-white border border-border overflow-hidden ${financialOverview.hostelCount > 1 ? '' : 'hidden'}`}>
           <div className={`px-6 py-5 border-b border-border/50 flex items-center justify-between`}>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary flex items-center justify-center`}>
+              <div className={`w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center`}>
                 <MdAttachMoney size={20} />
               </div>
               <div>

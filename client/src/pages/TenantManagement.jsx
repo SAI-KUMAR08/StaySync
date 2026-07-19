@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   MdAdd, MdDelete, MdPhone, MdCalendarToday,
   MdSearch, MdFilterList, MdClose, MdPeople, MdHotel,
@@ -18,6 +19,7 @@ import { useDebounce } from "../hooks/useDebounce";
 
 
 const TenantManagement = () => {
+  const { theme } = useTheme();
   const COUNTRY_CODES = [
     { code: "+91", label: "IN", flag: "🇮🇳" },
     { code: "+1", label: "US", flag: "🇺🇸" },

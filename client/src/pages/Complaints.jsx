@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
 
 import {
@@ -12,6 +13,7 @@ import ErrorRetry from "../components/ErrorRetry";
 import { useDebounce } from "../hooks/useDebounce";
 
 const PriorityBadge = ({ priority }) => {
+  const { theme } = useTheme();
   const colors = {
     high: "bg-primary-light text-primary border-primary/20",
     emergency: "bg-primary-light text-primary border-primary/20",

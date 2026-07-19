@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   MdMeetingRoom, MdAttachMoney, MdNotifications,
   MdReportProblem, MdBed, MdChevronRight, MdHistory,
@@ -13,6 +14,7 @@ import ErrorRetry from "../components/ErrorRetry";
 import toast from "react-hot-toast";
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => {
+  const { theme } = useTheme();
   
   return (
     <div className={`${theme === "theme-2" ? "arch-card p-5 group" : "arch-card p-6 md:p-7 group"}`}>

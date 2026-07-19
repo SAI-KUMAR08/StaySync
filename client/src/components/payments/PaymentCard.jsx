@@ -1,8 +1,9 @@
 import React from "react";
-
+import { useTheme } from "../../context/ThemeContext";
 import { MdPayment, MdCalendarToday } from "react-icons/md";
 
 const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => {
+  const { theme } = useTheme();
   
   return (
     <div className={`arch-card ${theme === "theme-2" ? "p-5" : "p-6 md:p-7"} relative overflow-hidden`}>

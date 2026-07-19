@@ -9,11 +9,13 @@ import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { getApiError } from "../../utils/getApiError";
 import { useDebounce } from "../../hooks/useDebounce";
 
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => {
+  const { theme } = useTheme();
   
   return (
     <div className={`arch-card ${theme === "theme-2" ? "p-4 flex items-center gap-3" : "p-5 flex items-center gap-4"}`}>

@@ -10,10 +10,12 @@ import { toast } from "react-hot-toast";
 import ErrorRetry from "../components/ErrorRetry";
 import { normalizeStructure } from "../utils/normalizeStructure";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
 
 
 const RoomManagement = () => {
+  const { theme } = useTheme();
   const { user } = useAuth();
   const { socket } = useSocket();
   

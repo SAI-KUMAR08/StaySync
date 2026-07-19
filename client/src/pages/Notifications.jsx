@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { useSocket } from "../context/SocketContext";
 import {
   MdNotifications,
@@ -25,7 +26,8 @@ const TYPE_LABELS = {
 const Notifications = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  
+  const { theme } = useTheme();
+
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

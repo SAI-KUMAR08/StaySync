@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   MdAdd, MdDelete, MdEdit, MdClose, MdSearch,
   MdAttachMoney, MdTrendingDown, MdReceipt,
@@ -37,7 +38,8 @@ const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "card", "other"];
 
 const Expenses = () => {
   const { user } = useAuth();
-  
+  const { theme } = useTheme();
+
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);

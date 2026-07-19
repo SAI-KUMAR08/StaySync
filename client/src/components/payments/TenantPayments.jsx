@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { getApiError } from "../../utils/getApiError";
 import PaymentCard from "./PaymentCard";
 
@@ -23,7 +24,7 @@ const TenantPayments = () => {
   const [processing, setProcessing] = useState(false);
   const { socket } = useSocket();
   const { user } = useAuth();
-  
+  const { theme } = useTheme();
 
   const fetchPayments = async () => {
     setError(null);
