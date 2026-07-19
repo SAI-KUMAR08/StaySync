@@ -3,8 +3,8 @@ import api from "../api/axios";
 import ErrorRetry from "../components/ErrorRetry";
 import {
   MdPeople, MdReportProblem,
-  MdAttachMoney, MdCheckCircle, MdTrendingUp,
-  MdHome, MdCurrencyRupee, MdArrowForward,
+  MdCheckCircle, MdTrendingUp,
+  MdArrowForward,
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
@@ -46,27 +46,27 @@ const TrendBadge = ({ current, previous }) => {
   );
 };
 
-// ── Stat card ──
-const StatCard = ({ label, value, icon: Icon, href, prefix = "", suffix = "", trend }) => {
-  const numeric = parseInt(String(value ?? 0).replace(/[^0-9.-]/g, "") || "0") || 0;
-  const animated = useAnimatedNumber(numeric);
-  const card = (
-    <div className="bg-white rounded-xl border border-border/60 p-5 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:border-border transition-all duration-200 h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
+// ── Stat badge row (the original overview table) ──
+const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
+  const cleaned = String(value ?? 0).replace(/[^0-9.-]/g, "");
+  const numericVal = parseFloat(cleaned) || 0;
+  const animated = useAnimatedNumber(numericVal);
+  return (
+    <div className="flex flex-col items-center py-6 px-2">
+      {Icon && (
+        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center mb-3">
           <Icon className="text-lg text-primary" />
         </div>
-        {trend && <TrendBadge current={numeric} previous={trend} />}
-      </div>
-      <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">
+      )}
+      <span className="text-3xl font-bold font-display text-text-primary tracking-tight">
+        {prefix}{animated.toLocaleString()}
+      </span>
+      <span className="text-[10px] font-medium text-text-secondary uppercase tracking-[0.12em] mt-1 text-center leading-tight">
         {label}
-      </p>
-      <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
-        {prefix}{animated.toLocaleString()}{suffix}
-      </p>
+      </span>
+      {trend && <div className="mt-1.5">{trend}</div>}
     </div>
   );
-  return href ? <Link to={href} className="block h-full">{card}</Link> : card;
 };
 
 const SUPPORT_FILTERS = [
@@ -165,65 +165,17 @@ const AdminDashboard = () => {
     );
   }
 
-  const occRate = stats?.totalBeds
-    ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100)
-    : 0;
-
   return (
     <div className="space-y-8 pb-20">
-      {/* KPI Grid */}
+      {/* ── Stat badge table ── */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Active Residents"
-            value={stats.totalTenants}
-            icon={MdPeople}
-            href="/admin/tenants"
-            trend={stats.previousTotalTenants}
-          />
-          <StatCard
-            label="Monthly Income"
-            value={stats.monthlyRevenue ?? 0}
-            prefix="₹"
-            icon={MdCurrencyRupee}
-            href="/admin/payments"
-          />
-          <StatCard
-            label="Monthly Expenses"
-            value={expenseSummary?.thisMonthTotal ?? 0}
-            prefix="₹"
-            icon={MdAttachMoney}
-            href="/admin/expenses"
-          />
-          <StatCard
-            label="Unpaid Bills"
-            value={stats.unpaidPayments ?? 0}
-            icon={MdReportProblem}
-            href="/admin/payments"
-          />
-          <StatCard
-            label="Occupancy Rate"
-            value={occRate}
-            suffix="%"
-            icon={MdHome}
-          />
-          <StatCard
-            label="Free Beds"
-            value={stats.availableBeds ?? 0}
-            icon={MdCheckCircle}
-          />
-          <StatCard
-            label="Active Tickets"
-            value={stats.activeComplaints}
-            icon={MdReportProblem}
-            href="/admin/complaints"
-          />
-          <StatCard
-            label="Overdue Bills"
-            value={stats.overduePayments ?? 0}
-            icon={MdAttachMoney}
-            href="/admin/payments"
-          />
+        <div className="bg-white/60 backdrop-blur rounded-2xl border border-border/60 overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border/40">
+            <StatBadge value={stats.totalTenants} label="Active Residents" icon={MdPeople} trend={<TrendBadge current={stats.totalTenants} previous={stats.previousTotalTenants} />} />
+            <StatBadge value={stats.monthlyRevenue ?? 0} label="Monthly Income" prefix="₹" />
+            <StatBadge value={expenseSummary?.thisMonthTotal ?? 0} label="Monthly Expenses" prefix="₹" />
+            <StatBadge value={stats.unpaidPayments ?? 0} label="Unpaid Bills" />
+          </div>
         </div>
       )}
 
