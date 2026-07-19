@@ -179,4 +179,5 @@ api.interceptors.response.use(
   }
 );
 
+export { invalidateCache };
 export default api;

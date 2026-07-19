@@ -116,6 +116,13 @@ const AdminDashboard = () => {
     }
   }, [fetchComplaints]);
 
+  // Clear stale dashboard state when hostel changes — prevents old cards from flashing
+  useEffect(() => {
+    setStats(null);
+    setExpenseSummary(null);
+    setLoading(true);
+  }, [user?.hostelId]);
+
   useEffect(() => { fetchData(); }, [fetchData, user?.hostelId]);
 
   useEffect(() => {
@@ -164,20 +171,6 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-20">
-      {/* Page header */}
-      <div>
-        <h2 className="text-2xl font-bold font-display text-text-primary tracking-tight">Overview</h2>
-        <p className="text-sm text-text-tertiary mt-1">
-          {stats?.totalTenants ?? 0} active residents
-          {stats?.previousTotalTenants != null && stats.totalTenants !== stats.previousTotalTenants && (
-            <span className="ml-2 text-xs">
-              ({stats.totalTenants > stats.previousTotalTenants ? "+" : ""}
-              {stats.totalTenants - stats.previousTotalTenants} from last month)
-            </span>
-          )}
-        </p>
-      </div>
-
       {/* KPI Grid */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import api from "../api/axios";
+import api, { invalidateCache } from "../api/axios";
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 
@@ -198,6 +198,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/switch-hostel", { hostelId });
       sessionStorage.setItem("token", res.data.data.accessToken);
+      invalidateCache(); // Clear stale cached data from previous hostel
       setUser(res.data.data.user);
       const hostelsRes = await api.get("/owner/hostels");
       setHostels(hostelsRes.data.data || []);
