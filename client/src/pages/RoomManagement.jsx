@@ -11,12 +11,12 @@ import ErrorRetry from "../components/ErrorRetry";
 import { normalizeStructure } from "../utils/normalizeStructure";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
-import { useTheme } from "../context/ThemeContext";
+
 
 const RoomManagement = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const { theme } = useTheme();
+  
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

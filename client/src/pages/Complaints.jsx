@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
-import { useTheme } from "../context/ThemeContext";
+
 import {
   MdReportProblem, MdCheckCircle, MdHourglassEmpty, MdAdd,
   MdSearch, MdChevronRight, MdClose, MdFlag
@@ -29,7 +29,7 @@ const PriorityBadge = ({ priority }) => {
 const Complaints = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const { theme } = useTheme();
+  
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

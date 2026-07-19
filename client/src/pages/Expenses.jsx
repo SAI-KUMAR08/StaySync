@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
 import { useDebounce } from "../hooks/useDebounce";
-import { useTheme } from "../context/ThemeContext";
+
 
 const CATEGORIES = [
   { id: "electricity", label: "Electricity", color: "bg-primary-light text-primary" },
@@ -37,7 +37,7 @@ const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "card", "other"];
 
 const Expenses = () => {
   const { user } = useAuth();
-  const { theme } = useTheme();
+  
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);

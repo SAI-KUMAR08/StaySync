@@ -11,7 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
-import { useTheme } from "../context/ThemeContext";
+
 
 const TYPE_LABELS = {
   maintenance: "Maintenance",
@@ -25,7 +25,7 @@ const TYPE_LABELS = {
 const Notifications = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const { theme } = useTheme();
+  
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

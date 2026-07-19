@@ -1,29 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext } from "react";
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem("sr-theme") || "theme-1";
-    } catch {
-      return "theme-1";
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("sr-theme", theme);
-    } catch {}
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "theme-1" ? "theme-2" : "theme-1"));
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div className={theme}>{children}</div>
+    <ThemeContext.Provider value={{ theme: "theme-1" }}>
+      {children}
     </ThemeContext.Provider>
   );
 };

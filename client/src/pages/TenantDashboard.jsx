@@ -7,13 +7,13 @@ import {
   MdAssignment, MdEvent, MdShield, MdCheckCircle
 } from "react-icons/md";
 import { Link } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext";
+
 import { useSocket } from "../context/SocketContext";
 import ErrorRetry from "../components/ErrorRetry";
 import toast from "react-hot-toast";
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => {
-  const { theme } = useTheme();
+  
   return (
     <div className={`${theme === "theme-2" ? "arch-card p-5 group" : "arch-card p-6 md:p-7 group"}`}>
       <div className={`w-12 h-12 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} ${color} flex items-center justify-center mb-5 shadow-md`}>

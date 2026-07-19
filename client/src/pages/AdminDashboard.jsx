@@ -10,7 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
+
 import toast from "react-hot-toast";
 
 // ── Trend badge ───
@@ -54,7 +54,7 @@ const useAnimatedNumber = (target, duration = 1000) => {
 
 // ── Vivanta-inspired stat block: large number + label ──
 const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
-  const { theme } = useTheme();
+  
   const cleaned = String(value).replace(/[^0-9.-]/g, "");
   const numericVal = parseFloat(cleaned) || 0;
   const animated = useAnimatedNumber(numericVal);
@@ -79,7 +79,7 @@ const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
 
 // ── Main stat card ──
 const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, to, prefix = "" }) => {
-  const { theme } = useTheme();
+  
   const isMoney = title.toLowerCase().includes("collection") || title.toLowerCase().includes("revenue");
   const numericVal = isMoney ? parseInt(value?.replace(/[₹,]/g, "") || "0") : parseInt(value) || 0;
   const animated = useAnimatedNumber(numericVal);
@@ -111,7 +111,7 @@ const HeroStat = ({ title, value, icon: Icon, subValue, trend, TrendComponent, t
 
 // ── Mini stat card ──
 const MiniStat = ({ title, value, icon: Icon, color, to, prefix = "" }) => {
-  const { theme } = useTheme();
+  
   const cleaned = String(value).replace(/[^0-9.-]/g, "");
   const numericVal = parseFloat(cleaned) || 0;
   const animated = useAnimatedNumber(numericVal);
@@ -138,7 +138,7 @@ const SUPPORT_FILTERS = [
 ];
 
 const AdminDashboard = () => {
-  const { theme } = useTheme();
+  
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [expenseSummary, setExpenseSummary] = useState(null);

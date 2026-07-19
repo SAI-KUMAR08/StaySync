@@ -15,7 +15,7 @@ import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
 import { useSocket } from "../context/SocketContext";
 import { useDebounce } from "../hooks/useDebounce";
-import { useTheme } from "../context/ThemeContext";
+
 
 const TenantManagement = () => {
   const COUNTRY_CODES = [
@@ -29,7 +29,7 @@ const TenantManagement = () => {
 
   const { user } = useAuth();
   const { socket } = useSocket();
-  const { theme } = useTheme();
+  
   const [tenants, setTenants] = useState([]);
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -8,7 +8,7 @@ import {
   MdLayers, MdAccountCircle, MdVisibility, MdVisibilityOff, MdHome, MdEmail
 } from "react-icons/md";
 import toast from "react-hot-toast";
-import { useTheme } from "../context/ThemeContext";
+
 
 const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp, onVerifyOtp, onResendOtp }) => {
   const { theme } = useTheme();

@@ -11,10 +11,10 @@ import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { getApiError } from "../../utils/getApiError";
 import { useDebounce } from "../../hooks/useDebounce";
-import { useTheme } from "../../context/ThemeContext";
+
 
 const SummaryCard = ({ title, value, icon: Icon, color }) => {
-  const { theme } = useTheme();
+  
   return (
     <div className={`arch-card ${theme === "theme-2" ? "p-4 flex items-center gap-3" : "p-5 flex items-center gap-4"}`}>
       <div className={`w-11 h-11 ${theme === "theme-2" ? "rounded-lg" : "rounded-2xl"} ${color} flex items-center justify-center`}>
@@ -40,7 +40,7 @@ const AdminPayments = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [fineAmount, setFineAmount] = useState(0);
   const { socket } = useSocket();
-  const { theme } = useTheme();
+  
 
   const fetchPayments = async () => {
     setError(null);

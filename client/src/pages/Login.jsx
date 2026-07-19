@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import {
   MdEmail, MdLock,
   MdVpnKey, MdPerson, MdBusiness, MdArrowForward,
@@ -39,7 +38,6 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { sendOwnerLoginOtp, verifyOwnerLoginOtp, checkTenantStatus, tenantPasswordLogin, setInitialPassword, loadingStates } = useAuth();
   const navigate = useNavigate();
-  const { theme } = useTheme();
 
   const handlePhoneChange = (e) => {
     const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
@@ -173,17 +171,11 @@ const Login = () => {
 
       {/* ═══ BRAND PANEL ═══ */}
       <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden items-center justify-center p-16"
-        style={theme === "theme-2" ? {
-          background: `radial-gradient(ellipse 90% 70% at 30% 30%, rgba(26, 86, 219, 0.06) 0%, transparent 80%), var(--color-background-deep)`
-        } : {
-          background: `radial-gradient(ellipse 90% 70% at 30% 30%, rgba(107, 143, 113, 0.06) 0%, transparent 80%), var(--color-background-deep)`
-        }}
+        style={{ background: `radial-gradient(ellipse 90% 70% at 30% 30%, rgba(107, 143, 113, 0.06) 0%, transparent 80%)`, backgroundColor: 'var(--color-background-deep)' }}
       >
         {/* Single subtle background glow */}
         <div className="absolute w-[400px] h-[400px] -top-24 -left-24 opacity-[0.04]"
-          style={{ background: theme === "theme-2"
-            ? 'radial-gradient(circle at 40% 40%, #1A56DB, transparent 70%)'
-            : 'radial-gradient(circle at 40% 40%, #6B8F71, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle at 40% 40%, #6B8F71, transparent 70%)' }}
         />
 
         <div className="relative z-10 max-w-md w-full">
