@@ -81,6 +81,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [expenseSummary, setExpenseSummary] = useState(null);
   const [hostelSummaries, setHostelSummaries] = useState([]);
+  const [financialOverview, setFinancialOverview] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -103,12 +104,14 @@ const AdminDashboard = () => {
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      const [s, e] = await Promise.all([
+      const [s, e, f] = await Promise.all([
         api.get("/owner/dashboard"),
         api.get("/owner/expenses/summary"),
+        api.get("/owner/financial-overview").catch(() => ({ data: { data: null } })),
       ]);
       setStats(s.data.data.stats || null);
       setExpenseSummary(e.data.data || null);
+      if (f.data.data) setFinancialOverview(f.data.data);
       await fetchComplaints(supRef.current);
     } catch (err) {
       console.error(err);
@@ -205,6 +208,39 @@ const AdminDashboard = () => {
             icon={MdAttachMoney}
             href="/admin/expenses"
           />
+        </div>
+      )}
+
+      {/* ── Multi-Hostel Financial Overview ── */}
+      {financialOverview && (
+        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
+          <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center">
+                <MdAttachMoney size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">Multi-Hostel Financial Overview</h3>
+                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">{financialOverview.hostelCount} properties active this month</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
+            <div className="p-6 text-center">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Total Income</p>
+              <p className="text-2xl font-black text-emerald-600">₹{(financialOverview.totalIncome ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="p-6 text-center">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Total Expenses</p>
+              <p className="text-2xl font-black text-red-500">₹{(financialOverview.totalExpenses ?? 0).toLocaleString()}</p>
+            </div>
+            <div className="p-6 text-center">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Net Position</p>
+              <p className={`text-2xl font-black ${(financialOverview.net ?? 0) >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                ₹{(financialOverview.net ?? 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
