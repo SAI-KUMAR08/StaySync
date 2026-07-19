@@ -225,25 +225,19 @@ const AdminDashboard = () => {
 
       {/* ── Total Unpaid Bills (all hostels) ── */}
       {hostelSummaries.length > 0 && (
-        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
-          <div className="px-6 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                <MdAttachMoney size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Total Unpaid Bills</p>
-                <p className="text-2xl font-black text-amber-600">
-                  ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] text-text-tertiary/60">
-                {hostelSummaries.reduce((s, h) => s + (h.unpaidCount || 0), 0)} outstanding bills
-              </p>
+        <div className="bg-white rounded-xl border border-border/60 p-5 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:border-border transition-all duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
+              <MdAttachMoney className="text-lg text-primary" />
             </div>
           </div>
+          <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">Total Unpaid Bills</p>
+          <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
+            ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
+          </p>
+          <p className="text-xs text-text-tertiary mt-1">
+            {hostelSummaries.reduce((s, h) => s + (h.unpaidCount || 0), 0)} outstanding bills
+          </p>
         </div>
       )}
 
