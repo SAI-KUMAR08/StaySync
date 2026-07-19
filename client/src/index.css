@@ -29,6 +29,19 @@
   --color-primary-light: rgba(107, 143, 113, 0.08);
   --color-primary-lighter: rgba(107, 143, 113, 0.04);
 
+  /* ── Secondary (blue accent for in-progress / info) ── */
+  --color-secondary: #4A7DB5;
+  --color-secondary-light: rgba(74, 125, 181, 0.1);
+  --color-secondary-lighter: rgba(74, 125, 181, 0.04);
+
+  /* ── Accent (warm tint for ornaments) ── */
+  --color-accent: #E8EDE4;
+  --color-accent-soft: rgba(232, 237, 228, 0.5);
+
+  /* ── Surface variants ── */
+  --color-surface-hover: rgba(0, 0, 0, 0.02);
+  --color-background-deep: #EDEDEB;
+
   /* ── Neutral / Surface Palette ── */
   --color-background: #F6F6F5;
   --color-background-alt: #EEEEED;
@@ -691,4 +704,22 @@
 .toast-custom { animation: toast-enter 0.35s cubic-bezier(0.21, 1.02, 0.73, 1) forwards; }
 .toast-custom[style*="animation:react-hot-toast"] {
   animation: toast-exit 0.3s cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY — reduced motion
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-on-motion { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 }

@@ -13,10 +13,10 @@ import { useDebounce } from "../hooks/useDebounce";
 
 const PriorityBadge = ({ priority }) => {
   const colors = {
-    high: "bg-primary-light text-primary border-primary/20",
-    emergency: "bg-primary-light text-primary border-primary/20",
-    medium: "bg-primary-light text-primary border-primary/20",
-    low: "bg-primary-light text-primary border-primary/20",
+    emergency: "bg-danger-bg text-danger border-danger-border",
+    high: "bg-warning-bg text-warning border-warning-border",
+    medium: "bg-info-bg text-info border-info-border",
+    low: "bg-neutral-100 text-text-secondary border-border-light",
   };
   const key = (priority || "medium").toLowerCase();
   return (
