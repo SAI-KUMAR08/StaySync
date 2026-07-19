@@ -1,0 +1,17 @@
+name: Keep server warm
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes — prevents Vercel cold starts
+  workflow_dispatch:        # Manual trigger option
+
+jobs:
+  ping:
+    name: Ping health endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/health to keep serverless function alive
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            https://stay-sync-six.vercel.app/api/health \
+            --max-time 10 || echo "Ping failed (expected on first cold start)"
