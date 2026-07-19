@@ -42,6 +42,7 @@ const AdminPayments = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [fineAmount, setFineAmount] = useState(0);
   const { socket } = useSocket();
+  const { theme } = useTheme();
 
   // Payment Requests
   const [paymentRequests, setPaymentRequests] = useState([]);

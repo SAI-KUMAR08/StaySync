@@ -16,7 +16,8 @@ function getOrCreateSocket(origin) {
       reconnectionAttempts: 8,
       reconnectionDelay: 1500,
       reconnectionDelayMax: 8000,
-      transports: ["websocket", "polling"],
+      // Vercel serverless doesn't support WebSocket — use polling as primary, fallback to WS only locally
+      transports: window.location.hostname.includes("vercel.app") ? ["polling"] : ["websocket", "polling"],
     });
   }
   return globalSocket;
