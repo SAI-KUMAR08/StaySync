@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import api from "../api/axios";
 import ErrorRetry from "../components/ErrorRetry";
+import EmptyState from "../components/EmptyState";
 import {
   MdPeople, MdReportProblem, MdAttachMoney,
   MdCheckCircle, MdTrendingUp, MdCurrencyRupee,
@@ -284,11 +285,7 @@ const AdminDashboard = () => {
         </div>
         <div className="p-5">
           {activities.length === 0 ? (
-            <div className="empty-state">
-              <MdCheckCircle className="empty-state-icon" />
-              <p className="empty-state-title">All clear</p>
-              <p className="empty-state-desc">No open support tickets</p>
-            </div>
+            <EmptyState icon={MdCheckCircle} title="All clear" description="No open support tickets" />
           ) : (
             <div className="space-y-1">
               {activities.map((a) => (
