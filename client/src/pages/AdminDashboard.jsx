@@ -182,6 +182,20 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-20">
+      {/* ── Overview heading ── */}
+      <div>
+        <h2 className="text-2xl font-bold font-display text-text-primary tracking-tight">Overview</h2>
+        <p className="text-sm text-text-tertiary mt-1">
+          {stats?.totalTenants ?? 0} active residents
+          {stats?.previousTotalTenants != null && stats.totalTenants !== stats.previousTotalTenants && (
+            <span className="ml-2 text-xs">
+              ({stats.totalTenants > stats.previousTotalTenants ? "+" : ""}
+              {stats.totalTenants - stats.previousTotalTenants} from last month)
+            </span>
+          )}
+        </p>
+      </div>
+
       {/* ── Overview Cards (selected hostel) ── */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
