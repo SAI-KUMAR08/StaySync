@@ -149,8 +149,8 @@ export async function getHostelsSummary(ownerId) {
         Expense.aggregate([
           {
             $match: {
-              ownerId,
-              hostelId: h._id,
+              ownerId: oid(ownerId),
+              hostelId: oid(h._id),
               date: {
                 $gte: new Date(currentYear, new Date().getMonth(), 1),
                 $lt: new Date(currentYear, new Date().getMonth() + 1, 1),
