@@ -13,7 +13,6 @@ import ErrorRetry from "../components/ErrorRetry";
 import { useDebounce } from "../hooks/useDebounce";
 
 const PriorityBadge = ({ priority }) => {
-  const { theme } = useTheme();
   const colors = {
     high: "bg-primary-light text-primary border-primary/20",
     emergency: "bg-primary-light text-primary border-primary/20",
@@ -30,6 +29,7 @@ const PriorityBadge = ({ priority }) => {
 
 const Complaints = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const { socket } = useSocket();
   
   const [complaints, setComplaints] = useState([]);

@@ -30,6 +30,7 @@ const StatCard = ({ label, value, sub, icon: Icon, color }) => {
 
 const TenantDashboard = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const { socket } = useSocket();
   const [notifications, setNotifications] = useState([]);
   const [complaints, setComplaints] = useState([]);
