@@ -13,4 +13,6 @@ export { BedShiftRequest } from "./BedShiftRequest.js";
 export { OTP } from "./OTP.js";
 export { RoomAssignmentHistory } from "./RoomAssignmentHistory.js";
 export { default as Expense } from "./Expense.js";
+export { MealTiming } from "./MealTiming.js";
+export { PaymentRequest } from "./PaymentRequest.js";
 

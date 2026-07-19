@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { Tenant, Payment, Hostel } from "../models/index.js";
+import { Tenant, Payment, PaymentRequest, Hostel, Complaint, BedShiftRequest, RoomAssignmentHistory, Notice } from "../models/index.js";
 import { logActivity } from "./activityService.js";
 
 export const initCronJobs = () => {
@@ -18,7 +18,6 @@ export const initCronJobs = () => {
       let rentCount = 0;
 
       for (const hostel of hostels) {
-        // Find active tenants whose join date anniversary matches today
         const tenants = await Tenant.find({
           isActive: true,
           ownerId: hostel.ownerId,
@@ -26,7 +25,6 @@ export const initCronJobs = () => {
           monthlyRent: { $gt: 0 },
         }).select("_id ownerId hostelId bedId monthlyRent moveInDate createdAt").lean();
 
-        // Batch: single query to find existing payments instead of N queries
         const tenantIds = tenants.map(t => t._id);
         const existingPayments = await Payment.find({
           tenantId: { $in: tenantIds },
@@ -44,32 +42,30 @@ export const initCronJobs = () => {
             (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
 
           if (!isAnniversary) continue;
-          if (existingSet.has(tenant._id.toString())) continue; // already has invoice
+          if (existingSet.has(tenant._id.toString())) continue;
 
           const dueDate = new Date(now);
-            dueDate.setDate(dueDate.getDate() + 5);
-            toCreate.push({
-              ownerId: hostel.ownerId,
-              hostelId: hostel._id,
-              tenantId: tenant._id,
-              bedId: tenant.bedId,
-              amount: tenant.monthlyRent,
-              fineAmount: 0,
-              totalAmount: tenant.monthlyRent,
-              paymentMonth: monthStr,
-              year,
-              dueDate,
-              paymentStatus: "unpaid",
-              notes: `Monthly rent for cycle starting ${now.toDateString()}`,
-            });
-          }
+          dueDate.setDate(dueDate.getDate() + 5);
+          toCreate.push({
+            ownerId: hostel.ownerId,
+            hostelId: hostel._id,
+            tenantId: tenant._id,
+            bedId: tenant.bedId,
+            amount: tenant.monthlyRent,
+            fineAmount: 0,
+            totalAmount: tenant.monthlyRent,
+            paymentMonth: monthStr,
+            year,
+            dueDate,
+            paymentStatus: "unpaid",
+            notes: `Monthly rent for cycle starting ${now.toDateString()}`,
+          });
         }
 
         if (toCreate.length > 0) {
           const createdPayments = await Payment.insertMany(toCreate);
           rentCount += createdPayments.length;
 
-          // Log activities in batch
           await Promise.all(
             createdPayments.map((payment) =>
               logActivity({
@@ -112,7 +108,7 @@ export const initCronJobs = () => {
 
             if (diffDays > graceDays) {
               const rawFine = diffDays * dailyRate;
-              const capFine = payment.amount * 0.5; // 50% of base rent max
+              const capFine = payment.amount * 0.5;
               const fineAmount = Math.min(rawFine, capFine);
 
               if (payment.fineAmount !== fineAmount || payment.paymentStatus !== "overdue") {
@@ -142,6 +138,40 @@ export const initCronJobs = () => {
       console.log(`✅ Updated ${lateCount} overdue invoices with late fees today.`);
     } catch (error) {
       console.error("❌ Error in cron engine:", error);
+    }
+  });
+
+  // Run daily at 01:00 to clean up inactive tenants past their retention period
+  cron.schedule("0 1 * * *", async () => {
+    console.log("🧹 Running inactive tenant cleanup...");
+    try {
+      const now = new Date();
+      const expiredTenants = await Tenant.find({
+        isActive: false,
+        scheduledDeletionDate: { $lte: now },
+      }).lean();
+
+      if (expiredTenants.length === 0) {
+        console.log("✅ No tenants to clean up.");
+        return;
+      }
+
+      const ids = expiredTenants.map((t) => t._id);
+
+      await Payment.deleteMany({ tenantId: { $in: ids } });
+      await PaymentRequest.deleteMany({ tenantId: { $in: ids } });
+      await Complaint.deleteMany({ tenantId: { $in: ids } });
+      await RoomAssignmentHistory.deleteMany({ tenantId: { $in: ids } });
+      await BedShiftRequest.deleteMany({ tenantId: { $in: ids } });
+      await Notice.updateMany(
+        { readBy: { $in: ids } },
+        { $pull: { readBy: { $in: ids } } }
+      );
+      await Tenant.deleteMany({ _id: { $in: ids } });
+
+      console.log(`✅ Permanently deleted ${expiredTenants.length} inactive tenants and related records.`);
+    } catch (error) {
+      console.error("❌ Error in tenant cleanup cron:", error);
     }
   });
 

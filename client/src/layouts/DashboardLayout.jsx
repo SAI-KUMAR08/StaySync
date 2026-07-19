@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   MdDashboard, MdPeople, MdReportProblem,
   MdPayment, MdNotifications, MdLogout, MdMenu, MdClose,
-  MdLayers, MdAnnouncement, MdAdd, MdHome, MdAttachMoney,
+  MdLayers, MdAnnouncement, MdAdd, MdHome, MdAttachMoney, MdRestaurant,
   MdChevronRight
 } from "react-icons/md";
 import api from "../api/axios";
@@ -18,10 +18,12 @@ const ROUTE_PREFETCH = {
   "/admin/complaints": () => import("../pages/Complaints"),
   "/admin/payments": () => import("../pages/Payments"),
   "/admin/expenses": () => import("../pages/Expenses"),
+  "/admin/meal-timings": () => import("../pages/MealTimings"),
   "/admin/notifications": () => import("../pages/Notifications"),
   "/tenant/dashboard": () => import("../pages/TenantDashboard"),
   "/tenant/complaints": () => import("../pages/Complaints"),
   "/tenant/payments": () => import("../pages/Payments"),
+  "/tenant/meal-timings": () => import("../pages/MealTimings"),
   "/tenant/notifications": () => import("../pages/Notifications"),
 };
 
@@ -32,7 +34,10 @@ const ROUTE_DATA_PREFETCH = {
   "/admin/complaints": ["/owner/complaints"],
   "/admin/payments": ["/owner/payments"],
   "/admin/expenses": ["/owner/expenses/summary"],
+  "/admin/tenants/*": ["/owner/tenants"],
+  "/admin/meal-timings": ["/owner/meal-timings"],
   "/tenant/dashboard": ["/tenant/notifications?limit=5"],
+  "/tenant/meal-timings": ["/tenant/meal-timings"],
   "/tenant/complaints": ["/tenant/complaints"],
   "/tenant/payments": ["/tenant/payments"],
 };
@@ -45,6 +50,7 @@ const NAV_ITEMS = {
     { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
     { to: "/admin/payments", icon: MdPayment, label: "Payments" },
     { to: "/admin/expenses", icon: MdAttachMoney, label: "Expenses" },
+    { to: "/admin/meal-timings", icon: MdRestaurant, label: "Meals" },
     { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
   ],
   manager: [
@@ -58,6 +64,7 @@ const NAV_ITEMS = {
     { to: "/tenant/dashboard", icon: MdDashboard, label: "My Space" },
     { to: "/tenant/complaints", icon: MdReportProblem, label: "Support" },
     { to: "/tenant/payments", icon: MdPayment, label: "Payments" },
+    { to: "/tenant/meal-timings", icon: MdRestaurant, label: "Meals" },
     { to: "/tenant/notifications", icon: MdAnnouncement, label: "Notices" },
   ],
 };

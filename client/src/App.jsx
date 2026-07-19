@@ -60,6 +60,8 @@ const Payments = lazy(() => import("./pages/Payments"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const RoomManagement = lazy(() => import("./pages/RoomManagement"));
 const Expenses = lazy(() => import("./pages/Expenses"));
+const MealTimings = lazy(() => import("./pages/MealTimings"));
+const ResidentProfile = lazy(() => import("./pages/ResidentProfile"));
 
 // Minimal page-level skeleton — shown instantly while chunk loads
 const PageSkeleton = () => (
@@ -95,6 +97,8 @@ function App() {
                     <Route path="complaints" element={<Complaints />} />
                     <Route path="payments" element={<Payments />} />
                     <Route path="expenses" element={<Expenses />} />
+                    <Route path="meal-timings" element={<MealTimings />} />
+                    <Route path="tenants/:id" element={<ResidentProfile />} />
                     <Route path="notifications" element={<Notifications />} />
                   </Route>
 
@@ -108,6 +112,7 @@ function App() {
                     <Route path="dashboard" element={<TenantDashboard />} />
                     <Route path="complaints" element={<Complaints />} />
                     <Route path="payments" element={<Payments />} />
+                    <Route path="meal-timings" element={<MealTimings />} />
                     <Route path="notifications" element={<Notifications />} />
                   </Route>
 

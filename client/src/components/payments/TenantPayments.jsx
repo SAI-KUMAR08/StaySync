@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../../api/axios";
-import { MdPayment, MdHistory, MdCheckCircle, MdWarning } from "react-icons/md";
+import { MdPayment, MdHistory, MdCheckCircle, MdWarning, MdAdd, MdClose } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
 import { useSocket } from "../../context/SocketContext";
@@ -15,6 +15,8 @@ const mapPayment = (p) => ({
   fine: p.fineAmount ?? 0,
 });
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 const TenantPayments = () => {
   const [overdue, setOverdue] = useState([]);
   const [unpaid, setUnpaid] = useState([]);
@@ -25,6 +27,16 @@ const TenantPayments = () => {
   const { socket } = useSocket();
   const { user } = useAuth();
   const { theme } = useTheme();
+
+  // Payment request flow
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    paymentMonth: MONTHS[new Date().getMonth()],
+    year: new Date().getFullYear(),
+    amount: "",
+    paymentProof: "",
+    notes: "",
+  });
 
   const fetchPayments = async () => {
     setError(null);
@@ -138,6 +150,33 @@ const TenantPayments = () => {
     }
   };
 
+  const handleSubmitPaymentRequest = async (e) => {
+    e.preventDefault();
+    if (!requestForm.amount || Number(requestForm.amount) <= 0) {
+      return toast.error("Please enter a valid amount");
+    }
+    try {
+      await api.post("/tenant/payment-requests", {
+        paymentMonth: requestForm.paymentMonth,
+        year: requestForm.year,
+        amount: Number(requestForm.amount),
+        paymentProof: requestForm.paymentProof,
+        notes: requestForm.notes,
+      });
+      toast.success("Payment request submitted for admin approval!");
+      setShowRequestModal(false);
+      setRequestForm({
+        paymentMonth: MONTHS[new Date().getMonth()],
+        year: new Date().getFullYear(),
+        amount: "",
+        paymentProof: "",
+        notes: "",
+      });
+    } catch (error) {
+      toast.error(getApiError(error));
+    }
+  };
+
   if (error) return <ErrorRetry message={error} onRetry={fetchPayments} />;
   if (loading) {
     return (
@@ -158,6 +197,12 @@ const TenantPayments = () => {
           <strong className="text-[#C62828]">Overdue</strong> = past months unpaid.{" "}
           <strong className="text-[#8D6E2A]">Unpaid</strong> = this month not paid yet.
         </p>
+        <button
+          onClick={() => setShowRequestModal(true)}
+          className="btn-primary-sm mt-4 inline-flex items-center gap-1.5"
+        >
+          <MdAdd size={16} /> Submit Payment Request
+        </button>
       </div>
 
       {overdue.length > 0 && (
@@ -218,6 +263,58 @@ const TenantPayments = () => {
           <p className="text-center text-text-secondary/50 text-sm py-12">No payment history yet.</p>
         )}
       </section>
+
+      {/* Payment Request Modal */}
+      {showRequestModal && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center">
+              <div>
+                <h4 className="text-lg font-bold font-display text-text-primary">Submit Payment Request</h4>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">For admin approval</p>
+              </div>
+              <button onClick={() => setShowRequestModal(false)}
+                className={`w-9 h-9 flex items-center justify-center ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
+                <MdClose size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitPaymentRequest} className="p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Month</label>
+                  <select className="field-select" value={requestForm.paymentMonth}
+                    onChange={(e) => setRequestForm({ ...requestForm, paymentMonth: e.target.value })}>
+                    {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Year</label>
+                  <input type="number" className="field-input" value={requestForm.year}
+                    onChange={(e) => setRequestForm({ ...requestForm, year: Number(e.target.value) })} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Amount (₹)</label>
+                <input required type="number" min="1" className="field-input" placeholder="e.g. 5000"
+                  value={requestForm.amount} onChange={(e) => setRequestForm({ ...requestForm, amount: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Payment Proof URL (optional)</label>
+                <input type="text" className="field-input" placeholder="Link to screenshot or receipt"
+                  value={requestForm.paymentProof} onChange={(e) => setRequestForm({ ...requestForm, paymentProof: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Notes (optional)</label>
+                <textarea className="field-textarea h-20" placeholder="Any additional information..."
+                  value={requestForm.notes} onChange={(e) => setRequestForm({ ...requestForm, notes: e.target.value })} />
+              </div>
+              <button type="submit" className="btn-primary w-full py-4">
+                Submit for Approval
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

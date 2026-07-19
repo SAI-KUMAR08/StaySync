@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { success } from "../utils/apiResponse.js";
 import { AppError } from "../middleware/error.middleware.js";
 import {
-  Room, Bed, Complaint, Payment, Notice, Tenant, BedShiftRequest,
+  Room, Bed, Complaint, Payment, Notice, Tenant, BedShiftRequest, MealTiming, PaymentRequest,
 } from "../models/index.js";
 import { getSlaDueAt } from "../services/authService.js";
 import {
@@ -337,5 +337,62 @@ export const markNoticeRead = asyncHandler(async (req, res) => {
   );
   if (!notice) throw new AppError("Notice not found", 404);
   return success(res, notice);
+});
+
+// ── Meal Timings (tenant view-only) ────────────────────────
+
+export const listMealTimings = asyncHandler(async (req, res) => {
+  const { mealType } = req.query;
+  const query = {
+    ownerId: req.user.ownerId,
+    hostelId: req.user.hostelId,
+    isActive: true,
+  };
+  if (mealType) query.mealType = mealType;
+  const timings = await MealTiming.find(query).sort({ mealType: 1, dayOfWeek: 1 });
+  return success(res, timings);
+});
+
+// ── Payment Requests (tenant) ──────────────────────────────
+
+export const createPaymentRequest = asyncHandler(async (req, res) => {
+  const { paymentMonth, year, amount, paymentProof, notes } = req.validated.body;
+  const tenant = await Tenant.findById(req.user.id);
+  if (!tenant?.isActive) throw new AppError("Account is deactivated", 403);
+
+  // Prevent duplicate pending requests for same period
+  const existing = await PaymentRequest.findOne({
+    ownerId: req.user.ownerId,
+    hostelId: req.user.hostelId,
+    tenantId: req.user.id,
+    paymentMonth,
+    year,
+    status: "pending",
+  });
+  if (existing) throw new AppError("You already have a pending payment request for this period", 409);
+
+  const request = await PaymentRequest.create({
+    ownerId: req.user.ownerId,
+    hostelId: req.user.hostelId,
+    tenantId: req.user.id,
+    paymentMonth,
+    year,
+    amount,
+    paymentProof: paymentProof || "",
+    notes: notes || "",
+    status: "pending",
+  });
+  return success(res, request, 201);
+});
+
+export const listPaymentRequests = asyncHandler(async (req, res) => {
+  const requests = await PaymentRequest.find({
+    ownerId: req.user.ownerId,
+    hostelId: req.user.hostelId,
+    tenantId: req.user.id,
+  })
+    .populate("reviewedBy", "name")
+    .sort({ createdAt: -1 });
+  return success(res, requests);
 });
 

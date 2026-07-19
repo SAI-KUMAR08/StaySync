@@ -4,6 +4,7 @@ import { PERMISSIONS } from "../config/permissions.js";
 import { validate } from "../middleware/validate.js";
 import * as owner from "../controllers/ownerController.js";
 import * as expenseCtrl from "../controllers/expenseController.js";
+import * as mealTimingCtrl from "../controllers/mealTimingController.js";
 import {
   floorSchema,
   roomSchema,
@@ -23,6 +24,9 @@ import {
   bedShiftUpdateSchema,
   createExpenseSchema,
   updateExpenseSchema,
+  mealTimingSchema,
+  mealTimingUpdateSchema,
+  paymentRequestReviewSchema,
 } from "../validators/resources.js";
 
 const router = Router();
@@ -94,5 +98,19 @@ router.delete("/expenses/:id", requirePermission(PERMISSIONS.DELETE_EXPENSES), v
 router.get("/managers", requirePermission(PERMISSIONS.READ_MANAGERS), owner.listManagers);
 router.post("/managers", requirePermission(PERMISSIONS.CREATE_MANAGERS), validate(createManagerSchema), owner.createManager);
 router.delete("/managers/:id", requirePermission(PERMISSIONS.DELETE_MANAGERS), validate(idParamSchema), owner.deleteManager);
+
+// ── Meal Timings (owner/manager) ────────────────────────────
+router.get("/meal-timings", mealTimingCtrl.listMealTimings);
+router.get("/meal-timings/:id", mealTimingCtrl.getMealTiming);
+router.post("/meal-timings", validate(mealTimingSchema), mealTimingCtrl.createMealTiming);
+router.patch("/meal-timings/:id", validate(mealTimingUpdateSchema), mealTimingCtrl.updateMealTiming);
+router.delete("/meal-timings/:id", validate(idParamSchema), mealTimingCtrl.deleteMealTiming);
+
+// ── Payment Requests (owner review) ─────────────────────────
+router.get("/payment-requests", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.listPaymentRequests);
+router.patch("/payment-requests/:id", requirePermission(PERMISSIONS.UPDATE_PAYMENTS), validate(paymentRequestReviewSchema), owner.reviewPaymentRequest);
+
+// ── Convert Temporary Tenant to Permanent ───────────────────
+router.post("/tenants/:id/convert-permanent", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(idParamSchema), owner.convertToPermanent);
 
 export default router;

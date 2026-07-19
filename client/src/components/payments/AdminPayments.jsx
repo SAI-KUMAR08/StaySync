@@ -3,7 +3,7 @@ import api from "../../api/axios";
 import {
   MdPayment, MdCheckCircle, MdError, MdSearch,
   MdAddCircleOutline, MdClose, MdAttachMoney,
-  MdCalendarToday
+  MdCalendarToday, MdThumbUp, MdThumbDown, MdHistory
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
@@ -42,6 +42,10 @@ const AdminPayments = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [fineAmount, setFineAmount] = useState(0);
   const { socket } = useSocket();
+
+  // Payment Requests
+  const [paymentRequests, setPaymentRequests] = useState([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   
 
   const fetchPayments = async () => {
@@ -98,6 +102,33 @@ const AdminPayments = () => {
       toast.error("Operation failed");
     }
   };
+
+  const fetchPaymentRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const res = await api.get("/owner/payment-requests");
+      setPaymentRequests(Array.isArray(res.data.data) ? res.data.data : []);
+    } catch (error) {
+      console.error("Failed to load payment requests:", error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleReviewRequest = async (id, status) => {
+    try {
+      await api.patch(`/owner/payment-requests/${id}`, { status });
+      toast.success(`Payment request ${status} successfully`);
+      fetchPayments();
+      fetchPaymentRequests();
+    } catch (error) {
+      toast.error(getApiError(error));
+    }
+  };
+
+  useEffect(() => {
+    fetchPaymentRequests();
+  }, [user?.hostelId]);
 
   const now = new Date();
   const currentMonth = now.toLocaleString("en-US", { month: "long" });
@@ -240,6 +271,57 @@ const AdminPayments = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Payment Requests Section */}
+      <div className="space-y-5 pt-4">
+        <div className="flex items-center gap-3">
+          <MdHistory className="text-xl text-primary" />
+          <h3 className="text-base font-bold font-display text-text-primary tracking-tight">
+            Payment Requests ({paymentRequests.filter((r) => r.status === "pending").length})
+          </h3>
+        </div>
+
+        {loadingRequests ? (
+          <div className="shimmer h-20 rounded-2xl" />
+        ) : paymentRequests.filter((r) => r.status === "pending").length === 0 ? (
+          <p className="text-text-secondary/50 text-sm py-4 text-center">No pending payment requests.</p>
+        ) : (
+          <div className="arch-card overflow-hidden">
+            {paymentRequests.filter((r) => r.status === "pending").map((req) => (
+              <div key={req._id} className="flex items-center justify-between p-5 border-b border-border/40 last:border-b-0">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-text-primary">
+                      {req.tenantId?.personalInfo?.name || "Unknown"}
+                    </span>
+                    <span className="badge-amber text-[8px]">Pending</span>
+                  </div>
+                  <p className="text-[11px] text-text-secondary">
+                    ₹{req.amount?.toLocaleString()} for {req.paymentMonth} {req.year}
+                    {req.notes && <span className="ml-2 text-text-tertiary">— {req.notes}</span>}
+                  </p>
+                  {req.paymentProof && (
+                    <a href={req.paymentProof} target="_blank" rel="noopener noreferrer"
+                      className="text-[9px] text-primary font-bold underline">View Proof</a>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0 ml-4">
+                  <button onClick={() => handleReviewRequest(req._id, "approved")}
+                    className={`p-2.5 bg-emerald-500/10 text-emerald-500 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-emerald-500 hover:text-white transition-all`}
+                    title="Approve">
+                    <MdThumbUp size={16} />
+                  </button>
+                  <button onClick={() => handleReviewRequest(req._id, "rejected")}
+                    className={`p-2.5 bg-red-500/10 text-red-500 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} hover:bg-red-500 hover:text-white transition-all`}
+                    title="Reject">
+                    <MdThumbDown size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Fine Modal */}

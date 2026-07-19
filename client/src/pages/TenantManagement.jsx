@@ -6,8 +6,9 @@ import {
   MdAdd, MdDelete, MdPhone, MdCalendarToday,
   MdSearch, MdFilterList, MdClose, MdPeople, MdHotel,
   MdCheckCircle, MdArrowForward, MdArrowBack, MdHome,
-  MdSwapHoriz, MdInfo
+  MdSwapHoriz, MdInfo, MdOpenInNew
 } from "react-icons/md";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { normalizeStructure, getAvailableRooms } from "../utils/normalizeStructure";
 import { normalizePhone } from "../utils/phone";
@@ -203,6 +204,18 @@ const TenantManagement = () => {
     [structure, selectedSharing]
   );
 
+  // 🆕 One-click convert to permanent
+  const handleConvertToPermanent = async (tenant) => {
+    try {
+      const res = await api.post(`/owner/tenants/${tenant._id}/convert-permanent`);
+      toast.success(res.data.data?.message || "Resident converted to permanent!");
+      fetchTenants();
+      fetchStructure();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to convert to permanent");
+    }
+  };
+
   // 🆕 Quick fix: directly move temp tenant to preferred room type
   const handleFixTempTenant = (tenant) => {
     const preferred = tenant.preferredSharing;
@@ -382,14 +395,24 @@ const TenantManagement = () => {
                       </span>
                     )}
                   </div>
-                  {roomReady && (
+                  <div className="mt-3 flex gap-2">
                     <button
-                      onClick={() => handleFixTempTenant(t)}
-                      className={`mt-3 w-full py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500/20 border border-emerald-500/15 transition-all flex items-center justify-center gap-1.5`}
+                      onClick={() => handleConvertToPermanent(t)}
+                      disabled={!roomReady}
+                      className={`flex-1 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-emerald-500/10 text-emerald-400 text-[9px] font-bold uppercase tracking-wider hover:bg-emerald-500/20 border border-emerald-500/15 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:cursor-not-allowed`}
                     >
-                      <MdCheckCircle size={14} /> Move to Preferred Room
+                      <MdCheckCircle size={14} /> {roomReady ? "Make Permanent" : "No Room Available"}
                     </button>
-                  )}
+                    {roomReady && (
+                      <button
+                        onClick={() => handleFixTempTenant(t)}
+                        className={`px-3 py-2.5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 border border-primary/15 transition-all`}
+                        title="Manually select a specific room"
+                      >
+                        <MdHotel size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -415,13 +438,17 @@ const TenantManagement = () => {
               <tr key={tenant._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                 <td>
                   <div className="flex items-center gap-3.5">
-                    <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary/10 text-primary flex items-center justify-center font-bold text-sm`}>
-                      {(tenant.name?.[0] || "T").toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-text-primary text-sm">{tenant.name}</p>
-                      <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
-                    </div>
+                    <Link to={`/admin/tenants/${tenant._id}`} className="flex items-center gap-3.5 group">
+                      <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary/10 text-primary flex items-center justify-center font-bold text-sm`}>
+                        {(tenant.name?.[0] || "T").toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-text-primary text-sm group-hover:text-primary transition-colors inline-flex items-center gap-1">
+                          {tenant.name} <MdOpenInNew className="text-text-tertiary/30 text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
+                      </div>
+                    </Link>
                   </div>
                 </td>
                 <td>
@@ -463,13 +490,17 @@ const TenantManagement = () => {
               <tr key={tenant._id} className="stagger-enter bg-primary-light" style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
                 <td>
                   <div className="flex items-center gap-3.5">
-                    <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm`}>
-                      {(tenant.name?.[0] || "T").toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-text-primary text-sm">{tenant.name}</p>
-                      <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
-                    </div>
+                    <Link to={`/admin/tenants/${tenant._id}`} className="flex items-center gap-3.5 group">
+                      <div className={`w-9 h-9 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm`}>
+                        {(tenant.name?.[0] || "T").toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-text-primary text-sm group-hover:text-primary transition-colors inline-flex items-center gap-1">
+                          {tenant.name} <MdOpenInNew className="text-text-tertiary/30 text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </p>
+                        <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
+                      </div>
+                    </Link>
                   </div>
                 </td>
                 <td>
@@ -490,6 +521,15 @@ const TenantManagement = () => {
                 </td>
                 <td className="text-right">
                   <div className="flex justify-end gap-1.5">
+                    {hasPreferredRoomAvailable(tenant) && (
+                      <button
+                        onClick={() => handleConvertToPermanent(tenant)}
+                        className={`p-2 text-emerald-500 hover:bg-emerald-500/10 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}
+                        title="Make Permanent"
+                      >
+                        <MdCheckCircle size={18} />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleReassignStart(tenant)}
                       className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 ${theme === "theme-2" ? "rounded-lg" : "rounded-xl"} transition-all`}

@@ -4,7 +4,7 @@ import { success } from "../utils/apiResponse.js";
 import { AppError } from "../middleware/error.middleware.js";
 import { emitTenantAssigned, emitTenantRemoved, emitOccupancyUpdate } from "../utils/socketEvents.js";
 import {
-  Room, Bed, Tenant, Complaint, Payment, Notice, Hostel, BedShiftRequest, Floor, Owner, RoomAssignmentHistory,
+  Room, Bed, Tenant, Complaint, Payment, Notice, Hostel, BedShiftRequest, Floor, Owner, RoomAssignmentHistory, PaymentRequest,
 } from "../models/index.js";
 import { ownerFilter } from "../utils/scope.js";
 import { generateTemporaryPassword } from "../utils/password.js";
@@ -591,6 +591,9 @@ export const removeTenant = asyncHandler(async (req, res) => {
   try {
     await occupancyService.freeTenantBed(tenant, session);
     tenant.isActive = false;
+    tenant.moveOutDate = new Date();
+    // Schedule deletion 15 days from now
+    tenant.scheduledDeletionDate = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
     await tenant.save({ session });
     await session.commitTransaction();
   } catch (e) {
@@ -933,4 +936,174 @@ export const deleteManager = asyncHandler(async (req, res) => {
   );
   if (!manager) throw new AppError("Manager not found", 404);
   return success(res, { message: "Manager deleted successfully" });
+});
+
+// ── Payment Requests (owner review) ────────────────────────
+
+export const listPaymentRequests = asyncHandler(async (req, res) => {
+  const f = filter(req);
+  const { status } = req.query;
+  const query = { ...f };
+  if (status) query.status = status;
+
+  const requests = await PaymentRequest.find(query)
+    .populate("tenantId", "personalInfo.name personalInfo.email personalInfo.phone monthlyRent roomId")
+    .populate("reviewedBy", "name")
+    .sort({ createdAt: -1 });
+  return success(res, requests);
+});
+
+export const reviewPaymentRequest = asyncHandler(async (req, res) => {
+  const f = filter(req);
+  const { status, reviewNotes } = req.validated.body;
+  const request = await PaymentRequest.findOne({ _id: req.validated.params.id, ...f });
+  if (!request) throw new AppError("Payment request not found", 404);
+  if (request.status !== "pending") throw new AppError("Payment request already reviewed", 400);
+
+  if (status === "approved") {
+    // Create actual payment record
+    const payment = await Payment.create({
+      ownerId: f.ownerId,
+      hostelId: f.hostelId,
+      tenantId: request.tenantId,
+      amount: request.amount,
+      fineAmount: 0,
+      totalAmount: request.amount,
+      paymentMonth: request.paymentMonth,
+      year: request.year,
+      dueDate: new Date(),
+      paidDate: new Date(),
+      paymentStatus: "paid",
+      paymentMethod: "upi",
+      receiptNumber: `PAY-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      notes: request.notes || `Payment request approved for ${request.paymentMonth} ${request.year}`,
+    });
+
+    request.paymentId = payment._id;
+    request.status = "approved";
+    request.reviewedBy = req.user.id;
+    request.reviewDate = new Date();
+    request.reviewNotes = reviewNotes || "";
+    await request.save();
+
+    const io = req.app.get("io");
+    if (io && f.hostelId) {
+      io.to(`hostel_${f.hostelId}`).emit("payment_completed", {
+        message: `Payment of ₹${payment.totalAmount} approved from request.`,
+      });
+    }
+
+    return success(res, { request, payment });
+  }
+
+  // Rejected
+  request.status = "rejected";
+  request.reviewedBy = req.user.id;
+  request.reviewDate = new Date();
+  request.reviewNotes = reviewNotes || "";
+  await request.save();
+
+  return success(res, request);
+});
+
+// ── Convert Temporary to Permanent ──────────────────────────
+
+export const convertToPermanent = asyncHandler(async (req, res) => {
+  const f = filter(req);
+  const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...f });
+  if (!tenant) throw new AppError("Tenant not found", 404);
+  if (!tenant.isTemporary) throw new AppError("Tenant is already permanent", 400);
+  if (!tenant.preferredSharing) throw new AppError("No preferred room type set for this tenant", 400);
+
+  // Find an available bed in a room matching the preferred sharing type
+  const availableBed = await Bed.aggregate([
+    {
+      $lookup: {
+        from: "rooms",
+        let: { roomId: "$roomId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$roomId"] } } },
+        ],
+        as: "room",
+      },
+    },
+    { $unwind: "$room" },
+    {
+      $match: {
+        "room.ownerId": f.ownerId,
+        "room.hostelId": f.hostelId,
+        "room.isActive": true,
+        "room.capacity": tenant.preferredSharing,
+        "room.occupiedBeds": { $lt: "$room.capacity" },
+        $expr: { $lt: ["$room.occupiedBeds", "$room.capacity"] },
+        occupancyStatus: "available",
+        tenantId: null,
+      },
+    },
+    { $limit: 1 },
+  ]);
+
+  if (!availableBed || availableBed.length === 0) {
+    throw new AppError(`No ${tenant.preferredSharing}-sharing room available. Please wait until a bed opens up.`, 400);
+  }
+
+  const bed = availableBed[0];
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    // Free current bed
+    await occupancyService.freeTenantBed(tenant, session);
+
+    // Assign to new bed
+    const result = await occupancyService.assignTenantToBed({
+      ownerId: f.ownerId,
+      hostelId: f.hostelId,
+      tenantId: tenant._id,
+      bedId: bed._id,
+      session,
+    });
+
+    // Clear temporary status
+    await Tenant.findOneAndUpdate(
+      { _id: tenant._id },
+      {
+        $set: {
+          isTemporary: false,
+          preferredSharing: null,
+          temporaryAllotmentDate: null,
+          permanentTargetBedId: null,
+        },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    await logActivity({
+      ...f,
+      actorId: req.user.id,
+      actorRole: req.user.role,
+      action: "tenant_converted_to_permanent",
+      entityType: "tenant",
+      entityId: tenant._id,
+      metadata: { previousBedId: tenant.bedId, newBedId: bed._id, preferredSharing: tenant.preferredSharing },
+    });
+
+    const io = req.app.get("io");
+    if (io && f.hostelId) {
+      io.to(`hostel_${f.hostelId}`).emit("tenant_assigned", {
+        message: `${tenant.personalInfo?.name || "A resident"} moved to preferred room.`,
+      });
+    }
+
+    return success(res, {
+      message: `Tenant converted to permanent and moved to ${tenant.preferredSharing}-sharing room successfully.`,
+      tenant: result.tenant,
+    });
+  } catch (e) {
+    await session.abortTransaction();
+    throw new AppError(e.message || "Failed to convert tenant to permanent", 400);
+  } finally {
+    session.endSession();
+  }
 });

@@ -34,6 +34,21 @@ const tenantSchema = new mongoose.Schema(
     isTemporary: { type: Boolean, default: false },
     isPasswordSet: { type: Boolean, default: false },
     preferredSharing: { type: Number, default: null },
+    temporaryAllotmentDate: { type: Date, default: null },
+    permanentTargetBedId: { type: mongoose.Schema.Types.ObjectId, ref: "Bed", default: null },
+
+    // ── Security Deposit ────────────────────────────────
+    isSecurityDepositPaid: { type: Boolean, default: false },
+    securityDepositAmount: { type: Number, default: 0, min: 0 },
+    securityDepositDate: { type: Date, default: null },
+
+    // ── Identity & Documents ────────────────────────────
+    aadhaarNumber: { type: String, trim: true, default: null },
+    offlineBookingForm: { type: String, trim: true, default: null }, // URL to uploaded file
+
+    // ── Scheduled Cleanup ───────────────────────────────
+    scheduledDeletionDate: { type: Date, default: null },
+
     // ── Account lockout (tenant password login) ──────────
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },

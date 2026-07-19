@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate, authorize, tenantScope } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import * as tenant from "../controllers/tenantController.js";
-import { complaintCreateSchema, bedShiftSchema } from "../validators/resources.js";
+import { complaintCreateSchema, bedShiftSchema, paymentRequestSchema } from "../validators/resources.js";
 
 const router = Router();
 
@@ -20,5 +20,12 @@ router.get("/notifications", tenant.listNotices);
 router.post("/notices/:id/read", tenant.markNoticeRead);
 router.get("/bed-shift-requests", tenant.listBedShiftRequests);
 router.post("/bed-shift-requests", validate(bedShiftSchema), tenant.requestBedShift);
+
+// ── Meal Timings (view-only) ────────────────────────────────
+router.get("/meal-timings", tenant.listMealTimings);
+
+// ── Payment Requests (submit) ───────────────────────────────
+router.get("/payment-requests", tenant.listPaymentRequests);
+router.post("/payment-requests", validate(paymentRequestSchema), tenant.createPaymentRequest);
 
 export default router;

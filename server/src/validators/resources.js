@@ -223,3 +223,47 @@ export const updateExpenseSchema = z.object({
     isRecurring: z.boolean().optional(),
   }),
 });
+
+const mealTypes = ["breakfast", "lunch", "snacks", "dinner"];
+
+export const mealTimingSchema = z.object({
+  body: z.object({
+    mealType: z.enum(mealTypes),
+    name: z.string().min(1).optional(),
+    items: z.array(z.string()).optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    dayOfWeek: z.coerce.number().int().min(0).max(6).nullable().optional(),
+  }),
+});
+
+export const mealTimingUpdateSchema = z.object({
+  params: z.object({ id: objectId }),
+  body: z.object({
+    mealType: z.enum(mealTypes).optional(),
+    name: z.string().min(1).optional(),
+    items: z.array(z.string()).optional(),
+    startTime: z.string().optional(),
+    endTime: z.string().optional(),
+    dayOfWeek: z.coerce.number().int().min(0).max(6).nullable().optional(),
+    isActive: z.boolean().optional(),
+  }),
+});
+
+export const paymentRequestSchema = z.object({
+  body: z.object({
+    paymentMonth: z.enum(["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]),
+    year: z.coerce.number().int(),
+    amount: z.coerce.number().min(0),
+    paymentProof: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+export const paymentRequestReviewSchema = z.object({
+  params: z.object({ id: objectId }),
+  body: z.object({
+    status: z.enum(["approved", "rejected"]),
+    reviewNotes: z.string().optional(),
+  }),
+});
