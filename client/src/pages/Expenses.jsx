@@ -138,10 +138,10 @@ const Expenses = () => {
 
   if (error && expenses.length === 0) return <ErrorRetry message={error} onRetry={fetchData} />;
   if (loading && expenses.length === 0) return (
-    <div className="space-y-5">
+    <div className="space-y-5" role="status" aria-label="Loading expenses">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="arch-card p-6 space-y-4">
+          <div key={i} className="card card-md space-y-4">
             <div className={`skeleton h-10 w-10 rounded-2xl`} />
             <div className="skeleton h-3 w-24" />
             <div className="skeleton h-7 w-20" />
@@ -230,10 +230,10 @@ const Expenses = () => {
                   <p className="text-[9px] text-text-secondary font-medium capitalize">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => handleEdit(e)} className={`p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}>
+                  <button onClick={() => handleEdit(e)} aria-label={`Edit ${e.description || "expense"}`} className={`p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}>
                     <MdEdit size={16} />
                   </button>
-                  <button onClick={() => handleDelete(e._id)} className={`p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft rounded-xl transition-all`}>
+                  <button onClick={() => handleDelete(e._id)} aria-label={`Delete ${e.description || "expense"}`} className={`p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft rounded-xl transition-all`}>
                     <MdDelete size={16} />
                   </button>
                 </div>
@@ -252,7 +252,7 @@ const Expenses = () => {
                 <h4 className="text-lg font-bold font-display text-text-primary">{editing ? "Edit Expense" : "Add Expense"}</h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Record a hostel expense</p>
               </div>
-              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
+              <button onClick={() => setShowModal(false)} aria-label="Close expense form" className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
                 <MdClose size={20} />
               </button>
             </div>
