@@ -185,7 +185,7 @@ const AdminDashboard = () => {
       {/* ── Section header — original pre-overhaul style ── */}
       <div className="animate-slide-up-big">
         <div className="section-ornament-diamond mb-4">Overview</div>
-        <h2 className="section-title">Live <span className="highlight">Overview</span></h2>
+        <h2 className="section-title"><span className="highlight">Overview</span></h2>
         <p className="section-sub">Real-time health and occupancy metrics for your facility.</p>
       </div>
 

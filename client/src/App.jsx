@@ -26,7 +26,7 @@ const ThemeAwareToaster = () => {
           color: "#F5F0EB",
           padding: "16px 20px",
           fontSize: "0.875rem",
-          fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+          fontFamily: "'Playfair Display', Georgia, serif",
           boxShadow: "0 12px 40px -8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(107, 143, 113, 0.08)",
         },
         success: {
