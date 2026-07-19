@@ -16,8 +16,6 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   REFRESH_TOKEN_SECRET: z.string().min(16).optional(),
   CLIENT_URL: z.string().default("http://localhost:5173"),
-  RAZORPAY_KEY_ID: z.string().optional(),
-  RAZORPAY_KEY_SECRET: z.string().optional(),
   // SMTP — email delivery for OTPs
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
@@ -71,8 +69,5 @@ if (env.NODE_ENV === "production") {
   }
   if (!process.env.REFRESH_TOKEN_SECRET && env.REFRESH_TOKEN_SECRET === env.JWT_SECRET) {
     console.warn("[env] ⚠️ REFRESH_TOKEN_SECRET is not set — falling back to JWT_SECRET. Set a separate REFRESH_TOKEN_SECRET for better security.");
-  }
-  if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
-    console.warn("[env] ⚠️ RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not configured. Online payments will not work.");
   }
 }

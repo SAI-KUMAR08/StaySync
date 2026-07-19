@@ -11,8 +11,6 @@ router.use(authenticate, authorize("tenant"), tenantScope);
 router.get("/dashboard", tenant.getDashboard);
 router.get("/room", tenant.getRoomDetails);
 router.get("/payments", tenant.listPayments);
-router.post("/payments/create-order", tenant.createPaymentOrder);
-router.post("/payments/verify", tenant.verifyPayment);
 router.get("/complaints", tenant.listComplaints);
 router.post("/complaints", validate(complaintCreateSchema), tenant.createComplaint);
 router.get("/notices", tenant.listNotices);

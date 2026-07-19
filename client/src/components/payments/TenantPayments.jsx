@@ -23,7 +23,6 @@ const TenantPayments = () => {
   const [paid, setPaid] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [processing, setProcessing] = useState(false);
   const { socket } = useSocket();
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -58,13 +57,6 @@ const TenantPayments = () => {
 
   useEffect(() => {
     fetchPayments();
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) document.body.removeChild(script);
-    };
   }, []);
 
   useEffect(() => {
@@ -73,82 +65,6 @@ const TenantPayments = () => {
       return () => socket.off("payment_completed");
     }
   }, [socket]);
-
-  const handlePayment = async (payment) => {
-    try {
-      setProcessing(true);
-      toast.loading("Initiating payment...", { id: "payment" });
-      const res = await api.post("/tenant/payments/create-order", { paymentId: payment._id });
-      const data = res.data.data ?? {};
-      const { order } = data;
-      if (!order) throw new Error("Order creation failed");
-
-      if (data.mock) {
-        toast.loading("Simulating payment success...", { id: "payment" });
-        await api.post("/tenant/payments/verify", {
-          razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 10)}`,
-          razorpay_order_id: order.id,
-          razorpay_signature: "mock_signature",
-          paymentId: payment._id,
-        });
-        toast.success("Payment successful (Mock)!", { id: "payment" });
-        fetchPayments();
-        return;
-      }
-
-      if (!window.Razorpay) {
-        toast.error("Razorpay SDK failed to load. Please refresh the page.", { id: "payment" });
-        return;
-      }
-
-      const key = import.meta.env.VITE_RAZORPAY_KEY_ID;
-      if (!key) {
-        toast.error("VITE_RAZORPAY_KEY_ID (Razorpay Test Key) is missing in environment settings", { id: "payment" });
-        return;
-      }
-
-      const options = {
-        key,
-        amount: order.amount,
-        currency: order.currency || "INR",
-        name: "Sri Rama Hostel",
-        description: `${payment.month} ${payment.year} rent`,
-        order_id: order.id,
-        handler: async (response) => {
-          try {
-            toast.loading("Verifying payment...", { id: "payment" });
-            await api.post("/tenant/payments/verify", {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-              paymentId: payment._id,
-            });
-            toast.success("Payment successful!", { id: "payment" });
-            fetchPayments();
-          } catch (err) {
-            toast.error(getApiError(err), { id: "payment" });
-          }
-        },
-        prefill: {
-          name: user?.name || user?.personalInfo?.name || "Resident",
-          email: user?.email || user?.personalInfo?.email || "",
-          contact: user?.phone || user?.personalInfo?.phone || "",
-        },
-        theme: { color: "#B45309" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.on("payment.failed", function (response) {
-        toast.error(`Payment failed: ${response.error.description}`, { id: "payment" });
-      });
-      rzp.open();
-      toast.dismiss("payment");
-    } catch (error) {
-      toast.error(getApiError(error), { id: "payment" });
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   const handleSubmitPaymentRequest = async (e) => {
     e.preventDefault();
@@ -212,7 +128,7 @@ const TenantPayments = () => {
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {overdue.map((p) => (
-              <PaymentCard key={p._id} payment={p} variant="overdue" onPay={handlePayment} processing={processing} />
+              <PaymentCard key={p._id} payment={p} variant="overdue" />
             ))}
           </div>
         </section>
@@ -225,7 +141,7 @@ const TenantPayments = () => {
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {unpaid.map((p) => (
-              <PaymentCard key={p._id} payment={p} variant="unpaid" onPay={handlePayment} processing={processing} />
+              <PaymentCard key={p._id} payment={p} variant="unpaid" />
             ))}
           </div>
         </section>

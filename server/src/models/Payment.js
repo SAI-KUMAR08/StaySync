@@ -21,9 +21,6 @@ const paymentSchema = new mongoose.Schema(
     receiptNumber: { type: String, trim: true },
     notes: { type: String, trim: true },
     
-    razorpay_order_id: { type: String, default: null },
-    razorpay_payment_id: { type: String, default: null },
-    razorpay_signature: { type: String, default: null },
   },
   { timestamps: true }
 );
