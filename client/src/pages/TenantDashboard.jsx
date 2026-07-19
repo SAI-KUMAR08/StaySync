@@ -20,7 +20,7 @@ const StatCard = ({ label, value, sub, icon: Icon, color }) => {
         <Icon className="text-2xl text-white" />
       </div>
       <h3 className="text-text-secondary text-[8px] font-bold font-sans uppercase tracking-[0.15em] mb-1.5">{label}</h3>
-      <p className="text-2xl font-bold font-sans text-text-primary tracking-tight">{value}</p>
+      <p className="text-2xl font-bold font-display text-text-primary tracking-tight">{value}</p>
       <p className="text-[8px] text-text-secondary font-medium mt-1 uppercase tracking-tight">{sub}</p>
     </div>
   );
@@ -92,7 +92,7 @@ const TenantDashboard = () => {
             {user?.name?.[0]?.toUpperCase()}
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-sans text-text-primary tracking-tight">
+            <h1 className="text-2xl font-bold font-display text-text-primary tracking-tight">
               {user?.name}
             </h1>
             <div className="flex items-center gap-2 mt-1">
@@ -129,7 +129,7 @@ const TenantDashboard = () => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Financials</h3>
-                <p className="text-base font-bold font-sans text-text-primary tracking-tight">Recent Invoices</p>
+                <p className="text-base font-bold font-display text-text-primary tracking-tight">Recent Invoices</p>
               </div>
               <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
                 <MdHistory size={20} />
@@ -179,7 +179,7 @@ const TenantDashboard = () => {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Support</h3>
-                <p className="text-base font-bold font-sans text-text-primary tracking-tight">My Tickets</p>
+                <p className="text-base font-bold font-display text-text-primary tracking-tight">My Tickets</p>
               </div>
               <Link to="/tenant/complaints" className="btn-ghost inline-flex items-center gap-1 text-xs p-2">
                 View All <MdChevronRight size={14} />

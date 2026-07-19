@@ -20,11 +20,11 @@ const ThemeAwareToaster = () => {
         className: "toast-custom",
         duration: 3500,
         style: {
-          background: isCorporate ? "rgba(17, 24, 39, 0.92)" : "rgba(28, 24, 20, 0.85)",
+          background: isCorporate ? "rgba(17, 24, 39, 0.92)" : "rgba(26, 24, 23, 0.88)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
           border: isCorporate ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(255, 255, 255, 0.08)",
-          borderLeft: isCorporate ? "3px solid #1A56DB" : "3px solid #B8860B",
+          borderLeft: isCorporate ? "3px solid #1A56DB" : "3px solid #6B8F71",
           borderRadius: isCorporate ? "8px" : "16px",
           color: "#F5F0EB",
           padding: "16px 20px",
@@ -32,20 +32,20 @@ const ThemeAwareToaster = () => {
           fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
           boxShadow: isCorporate
             ? "0 8px 32px -8px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(26, 86, 219, 0.1)"
-            : "0 12px 40px -8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(184, 134, 11, 0.08)",
+            : "0 12px 40px -8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(107, 143, 113, 0.08)",
         },
         success: {
           duration: 3000,
           iconTheme: {
-            primary: isCorporate ? "#1A56DB" : "#B8860B",
-            secondary: "#1C1814",
+            primary: isCorporate ? "#1A56DB" : "#6B8F71",
+            secondary: "#2C2B28",
           },
         },
         error: {
           duration: 4000,
           iconTheme: {
             primary: isCorporate ? "#DC2626" : "#C62828",
-            secondary: "#1C1814",
+            secondary: "#2C2B28",
           },
         },
       }}

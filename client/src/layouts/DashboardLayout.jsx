@@ -299,7 +299,7 @@ const DashboardLayout = () => {
               <MdHome className="text-lg text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold font-sans text-text-primary leading-none">
+              <h1 className="text-lg font-bold font-display text-text-primary leading-none">
                 Sri Rama
               </h1>
               <p className="text-[7px] text-text-tertiary/50 uppercase tracking-[0.15em] font-semibold mt-0.5">
@@ -414,7 +414,7 @@ const DashboardLayout = () => {
                     <MdChevronRight size={10} />
                     <span className="font-bold text-text-secondary">{getPageTitle()}</span>
                   </div>
-                  <h2 className="text-xl font-bold font-sans text-text-primary tracking-tight leading-tight">
+                  <h2 className="text-xl font-bold font-display text-text-primary tracking-tight leading-tight">
                     {getPageTitle()}
                   </h2>
                 </div>

@@ -345,7 +345,7 @@ const TenantManagement = () => {
           <div className="flex items-center gap-2 mb-5">
             <MdSwapHoriz className="text-2xl text-primary" />
             <div>
-              <h3 className="font-bold font-sans text-text-primary text-base tracking-tight">
+              <h3 className="font-bold font-display text-text-primary text-base tracking-tight">
                 Temporary Allotments ({tempTenants.length})
               </h3>
               <p className="text-[9px] text-text-secondary font-medium">
@@ -716,7 +716,7 @@ const TenantManagement = () => {
                     {[1, 2, 3, 4, 6].map(type => (
                       <button key={type} onClick={() => handleSharingSelect(type)} className={`p-6 ${theme === "theme-2" ? "rounded-lg" : "rounded-3xl"} border-2 border-border/50 hover:border-primary/40 hover:bg-primary/[0.02] transition-all group text-left`}>
                         <MdPeople className="text-3xl text-border mb-3 group-hover:text-primary/40 transition-colors" />
-                        <p className="text-lg font-bold font-sans text-text-primary">{type} Sharing</p>
+                        <p className="text-lg font-bold font-display text-text-primary">{type} Sharing</p>
                         <p className="text-[9px] font-medium text-text-secondary uppercase tracking-wider mt-1">
                           {structure.flatMap(f => f.rooms).filter(r => r.sharingType === type && r.occupiedBeds < r.totalBeds).length} Rooms Available
                         </p>

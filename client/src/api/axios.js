@@ -38,6 +38,7 @@ function invalidateCache(prefix) {
 const api = axios.create({
   baseURL: getAxiosBaseURL(),
   withCredentials: true,
+  timeout: 15000,
 });
 
 // Track background re-fetches per URL to avoid duplicates

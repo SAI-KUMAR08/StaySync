@@ -30,6 +30,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hostels, setHostels] = useState([]);
+  const [loadingStates, setLoadingStates] = useState({
+    login: false,
+    sendOtp: false,
+    verifyOtp: false,
+    sendOwnerOtp: false,
+    verifyOwnerOtp: false,
+    register: false,
+    logout: false,
+    checkStatus: false,
+    sendForgotOtp: false,
+    resetPassword: false,
+    setPassword: false,
+    setInitialPassword: false,
+    tenantPasswordLogin: false,
+  });
 
   useEffect(() => {
     const token = sessionStorage.getItem("token");
@@ -66,6 +81,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
+    setLoadingStates(prev => ({...prev, login: true}));
     try {
       const res = await api.post("/auth/login", { email, password });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -81,10 +97,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, login: false}));
     }
   };
 
   const sendOwnerLoginOtp = async (email) => {
+    setLoadingStates(prev => ({...prev, sendOwnerOtp: true}));
     try {
       const res = await api.post("/auth/owner/login/send-otp", { email });
       toast.success("OTP sent to your email!");
@@ -92,10 +111,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send OTP");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, sendOwnerOtp: false}));
     }
   };
 
   const verifyOwnerLoginOtp = async (email, otp) => {
+    setLoadingStates(prev => ({...prev, verifyOwnerOtp: true}));
     try {
       const res = await api.post("/auth/owner/login/verify-otp", { email, otp });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -111,10 +133,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Verification failed");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, verifyOwnerOtp: false}));
     }
   };
 
   const registerOwner = async (formData) => {
+    setLoadingStates(prev => ({...prev, register: true}));
     try {
       const res = await api.post("/auth/register", formData);
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -126,10 +151,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Registration failed");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, register: false}));
     }
   };
 
   const sendOTP = async (phone) => {
+    setLoadingStates(prev => ({...prev, sendOtp: true}));
     try {
       const res = await api.post("/auth/tenant/send-otp", { phone });
       toast.success("OTP sent successfully!");
@@ -142,10 +170,13 @@ export const AuthProvider = ({ children }) => {
         toast.error(getApiError(error));
       }
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, sendOtp: false}));
     }
   };
 
   const tenantLogin = async (phone, otp) => {
+    setLoadingStates(prev => ({...prev, verifyOtp: true}));
     try {
       const res = await api.post("/auth/tenant/verify-otp", { phone, otp });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -156,6 +187,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Invalid OTP");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, verifyOtp: false}));
     }
   };
 
@@ -188,15 +221,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   const checkTenantStatus = async (phone) => {
+    setLoadingStates(prev => ({...prev, checkStatus: true}));
     try {
       const res = await api.post("/auth/tenant/check-status", { phone });
       return res.data.data;
     } catch (error) {
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, checkStatus: false}));
     }
   };
 
   const tenantPasswordLogin = async (phone, password) => {
+    setLoadingStates(prev => ({...prev, tenantPasswordLogin: true}));
     try {
       const res = await api.post("/auth/tenant/login", { phone, password });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -207,10 +244,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Login failed");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, tenantPasswordLogin: false}));
     }
   };
 
   const setTenantPassword = async (phone, otp, password) => {
+    setLoadingStates(prev => ({...prev, setPassword: true}));
     try {
       const res = await api.post("/auth/tenant/set-password", { phone, otp, password });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -221,10 +261,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to set password");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, setPassword: false}));
     }
   };
 
   const setInitialPassword = async (phone, password) => {
+    setLoadingStates(prev => ({...prev, setInitialPassword: true}));
     try {
       const res = await api.post("/auth/tenant/set-initial-password", { phone, password });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -235,10 +278,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to set password");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, setInitialPassword: false}));
     }
   };
 
   const sendForgotOtp = async (phone) => {
+    setLoadingStates(prev => ({...prev, sendForgotOtp: true}));
     try {
       const res = await api.post("/auth/tenant/forgot-password", { phone });
       toast.success("OTP sent to your registered email!");
@@ -246,10 +292,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send OTP");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, sendForgotOtp: false}));
     }
   };
 
   const resetTenantPassword = async (phone, otp, newPassword) => {
+    setLoadingStates(prev => ({...prev, resetPassword: true}));
     try {
       const res = await api.post("/auth/tenant/reset-password", { phone, otp, newPassword });
       sessionStorage.setItem("token", res.data.data.accessToken);
@@ -260,10 +309,13 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to reset password");
       throw error;
+    } finally {
+      setLoadingStates(prev => ({...prev, resetPassword: false}));
     }
   };
 
   const logout = async () => {
+    setLoadingStates(prev => ({...prev, logout: true}));
     try {
       await api.post("/auth/logout");
     } catch (error) {
@@ -273,12 +325,13 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setHostels([]);
       toast.success("Logged out");
+      setLoadingStates(prev => ({...prev, logout: false}));
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, hostels, loading, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, setInitialPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
+      value={{ user, hostels, loading, loadingStates, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, setInitialPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
     >
       {children}
     </AuthContext.Provider>

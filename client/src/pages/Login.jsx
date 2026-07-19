@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -35,8 +35,9 @@ const Login = () => {
   // Owner OTP login state
   const [ownerOtpSent, setOwnerOtpSent] = useState(false);
   const [ownerOtp, setOwnerOtp] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
-  const { sendOwnerLoginOtp, verifyOwnerLoginOtp, checkTenantStatus, tenantPasswordLogin, setInitialPassword } = useAuth();
+  const { sendOwnerLoginOtp, verifyOwnerLoginOtp, checkTenantStatus, tenantPasswordLogin, setInitialPassword, loadingStates } = useAuth();
   const navigate = useNavigate();
   const { theme } = useTheme();
 
@@ -56,6 +57,7 @@ const Login = () => {
     try {
       await sendOwnerLoginOtp(email);
       setOwnerOtpSent(true);
+      setOtpCooldown(60);
       toast.success("OTP sent to your email!");
     } catch (error) {
       // toast handled in context
@@ -151,6 +153,21 @@ const Login = () => {
     setShowNewPassword(false);
   };
 
+  // OTP countdown timer
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
   return (
     <div className="min-h-screen flex bg-background overflow-hidden relative">
 
@@ -159,14 +176,14 @@ const Login = () => {
         style={theme === "theme-2" ? {
           background: `radial-gradient(ellipse 90% 70% at 30% 30%, rgba(26, 86, 219, 0.06) 0%, transparent 80%), var(--color-background-deep)`
         } : {
-          background: `radial-gradient(ellipse 90% 70% at 30% 30%, rgba(92, 61, 46, 0.06) 0%, transparent 80%), var(--color-background-deep)`
+          background: `radial-gradient(ellipse 90% 70% at 30% 30%, rgba(107, 143, 113, 0.06) 0%, transparent 80%), var(--color-background-deep)`
         }}
       >
         {/* Single subtle background glow */}
         <div className="absolute w-[400px] h-[400px] -top-24 -left-24 opacity-[0.04]"
           style={{ background: theme === "theme-2"
             ? 'radial-gradient(circle at 40% 40%, #1A56DB, transparent 70%)'
-            : 'radial-gradient(circle at 40% 40%, #5C3D2E, transparent 70%)' }}
+            : 'radial-gradient(circle at 40% 40%, #6B8F71, transparent 70%)' }}
         />
 
         <div className="relative z-10 max-w-md w-full">
@@ -270,11 +287,16 @@ const Login = () => {
                   </div>
                 </div>
                 <button
-                  disabled={loading || !email}
+                  disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0 || !email}
                   type="submit"
                   className="btn-primary w-full py-4 text-sm"
+                  style={{ cursor: (loadingStates.sendOwnerOtp || otpCooldown > 0) ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? "Sending OTP..." : "Send OTP to Email"}
+                  {loadingStates.sendOwnerOtp ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Sending...</>
+                  ) : otpCooldown > 0 ? (
+                    `Resend in ${otpCooldown}s`
+                  ) : "Send OTP to Email"}
                 </button>
               </form>
             ) : (
@@ -309,19 +331,27 @@ const Login = () => {
                   </div>
                 </div>
                 <button
-                  disabled={loading || ownerOtp.length !== 6}
+                  disabled={loading || loadingStates.verifyOwnerOtp || ownerOtp.length !== 6}
                   type="submit"
                   className="btn-primary w-full py-4 text-sm"
+                  style={{ cursor: loadingStates.verifyOwnerOtp ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? "Verifying..." : "Verify & Login"}
+                  {loadingStates.verifyOwnerOtp ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Verifying...</>
+                  ) : "Verify & Login"}
                 </button>
                 <button
                   type="button"
                   onClick={handleOwnerSendOtp}
-                  disabled={loading}
+                  disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0}
                   className="w-full text-[10px] text-primary font-semibold hover:underline"
+                  style={{ cursor: (loadingStates.sendOwnerOtp || otpCooldown > 0) ? 'not-allowed' : 'pointer' }}
                 >
-                  Resend OTP
+                  {loadingStates.sendOwnerOtp ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" /> Resending...</>
+                  ) : otpCooldown > 0 ? (
+                    `Resend in ${otpCooldown}s`
+                  ) : "Resend OTP"}
                 </button>
               </form>
             ) : tenantFlow === "phone" ? (
@@ -359,11 +389,14 @@ const Login = () => {
                   )}
                 </div>
                 <button
-                  disabled={loading || phone.length !== 10}
+                  disabled={loading || loadingStates.checkStatus || phone.length !== 10}
                   type="submit"
                   className="btn-primary w-full py-4 text-sm"
+                  style={{ cursor: loadingStates.checkStatus ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? "Checking..." : "Continue"}
+                  {loadingStates.checkStatus ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Checking...</>
+                  ) : "Continue"}
                 </button>
               </form>
 
@@ -404,11 +437,14 @@ const Login = () => {
                   </div>
                 </div>
                 <button
-                  disabled={loading || !tenantPassword}
+                  disabled={loading || loadingStates.tenantPasswordLogin || !tenantPassword}
                   type="submit"
                   className="btn-primary w-full py-4 text-sm"
+                  style={{ cursor: loadingStates.tenantPasswordLogin ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? "Signing in..." : "Login"}
+                  {loadingStates.tenantPasswordLogin ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Signing in...</>
+                  ) : "Login"}
                 </button>
               </form>
 
@@ -423,7 +459,7 @@ const Login = () => {
                     <MdArrowBack size={18} />
                   </button>
                   <div>
-                    <p className="text-sm font-bold font-sans text-text-primary">Set your password</p>
+                    <p className="text-sm font-bold font-display text-text-primary">Set your password</p>
                     <p className="text-[10px] text-text-secondary">{countryCode} {phone}</p>
                   </div>
                 </div>
@@ -464,11 +500,14 @@ const Login = () => {
                   )}
                 </div>
                 <button
-                  disabled={loading || !newPassword || newPassword !== confirmPassword}
+                  disabled={loading || loadingStates.setInitialPassword || !newPassword || newPassword !== confirmPassword}
                   type="submit"
                   className="btn-primary w-full py-4 text-sm"
+                  style={{ cursor: loadingStates.setInitialPassword ? 'not-allowed' : 'pointer' }}
                 >
-                  {loading ? "Setting up..." : "Set Password & Login"}
+                  {loadingStates.setInitialPassword ? (
+                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Setting up...</>
+                  ) : "Set Password & Login"}
                 </button>
               </form>
 

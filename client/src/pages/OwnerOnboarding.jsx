@@ -39,7 +39,7 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
           <MdBusiness size={22} />
         </div>
         <div>
-          <h3 className="text-lg font-bold font-sans text-text-primary tracking-tight">Organization Profile</h3>
+          <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Organization Profile</h3>
           <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Base Identity</p>
         </div>
       </div>
@@ -174,7 +174,7 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
 const Step2HostelConfig = ({ formData, onNext, onBack }) => (
   <div className="space-y-8 animate-slide-up">
     <div className="arch-card p-8 space-y-5">
-      <h3 className="text-lg font-bold font-sans text-text-primary tracking-tight">Hostel Configuration</h3>
+      <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Hostel Configuration</h3>
       <p className="text-sm text-text-secondary">Confirm operational settings before mapping floors and rooms.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-sm">
         <div><span className="text-text-secondary font-bold uppercase text-[9px] tracking-wider">Hostel</span><p className="font-bold text-text-primary">{formData.hostelName}</p></div>
@@ -198,7 +198,7 @@ const Step3Floors = ({ floors, setFloors, onNext, onBack }) => {
     <div className="space-y-8 animate-slide-up">
       <div className="arch-card p-7 flex justify-between items-center">
         <div>
-          <h3 className="text-lg font-bold font-sans text-text-primary tracking-tight">Floor Configuration</h3>
+          <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Floor Configuration</h3>
           <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">{floors.length} floor(s) defined</p>
         </div>
         <button onClick={addFloor} className="btn-primary-sm flex items-center gap-1.5">
@@ -259,7 +259,7 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
             <MdLayers size={22} />
           </div>
           <div>
-            <h3 className="text-lg font-bold font-sans text-text-primary tracking-tight">Hostel Structure</h3>
+            <h3 className="text-lg font-bold font-display text-text-primary tracking-tight">Hostel Structure</h3>
             <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Floor & Room Mapping</p>
           </div>
         </div>
@@ -361,7 +361,7 @@ const OwnerOnboarding = () => {
   const [emailState, setEmailState] = useState({ verified: false, sending: false, verifying: false, cooldown: 0, error: "" });
   const emailCooldownRef = useRef(null);
 
-  const { loginVerifiedOwner } = useAuth();
+  const { loginVerifiedOwner, loadingStates } = useAuth();
   const navigate = useNavigate();
   const cooldownRef = useRef(null);
 
@@ -529,7 +529,7 @@ const OwnerOnboarding = () => {
           <div className="section-ornament-diamond inline-flex mb-3">
             <MdBusiness /> Partner Onboarding
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold font-sans text-text-primary tracking-tighter">
+          <h1 className="text-4xl md:text-5xl font-bold font-display text-text-primary tracking-tighter">
             Build your <span className="text-primary">Digital Command Center</span>
           </h1>
           <p className="text-text-secondary font-medium text-lg max-w-2xl mx-auto">
@@ -578,7 +578,7 @@ const OwnerOnboarding = () => {
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto text-primary">
                 <MdCheckCircle size={28} />
               </div>
-              <h3 className="text-xl font-bold font-sans text-text-primary tracking-tight">Verify Your Identity</h3>
+              <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Verify Your Identity</h3>
               <p className="text-text-secondary text-sm font-medium">
                 We've sent a 6-digit verification code to <span className="font-bold text-text-primary">{formData.email}</span>.
               </p>
@@ -590,9 +590,9 @@ const OwnerOnboarding = () => {
                 className="w-full bg-surface border border-transparent p-5 rounded-2xl outline-none focus:bg-card focus:border-primary/20 focus:ring-4 focus:ring-primary/5 transition-all font-black text-center text-text-primary tracking-[1em] text-lg" />
 
               <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider pl-1">
-                <button type="button" onClick={handleResendOtp} disabled={cooldown > 0 || otpLoading}
+                <button type="button" onClick={handleResendOtp} disabled={cooldown > 0 || otpLoading || loadingStates?.sendOwnerOtp}
                   className="text-primary disabled:text-text-secondary/30 hover:underline">
-                  Resend Code
+                  {otpLoading || loadingStates?.sendOwnerOtp ? "Sending..." : "Resend Code"}
                 </button>
                 {cooldown > 0 && <span className="text-text-secondary/50">Resend in {cooldown}s</span>}
               </div>
@@ -602,9 +602,11 @@ const OwnerOnboarding = () => {
               <button type="button" onClick={() => setShowOtpModal(false)} className="btn-secondary w-1/3 py-4">
                 Cancel
               </button>
-              <button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || otpLoading}
+              <button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || otpLoading || loadingStates?.verifyOwnerOtp}
                 className="btn-primary flex-1 py-4 disabled:opacity-50">
-                {otpLoading ? "Verifying..." : "Verify & Continue"}
+                {otpLoading || loadingStates?.verifyOwnerOtp ? (
+                  <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Verifying...</>
+                ) : "Verify & Continue"}
               </button>
             </div>
           </div>
