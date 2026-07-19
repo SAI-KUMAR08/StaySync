@@ -225,25 +225,19 @@ const AdminDashboard = () => {
 
       {/* ── Total Unpaid Bills (all hostels) ── */}
       {hostelSummaries.length > 0 && (
-        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
-          <div className="px-6 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                <MdAttachMoney size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Total Unpaid Bills</p>
-                <p className="text-2xl font-black text-amber-600">
-                  ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] text-text-tertiary/60">
-                {hostelSummaries.reduce((s, h) => s + (h.unpaidCount || 0), 0)} outstanding bills
-              </p>
+        <div className="bg-white rounded-xl border border-border/60 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
+              <MdAttachMoney className="text-lg text-primary" />
             </div>
           </div>
+          <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">Total Unpaid Bills</p>
+          <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
+            ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
+          </p>
+          <p className="text-[10px] text-text-tertiary font-medium mt-1">
+            {hostelSummaries.reduce((s, h) => s + (h.unpaidCount || 0), 0)} outstanding bills across all properties
+          </p>
         </div>
       )}
 
@@ -254,30 +248,24 @@ const AdminDashboard = () => {
         const net = totalIncome - totalExpenses;
         return (
         <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
-          <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-light text-primary flex items-center justify-center">
-                <MdAttachMoney size={20} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-text-primary">Multi-Hostel Financial Overview</h3>
-                <p className="text-[10px] text-text-secondary font-medium uppercase tracking-wider">{hostelSummaries.length} properties active this month</p>
-              </div>
-            </div>
+          <div className="px-6 pt-5 pb-4 border-b border-border/40">
+            <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">Multi-Hostel</p>
+            <h3 className="text-base font-bold font-display text-text-primary mt-0.5">Financial Overview</h3>
+            <p className="text-[10px] text-text-tertiary font-medium mt-0.5">{hostelSummaries.length} properties active this month</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-            <div className="bg-emerald-50/60 rounded-xl border border-emerald-100/80 p-5 text-center">
-              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1.5">Total Income</p>
-              <p className="text-2xl font-black text-emerald-600">₹{totalIncome.toLocaleString()}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
+            <div className="p-5 text-center">
+              <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Total Income</p>
+              <p className="text-xl font-bold font-display text-emerald-600 tracking-tight">₹{totalIncome.toLocaleString()}</p>
             </div>
-            <div className="bg-red-50/60 rounded-xl border border-red-100/80 p-5 text-center">
-              <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1.5">Total Expenses</p>
-              <p className="text-2xl font-black text-red-500">₹{totalExpenses.toLocaleString()}</p>
+            <div className="p-5 text-center">
+              <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Total Expenses</p>
+              <p className="text-xl font-bold font-display text-red-500 tracking-tight">₹{totalExpenses.toLocaleString()}</p>
             </div>
-            <div className="bg-blue-50/60 rounded-xl border border-blue-100/80 p-5 text-center">
-              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1.5">Net Position</p>
-              <p className={`text-2xl font-black ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                ₹{net.toLocaleString()}
+            <div className="p-5 text-center">
+              <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-1">Net Position</p>
+              <p className={`text-xl font-bold font-display tracking-tight ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                {net >= 0 ? "+" : ""}₹{net.toLocaleString()}
               </p>
             </div>
           </div>
