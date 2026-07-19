@@ -4,10 +4,10 @@ import { useAuth } from "../context/AuthContext";
 import {
   MdDashboard, MdPeople, MdReportProblem,
   MdPayment, MdNotifications, MdLogout, MdMenu, MdClose,
-  MdLayers, MdAnnouncement, MdAdd, MdHome, MdAttachMoney, MdRestaurant,
+  MdLayers, MdAnnouncement, MdHome, MdAttachMoney, MdRestaurant,
   MdChevronRight
 } from "react-icons/md";
-import api from "../api/axios";
+import HostelSwitcher from "../components/HostelSwitcher";
 import toast from "react-hot-toast";
 
 // ── Route prefetching — preload JS chunks on hover ──
@@ -86,18 +86,6 @@ const DashboardLayout = () => {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const createNewHostel = async () => {
-    const name = window.prompt("New hostel name");
-    if (!name?.trim()) return;
-    try {
-      const created = await api.post("/owner/hostels", { hostelName: name.trim() });
-      toast.success("Hostel created");
-      await switchHostel(created.data.data._id);
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to create hostel");
-    }
-  };
 
   const roleKey = user?.role === "owner" ? "owner" : user?.role === "manager" ? "manager" : "tenant";
   const links = NAV_ITEMS[roleKey] || [];
@@ -234,33 +222,15 @@ const DashboardLayout = () => {
         </div>
 
         {user?.role === "owner" && hostels?.length > 0 && (
-          <div className="px-5 pt-4 pb-2 space-y-2.5 border-b border-border/50">
-            <p className="text-[6px] text-text-tertiary/60 font-bold uppercase tracking-[0.15em] ml-1">
-              Active Hostel
+          <div className="px-4 pt-4 pb-3 border-b border-border/50">
+            <p className="text-[7px] text-text-tertiary/50 font-bold uppercase tracking-[0.12em] mb-2 ml-1">
+              Hostel
             </p>
-            {hostels.length > 1 ? (
-              <select
-                value={user?.hostelId || ""}
-                onChange={(e) => switchHostel(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border bg-black/[0.02] text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                {hostels.map((h) => (
-                  <option key={h._id} value={h._id} className="bg-surface text-text-primary">
-                    {h.name || h.hostelName}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="px-4 py-2.5 rounded-xl border border-border bg-black/[0.02] text-sm font-medium text-text-secondary">
-                <span className="text-text-primary font-bold">{hostels?.[0]?.name || hostels?.[0]?.hostelName || "My Hostel"}</span>
-              </div>
-            )}
-            <button
-              onClick={createNewHostel}
-              className="w-full px-4 py-2.5 rounded-xl border border-border bg-black/[0.02] text-sm font-medium text-text-secondary/60 hover:text-text-primary hover:bg-black/[0.04] transition-all flex items-center justify-center gap-2 text-xs"
-            >
-              <MdAdd size={14} /> New Hostel
-            </button>
+            <HostelSwitcher
+              hostels={hostels}
+              activeHostelId={user?.hostelId}
+              onSwitch={switchHostel}
+            />
           </div>
         )}
 
@@ -334,31 +304,12 @@ const DashboardLayout = () => {
 
             <div className="flex items-center gap-3">
               {user?.role === "owner" && hostels?.length > 0 && (
-                <div className="hidden md:flex items-center gap-2">
-                  {hostels.length > 1 ? (
-                    <select
-                      value={user?.hostelId || ""}
-                      onChange={(e) => switchHostel(e.target.value)}
-                      className="px-3 py-2 rounded-xl border border-border bg-surface/80 text-xs font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    >
-                      {hostels.map((h) => (
-                        <option key={h._id} value={h._id} className="bg-surface text-text-primary">
-                          {h.name || h.hostelName}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="px-3 py-2 rounded-xl border border-border bg-surface/80 text-xs font-medium text-text-primary flex items-center gap-1.5">
-                      <span className="text-text-tertiary/60">Hostel:</span>
-                      <span className="font-bold">{hostels?.[0]?.name || hostels?.[0]?.hostelName || "My Hostel"}</span>
-                    </div>
-                  )}
-                  <button
-                    onClick={createNewHostel}
-                    className="p-2 rounded-xl border border-border bg-surface hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-all"
-                  >
-                    <MdAdd size={16} />
-                  </button>
+                <div className="hidden md:flex">
+                  <HostelSwitcher
+                    hostels={hostels}
+                    activeHostelId={user?.hostelId}
+                    onSwitch={switchHostel}
+                  />
                 </div>
               )}
               {/* User avatar */}
