@@ -182,18 +182,11 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-20">
-      {/* ── Overview heading ── */}
-      <div>
-        <h2 className="text-2xl font-bold font-display text-text-primary tracking-tight">Overview</h2>
-        <p className="text-sm text-text-tertiary mt-1">
-          {stats?.totalTenants ?? 0} active residents
-          {stats?.previousTotalTenants != null && stats.totalTenants !== stats.previousTotalTenants && (
-            <span className="ml-2 text-xs">
-              ({stats.totalTenants > stats.previousTotalTenants ? "+" : ""}
-              {stats.totalTenants - stats.previousTotalTenants} from last month)
-            </span>
-          )}
-        </p>
+      {/* ── Section header — original pre-overhaul style ── */}
+      <div className="animate-slide-up-big">
+        <div className="section-ornament-diamond mb-4">Overview</div>
+        <h2 className="section-title">Live <span className="highlight">Overview</span></h2>
+        <p className="section-sub">Real-time health and occupancy metrics for your facility.</p>
       </div>
 
       {/* ── Overview Cards + Total Unpaid (same grid, same size) ── */}
