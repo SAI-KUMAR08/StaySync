@@ -16,16 +16,14 @@ const useAnimatedNumber = (target, duration = 1000) => {
   const [display, setDisplay] = useState(0);
   const prev = useRef(0);
   useEffect(() => {
-    if (target === undefined || target === null) return;
+    if (target == null) return;
     const start = prev.current;
     const diff = target - start;
     if (diff === 0) return;
     const startTime = performance.now();
     const tick = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.round(start + diff * eased));
+      const progress = Math.min((now - startTime) / duration, 1);
+      setDisplay(Math.round(start + diff * (1 - Math.pow(1 - progress, 3))));
       if (progress < 1) requestAnimationFrame(tick);
     };
     prev.current = target;
@@ -35,53 +33,40 @@ const useAnimatedNumber = (target, duration = 1000) => {
 };
 
 // ── Trend badge ──
-const Trend = ({ current, previous }) => {
-  if (!previous || previous === 0) return null;
+const TrendBadge = ({ current, previous }) => {
+  if (previous == null || previous === 0) return null;
   const pct = ((current - previous) / previous) * 100;
-  if (Math.abs(pct) < 0.01) return null;
-  const isUp = pct > 0;
+  if (Math.abs(pct) < 0.5) return null;
+  const up = pct > 0;
   return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[9px] font-semibold ${
-        isUp ? "text-emerald-600" : "text-red-500"
-      }`}
-    >
-      <MdTrendingUp
-        size={12}
-        className={isUp ? "" : "rotate-180"}
-      />
-      {isUp ? "+" : ""}
-      {pct.toFixed(1)}%
+    <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium ${up ? "text-emerald-600" : "text-red-500"}`}>
+      <MdTrendingUp size={11} className={up ? "" : "rotate-180"} />
+      {up ? "+" : ""}{Math.abs(pct).toFixed(1)}%
     </span>
   );
 };
 
 // ── Stat card ──
-const StatCard = ({ label, value, icon: Icon, trend, href, prefix = "", suffix = "", subtitle }) => {
-  const numeric = parseInt(String(value).replace(/[^0-9.-]/g, "") || "0") || 0;
+const StatCard = ({ label, value, icon: Icon, href, prefix = "", suffix = "", trend }) => {
+  const numeric = parseInt(String(value ?? 0).replace(/[^0-9.-]/g, "") || "0") || 0;
   const animated = useAnimatedNumber(numeric);
-  const content = (
-    <div className="bg-surface border border-border/60 rounded-2xl p-5 hover:shadow-sm hover:border-border transition-all duration-200 h-full flex flex-col">
-      <div className="flex items-start justify-between mb-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+  const card = (
+    <div className="bg-white rounded-xl border border-border/60 p-5 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:border-border transition-all duration-200 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
           <Icon className="text-lg text-primary" />
         </div>
-        {trend && <Trend current={numeric} previous={numeric * 0.92} />}
+        {trend && <TrendBadge current={numeric} previous={trend} />}
       </div>
-      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">
+      <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">
         {label}
       </p>
-      <p className="text-2xl font-bold font-display text-text-primary tracking-tight">
-        {prefix}
-        {animated.toLocaleString()}
-        {suffix}
+      <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
+        {prefix}{animated.toLocaleString()}{suffix}
       </p>
-      {subtitle && (
-        <p className="text-[9px] text-text-secondary/60 mt-auto pt-2">{subtitle}</p>
-      )}
     </div>
   );
-  return href ? <Link to={href} className="block h-full">{content}</Link> : content;
+  return href ? <Link to={href} className="block h-full">{card}</Link> : card;
 };
 
 const SUPPORT_FILTERS = [
@@ -99,10 +84,10 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [supportFilter, setSupportFilter] = useState("");
-  const supportFilterRef = useRef(supportFilter);
+  const supRef = useRef(supportFilter);
   const { socket } = useSocket();
 
-  useEffect(() => { supportFilterRef.current = supportFilter; }, [supportFilter]);
+  useEffect(() => { supRef.current = supportFilter; }, [supportFilter]);
 
   const fetchComplaints = useCallback(async (status) => {
     const url = status ? `/owner/complaints?status=${status}` : "/owner/complaints";
@@ -116,37 +101,42 @@ const AdminDashboard = () => {
   const fetchData = useCallback(async () => {
     setError(null);
     try {
-      const [statsRes, expRes] = await Promise.all([
+      const [s, e] = await Promise.all([
         api.get("/owner/dashboard"),
         api.get("/owner/expenses/summary"),
       ]);
-      setStats(statsRes.data.data.stats || null);
-      setExpenseSummary(expRes.data.data || null);
-      await fetchComplaints(supportFilterRef.current);
-    } catch (error) {
-      console.error(error);
-      setError(error.response?.data?.message || "Failed to load dashboard data");
+      setStats(s.data.data.stats || null);
+      setExpenseSummary(e.data.data || null);
+      await fetchComplaints(supRef.current);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.message || "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
   }, [fetchComplaints]);
 
   useEffect(() => { fetchData(); }, [fetchData, user?.hostelId]);
+
   useEffect(() => {
-    if (!loading) fetchComplaints(supportFilter).catch(console.error);
+    if (!loading) fetchComplaints(supportFilter).catch(() => {});
   }, [loading, supportFilter, fetchComplaints]);
 
   useEffect(() => {
     if (!socket) return;
-    const refresh = () => { toast.success("Update received", { icon: "🔔" }); fetchData(); };
-    const events = ["tenant_assigned", "tenant_removed", "payment_completed", "occupancy_update"];
-    events.forEach((e) => socket.on(e, refresh));
-    socket.on("complaint_created", () => fetchComplaints(supportFilterRef.current));
-    socket.on("complaint_updated", () => fetchComplaints(supportFilterRef.current));
+    const refresh = () => fetchData();
+    const onComplaint = () => fetchComplaints(supRef.current);
+    ["tenant_assigned","tenant_removed","payment_completed","occupancy_update"].forEach(
+      (e) => socket.on(e, refresh)
+    );
+    socket.on("complaint_created", onComplaint);
+    socket.on("complaint_updated", onComplaint);
     return () => {
-      events.forEach((e) => socket.off(e, refresh));
-      socket.off("complaint_created");
-      socket.off("complaint_updated");
+      ["tenant_assigned","tenant_removed","payment_completed","occupancy_update"].forEach(
+        (e) => socket.off(e, refresh)
+      );
+      socket.off("complaint_created", onComplaint);
+      socket.off("complaint_updated", onComplaint);
     };
   }, [socket, fetchData, fetchComplaints]);
 
@@ -155,32 +145,36 @@ const AdminDashboard = () => {
   if (loading && !stats) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-surface border border-border/60 rounded-2xl p-5 space-y-3">
-              <div className="shimmer w-9 h-9 rounded-xl" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-border/60 p-5 space-y-3">
+              <div className="shimmer w-9 h-9 rounded-lg" />
               <div className="shimmer h-3 w-20" />
               <div className="shimmer h-7 w-28" />
             </div>
           ))}
         </div>
-        <div className="shimmer h-64 rounded-2xl" />
       </div>
     );
   }
 
+  const occRate = stats?.totalBeds
+    ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100)
+    : 0;
+
   return (
     <div className="space-y-8 pb-20">
-      {/* Header */}
+      {/* Page header */}
       <div>
-        <h2 className="text-2xl md:text-3xl font-bold font-display text-text-primary tracking-tight">
-          Overview
-        </h2>
-        <p className="text-sm text-text-secondary mt-1">
-          Real-time health and occupancy metrics for{" "}
-          <span className="font-semibold text-text-primary">
-            {stats?.totalTenants ?? 0} residents
-          </span>
+        <h2 className="text-2xl font-bold font-display text-text-primary tracking-tight">Overview</h2>
+        <p className="text-sm text-text-tertiary mt-1">
+          {stats?.totalTenants ?? 0} active residents
+          {stats?.previousTotalTenants != null && stats.totalTenants !== stats.previousTotalTenants && (
+            <span className="ml-2 text-xs">
+              ({stats.totalTenants > stats.previousTotalTenants ? "+" : ""}
+              {stats.totalTenants - stats.previousTotalTenants} from last month)
+            </span>
+          )}
         </p>
       </div>
 
@@ -191,8 +185,8 @@ const AdminDashboard = () => {
             label="Active Residents"
             value={stats.totalTenants}
             icon={MdPeople}
-            trend={stats.totalTenants > (stats.previousTotalTenants || 0)}
             href="/admin/tenants"
+            trend={stats.previousTotalTenants}
           />
           <StatCard
             label="Monthly Income"
@@ -216,13 +210,13 @@ const AdminDashboard = () => {
           />
           <StatCard
             label="Occupancy Rate"
-            value={stats.totalBeds ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100) : 0}
+            value={occRate}
             suffix="%"
             icon={MdHome}
           />
           <StatCard
-            label="Available Rooms"
-            value={stats.vacantRooms ?? 0}
+            label="Free Beds"
+            value={stats.availableBeds ?? 0}
             icon={MdCheckCircle}
           />
           <StatCard
@@ -232,7 +226,7 @@ const AdminDashboard = () => {
             href="/admin/complaints"
           />
           <StatCard
-            label="Overdue"
+            label="Overdue Bills"
             value={stats.overduePayments ?? 0}
             icon={MdAttachMoney}
             href="/admin/payments"
@@ -241,11 +235,11 @@ const AdminDashboard = () => {
       )}
 
       {/* Support Desk */}
-      <div className="bg-surface rounded-2xl border border-border/60 overflow-hidden">
-        <div className="px-5 pt-5 pb-1">
+      <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
+        <div className="px-6 pt-5 pb-1">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-[9px] font-bold text-primary uppercase tracking-wider">
+              <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">
                 Support Desk
               </p>
               <h3 className="text-base font-bold font-display text-text-primary mt-0.5">
@@ -254,9 +248,9 @@ const AdminDashboard = () => {
             </div>
             <Link
               to="/admin/complaints"
-              className="text-[10px] font-semibold text-primary hover:text-primary-hover transition-colors inline-flex items-center gap-0.5"
+              className="text-xs font-medium text-text-tertiary hover:text-primary transition-colors inline-flex items-center gap-1"
             >
-              View All <MdArrowForward size={13} />
+              View all <MdArrowForward size={13} />
             </Link>
           </div>
           <div className="flex flex-wrap gap-1.5 pb-4 border-b border-border/40">
@@ -264,9 +258,9 @@ const AdminDashboard = () => {
               <button
                 key={id || "all"}
                 onClick={() => setSupportFilter(id)}
-                className={`px-3.5 py-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
                   supportFilter === id
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-white shadow-sm"
                     : "bg-transparent text-text-tertiary border border-border/60 hover:border-border hover:text-text-secondary"
                 }`}
               >
@@ -275,29 +269,25 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
-        <div className="px-5 pb-5 pt-3">
+        <div className="px-6 pb-5 pt-3">
           {activities.length === 0 ? (
             <div className="py-12 text-center">
-              <MdCheckCircle className="text-4xl mx-auto mb-2 text-emerald-500/25" />
-              <p className="text-xs font-medium text-text-tertiary/50">
-                Zero unresolved tickets
-              </p>
+              <MdCheckCircle className="text-4xl mx-auto mb-2 text-emerald-500/20" />
+              <p className="text-sm font-medium text-text-tertiary/50">No open tickets</p>
             </div>
           ) : (
             <div className="space-y-1">
-              {activities.map((a, i) => (
+              {activities.map((a) => (
                 <div
                   key={a._id}
-                  className="flex items-center gap-4 p-3 rounded-xl hover:bg-background/50 transition-all"
+                  className="flex items-center gap-3.5 p-3 rounded-lg hover:bg-black/[0.02] transition-all"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <MdReportProblem size={18} />
+                  <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center shrink-0">
+                    <MdReportProblem size={16} className="text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-text-primary text-sm leading-tight truncate">
-                      {a.description}
-                    </p>
-                    <p className="text-[8px] text-text-tertiary font-medium uppercase tracking-wider mt-0.5">
+                    <p className="text-sm font-medium text-text-primary truncate">{a.title || a.description}</p>
+                    <p className="text-[10px] text-text-tertiary mt-0.5">
                       {a.tenantId?.name || a.tenantId?.personalInfo?.name || "Resident"}
                       {" · "}
                       {new Date(a.createdAt).toLocaleDateString("en-US", {
@@ -306,15 +296,13 @@ const AdminDashboard = () => {
                       })}
                     </p>
                   </div>
-                  <span
-                    className={`text-[9px] font-semibold px-2.5 py-1 rounded-lg capitalize ${
-                      a.status === "pending"
-                        ? "bg-amber-50 text-amber-700"
-                        : a.status === "in_progress" || a.status === "assigned"
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-emerald-50 text-emerald-700"
-                    }`}
-                  >
+                  <span className={`shrink-0 text-[10px] font-medium px-2.5 py-1 rounded-md capitalize ${
+                    a.status === "pending"
+                      ? "bg-amber-50 text-amber-700"
+                      : a.status === "in_progress" || a.status === "assigned"
+                      ? "bg-blue-50 text-blue-700"
+                      : "bg-emerald-50 text-emerald-700"
+                  }`}>
                     {a.status.replace("_", " ")}
                   </span>
                 </div>
