@@ -147,17 +147,17 @@ const Complaints = () => {
         {[...Array(6)].map((_, i) => (
           <div key={i} className="arch-card p-6 space-y-4">
             <div className="flex justify-between items-start">
-              <div className="shimmer h-5 w-18 rounded-lg" />
-              <div className="shimmer h-4 w-12 rounded-lg" />
+              <div className="skeleton h-5 w-18 rounded-lg" />
+              <div className="skeleton h-4 w-12 rounded-lg" />
             </div>
             <div className="space-y-2">
-              <div className="shimmer h-3 w-28" />
-              <div className="shimmer h-4 w-full" />
+              <div className="skeleton h-3 w-28" />
+              <div className="skeleton h-4 w-full" />
             </div>
             <div className="flex justify-between items-center pt-4 border-t border-border/40">
               <div className="flex items-center gap-3">
-                <div className={`shimmer w-9 h-9 rounded-xl`} />
-                <div className="shimmer h-3 w-14" />
+                <div className={`skeleton w-9 h-9 rounded-xl`} />
+                <div className="skeleton h-3 w-14" />
               </div>
             </div>
           </div>
@@ -189,7 +189,7 @@ const Complaints = () => {
         <div className="flex-1 relative">
           <MdSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 text-lg" />
           <input type="text" placeholder="Search by ticket ID or description..."
-            className="field-input pl-11"
+            className="field pl-11"
             value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2" role="group" aria-label="Filter by status">
@@ -351,7 +351,7 @@ const Complaints = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Issue Description</label>
-                <textarea required className="field-textarea h-28"
+                <textarea required className="field h-28"
                   placeholder="Provide details about the problem..."
                   value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
               </div>

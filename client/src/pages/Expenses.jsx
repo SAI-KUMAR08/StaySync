@@ -142,9 +142,9 @@ const Expenses = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="arch-card p-6 space-y-4">
-            <div className={`shimmer h-10 w-10 rounded-2xl`} />
-            <div className="shimmer h-3 w-24" />
-            <div className="shimmer h-7 w-20" />
+            <div className={`skeleton h-10 w-10 rounded-2xl`} />
+            <div className="skeleton h-3 w-24" />
+            <div className="skeleton h-7 w-20" />
           </div>
         ))}
       </div>
@@ -196,7 +196,7 @@ const Expenses = () => {
       <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
           <MdSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 text-lg" />
-          <input type="text" placeholder="Search expenses..." className="field-input pl-11"
+          <input type="text" placeholder="Search expenses..." className="field pl-11"
             value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <select className="field-select px-5" value={categoryFilter}
@@ -266,7 +266,7 @@ const Expenses = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Amount (₹)</label>
-                  <input required type="number" min="1" step="0.01" className="field-input" placeholder="500"
+                  <input required type="number" min="1" step="0.01" className="field" placeholder="500"
                     value={form.amount} onChange={(e) => setForm({...form, amount: e.target.value})} />
                 </div>
                 <div className="space-y-1.5">
@@ -278,17 +278,17 @@ const Expenses = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Date</label>
-                <input type="date" className="field-input" value={form.date}
+                <input type="date" className="field" value={form.date}
                   onChange={(e) => setForm({...form, date: e.target.value})} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Description</label>
-                <input type="text" className="field-input" placeholder="What was this expense for?"
+                <input type="text" className="field" placeholder="What was this expense for?"
                   value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Vendor (optional)</label>
-                <input type="text" className="field-input" placeholder="Who was paid?"
+                <input type="text" className="field" placeholder="Who was paid?"
                   value={form.vendor} onChange={(e) => setForm({...form, vendor: e.target.value})} />
               </div>
               <button type="submit" className="btn-primary w-full py-4">

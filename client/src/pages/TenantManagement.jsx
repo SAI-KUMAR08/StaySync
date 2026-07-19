@@ -268,27 +268,27 @@ const TenantManagement = () => {
 
   if (loading) return (
     <div className="space-y-5" role="status" aria-label="Loading residents">
-      <div className="arch-card overflow-hidden">
+      <div className="card card-lg overflow-hidden">
         <div className="bg-background/80 border-b border-border/60 px-6 py-4">
           <div className="flex gap-12">
-            <div className="shimmer h-3 w-14" />
-            <div className="shimmer h-3 w-18" />
-            <div className="shimmer h-3 w-10" />
-            <div className="shimmer h-3 w-10" />
+            <div className="skeleton h-3 w-14" />
+            <div className="skeleton h-3 w-18" />
+            <div className="skeleton h-3 w-10" />
+            <div className="skeleton h-3 w-10" />
           </div>
         </div>
         {[...Array(4)].map((_, i) => (
           <div key={i} className="px-6 py-4 border-b border-border/40 flex items-center gap-12">
             <div className="flex items-center gap-4 flex-1">
-              <div className={`shimmer w-9 h-9 rounded-xl`} />
+              <div className={`skeleton w-9 h-9 rounded-xl`} />
               <div className="space-y-2">
-                <div className="shimmer h-4 w-28" />
-                <div className="shimmer h-3 w-18" />
+                <div className="skeleton h-4 w-28" />
+                <div className="skeleton h-3 w-18" />
               </div>
             </div>
-            <div className="shimmer h-4 w-24" />
-            <div className="shimmer h-4 w-14" />
-            <div className={`shimmer h-5 w-12 rounded-full`} />
+            <div className="skeleton h-4 w-24" />
+            <div className="skeleton h-4 w-14" />
+            <div className={`skeleton h-5 w-12 rounded-full`} />
           </div>
         ))}
       </div>
@@ -328,7 +328,7 @@ const TenantManagement = () => {
           <input
             type="text"
             placeholder="Search by name or phone..."
-            className="field-input pl-11"
+            className="field pl-11"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -354,7 +354,7 @@ const TenantManagement = () => {
 
       {/* 🆕 Temporary Allotments Section */}
       {tempTenants.length > 0 && (
-        <div className="arch-card-accent p-5">
+        <div className="card card-lg-accent p-5">
           <div className="flex items-center gap-2 mb-5">
             <MdSwapHoriz className="text-2xl text-primary" />
             <div>
@@ -419,7 +419,7 @@ const TenantManagement = () => {
       )}
 
       {/* Table */}
-      <div className="arch-card overflow-hidden overflow-x-auto">
+      <div className="card card-lg overflow-hidden overflow-x-auto">
         <table className="heritage-table">
           <thead>
             <tr>
@@ -588,7 +588,7 @@ const TenantManagement = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Full Name</label>
-                      <input required type="text" placeholder="John Doe" className="field-input"
+                      <input required type="text" placeholder="John Doe" className="field"
                         value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
                     </div>
                     <div className="space-y-1.5">
@@ -612,7 +612,7 @@ const TenantManagement = () => {
                             required
                             type="tel"
                             inputMode="numeric"
-                            className="field-input font-mono tracking-wider text-center text-lg"
+                            className="field font-mono tracking-wider text-center text-lg"
                             placeholder="0000000000"
                             value={formData.phone}
                             onChange={(e) => {
@@ -634,7 +634,7 @@ const TenantManagement = () => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Joining Date</label>
-                    <input type="date" className="field-input"
+                    <input type="date" className="field"
                       value={formData.joiningDate} onChange={(e) => setFormData({...formData, joiningDate: e.target.value})} />
                   </div>
 

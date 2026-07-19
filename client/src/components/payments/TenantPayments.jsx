@@ -113,7 +113,7 @@ const TenantPayments = () => {
         </p>
         <button
           onClick={() => setShowRequestModal(true)}
-          className="btn-primary-sm mt-4 inline-flex items-center gap-1.5"
+          className="btn btn-primary btn-sm mt-4 inline-flex items-center gap-1.5"
         >
           <MdAdd size={16} /> Submit Payment Request
         </button>
@@ -203,23 +203,23 @@ const TenantPayments = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Year</label>
-                  <input type="number" className="field-input" value={requestForm.year}
+                  <input type="number" className="field" value={requestForm.year}
                     onChange={(e) => setRequestForm({ ...requestForm, year: Number(e.target.value) })} />
                 </div>
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Amount (₹)</label>
-                <input required type="number" min="1" className="field-input" placeholder="e.g. 5000"
+                <input required type="number" min="1" className="field" placeholder="e.g. 5000"
                   value={requestForm.amount} onChange={(e) => setRequestForm({ ...requestForm, amount: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Payment Proof URL (optional)</label>
-                <input type="text" className="field-input" placeholder="Link to screenshot or receipt"
+                <input type="text" className="field" placeholder="Link to screenshot or receipt"
                   value={requestForm.paymentProof} onChange={(e) => setRequestForm({ ...requestForm, paymentProof: e.target.value })} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Notes (optional)</label>
-                <textarea className="field-textarea h-20" placeholder="Any additional information..."
+                <textarea className="field h-20" placeholder="Any additional information..."
                   value={requestForm.notes} onChange={(e) => setRequestForm({ ...requestForm, notes: e.target.value })} />
               </div>
               <button type="submit" className="btn-primary w-full py-4">

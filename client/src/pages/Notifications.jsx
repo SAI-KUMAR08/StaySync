@@ -103,11 +103,11 @@ const Notifications = () => {
       <div className="max-w-3xl mx-auto space-y-4" role="status" aria-label="Loading notices">
         {[...Array(3)].map((_, i) => (
           <div key={i} className="arch-card p-7 space-y-4">
-            <div className="shimmer h-4 w-20" />
-            <div className="shimmer h-5 w-44" />
-            <div className="shimmer h-4 w-full" />
-            <div className="shimmer h-4 w-3/4" />
-            <div className="shimmer h-3 w-28 mt-4" />
+            <div className="skeleton h-4 w-20" />
+            <div className="skeleton h-5 w-44" />
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-3/4" />
+            <div className="skeleton h-3 w-28 mt-4" />
           </div>
         ))}
       </div>
@@ -181,7 +181,7 @@ const Notifications = () => {
                 <MdClose size={20} />
               </button>
             </div>
-            <input required placeholder="Title (e.g. Washing machine not working)" className="field-input"
+            <input required placeholder="Title (e.g. Washing machine not working)" className="field"
               value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <select className="field-select" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
               <option value="general">General</option>
@@ -189,7 +189,7 @@ const Notifications = () => {
               <option value="water_shutdown">Water problem</option>
               <option value="emergency">Emergency</option>
             </select>
-            <textarea required rows={4} placeholder="Message for all residents..." className="field-textarea"
+            <textarea required rows={4} placeholder="Message for all residents..." className="field"
               value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
             <button type="submit" className="btn-primary w-full">
               Broadcast to Residents

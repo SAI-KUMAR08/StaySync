@@ -176,9 +176,9 @@ const MealTimings = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="arch-card p-6 space-y-4">
-              <div className="shimmer h-6 w-32" />
-              <div className="shimmer h-4 w-48" />
-              <div className="shimmer h-3 w-40" />
+              <div className="skeleton h-6 w-32" />
+              <div className="skeleton h-4 w-48" />
+              <div className="skeleton h-3 w-40" />
             </div>
           ))}
         </div>
@@ -188,7 +188,7 @@ const MealTimings = () => {
           <p className="text-text-secondary/50 font-medium text-sm">No meal timings configured yet</p>
           {isOwner && (
             <button onClick={() => { setEditing(null); resetForm(); setShowModal(true); }}
-              className="btn-primary-sm mt-4 inline-flex items-center gap-1.5">
+              className="btn btn-primary btn-sm mt-4 inline-flex items-center gap-1.5">
               <MdAdd size={16} /> Add First Meal
             </button>
           )}
@@ -288,19 +288,19 @@ const MealTimings = () => {
 
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Meal Name</label>
-                <input type="text" className="field-input" placeholder="e.g. South Indian Breakfast"
+                <input type="text" className="field" placeholder="e.g. South Indian Breakfast"
                   value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Start Time</label>
-                  <input type="time" className="field-input" value={form.startTime}
+                  <input type="time" className="field" value={form.startTime}
                     onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">End Time</label>
-                  <input type="time" className="field-input" value={form.endTime}
+                  <input type="time" className="field" value={form.endTime}
                     onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
                 </div>
               </div>
@@ -309,12 +309,12 @@ const MealTimings = () => {
               <div className="space-y-2">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Menu Items</label>
                 <div className="flex gap-2">
-                  <input type="text" className="field-input flex-1" placeholder="Add an item..."
+                  <input type="text" className="field flex-1" placeholder="Add an item..."
                     value={itemInput}
                     onChange={(e) => setItemInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }} />
                   <button type="button" onClick={addItem}
-                    className="btn-primary-sm px-4">Add</button>
+                    className="btn btn-primary btn-sm px-4">Add</button>
                 </div>
                 {form.items.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">

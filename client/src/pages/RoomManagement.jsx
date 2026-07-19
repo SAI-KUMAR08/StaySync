@@ -180,24 +180,24 @@ const RoomManagement = () => {
   if (loading) return (
     <div className="space-y-8" role="status" aria-label="Loading inventory">
       <div className="flex items-center gap-6 px-2">
-        <div className={`shimmer h-9 w-28 rounded-2xl`} />
+        <div className={`skeleton h-9 w-28 rounded-2xl`} />
         <div className={`h-[2px] flex-1 bg-border rounded-full`} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="arch-card overflow-hidden">
             <div className="p-7 pb-5 space-y-4">
-              <div className="shimmer h-5 w-28" />
-              <div className="shimmer h-3 w-18" />
-              <div className="shimmer h-5 w-24 mt-2" />
+              <div className="skeleton h-5 w-28" />
+              <div className="skeleton h-3 w-18" />
+              <div className="skeleton h-5 w-24 mt-2" />
             </div>
             <div className="grid grid-cols-2 p-7 py-5 bg-background/50 space-y-2">
-              <div className="shimmer h-4 w-14" />
-              <div className="shimmer h-4 w-14" />
+              <div className="skeleton h-4 w-14" />
+              <div className="skeleton h-4 w-14" />
             </div>
             <div className="p-7 pt-5">
               <div className="flex gap-3">
-                {[...Array(3)].map((_, j) => <div key={j} className={`shimmer w-12 h-12 rounded-2xl`} />)}
+                {[...Array(3)].map((_, j) => <div key={j} className={`skeleton w-12 h-12 rounded-2xl`} />)}
               </div>
             </div>
           </div>
@@ -515,11 +515,11 @@ const RoomManagement = () => {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="form-label">Room No.</label>
-                  <input type="text" disabled value={formData.number} className="field-input opacity-50" />
+                  <label className="field-label">Room No.</label>
+                  <input type="text" disabled value={formData.number} className="field opacity-50" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="form-label">AC Type</label>
+                  <label className="field-label">AC Type</label>
                   <select value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                     className="field-select">
@@ -530,17 +530,17 @@ const RoomManagement = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="form-label">Monthly Rent (₹)</label>
+                <label className="field-label">Monthly Rent (₹)</label>
                 <div className="relative">
                   <MdAttachMoney className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/30 text-lg" />
                   <input type="number" required value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) || "" })}
-                    className="field-input pl-10" />
+                    className="field pl-10" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="form-label">Sharing Capacity</label>
+                <label className="field-label">Sharing Capacity</label>
                 <select value={formData.sharingType}
                   onChange={(e) => setFormData({ ...formData, sharingType: parseInt(e.target.value) })}
                   className="field-select">

@@ -171,7 +171,7 @@ const AdminPayments = () => {
         <div className="flex-1 relative">
           <MdSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-text-secondary/40 text-lg" />
           <input type="text" placeholder="Search by tenant name..."
-            className="field-input pl-12"
+            className="field pl-12"
             value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2">
@@ -281,7 +281,7 @@ const AdminPayments = () => {
         </div>
 
         {loadingRequests ? (
-          <div className="shimmer h-20 rounded-2xl" />
+          <div className="skeleton h-20 rounded-2xl" />
         ) : paymentRequests.filter((r) => r.status === "pending").length === 0 ? (
           <p className="text-text-secondary/50 text-sm py-4 text-center">No pending payment requests.</p>
         ) : (
@@ -334,7 +334,7 @@ const AdminPayments = () => {
             </div>
             <form onSubmit={handleAddFine} className="p-6 space-y-6">
               <div className="space-y-2 text-center">
-                <label className="form-label">Fine Amount (₹)</label>
+                <label className="field-label">Fine Amount (₹)</label>
                 <input type="number" required autoFocus min="0"
                   className={`w-full py-5 rounded-3xl border border-transparent bg-surface outline-none font-black text-3xl text-center text-[#C62828] focus:bg-card focus:border-rose-100 focus:ring-4 focus:ring-rose-50 transition-all tracking-tighter`}
                   value={fineAmount} onChange={(e) => setFineAmount(e.target.value)} />

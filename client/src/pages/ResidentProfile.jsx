@@ -69,14 +69,14 @@ const ResidentProfile = () => {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="arch-card p-8">
         <div className="flex items-center gap-6">
-          <div className="shimmer w-20 h-20 rounded-2xl" />
+          <div className="skeleton w-20 h-20 rounded-2xl" />
           <div className="space-y-3">
-            <div className="shimmer h-6 w-48" />
-            <div className="shimmer h-4 w-32" />
+            <div className="skeleton h-6 w-48" />
+            <div className="skeleton h-4 w-32" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-6 mt-8">
-          {[...Array(6)].map((_, i) => <div key={i} className="shimmer h-5 w-full" />)}
+          {[...Array(6)].map((_, i) => <div key={i} className="skeleton h-5 w-full" />)}
         </div>
       </div>
     </div>
