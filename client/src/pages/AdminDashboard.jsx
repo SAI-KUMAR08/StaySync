@@ -61,7 +61,7 @@ const StatCard = ({ label, value, icon: Icon, href, prefix = "", suffix = "", tr
       <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">
         {label}
       </p>
-      <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
+      <p className="text-[26px] font-bold font-numeric text-text-primary tracking-tight leading-none">
         {prefix}{animated.toLocaleString()}{suffix}
       </p>
     </div>
@@ -151,12 +151,14 @@ const AdminDashboard = () => {
     ["tenant_assigned","tenant_removed","payment_completed","occupancy_update"].forEach(
       (e) => socket.on(e, refresh)
     );
+    socket.on("expense_updated", refresh);
     socket.on("complaint_created", onComplaint);
     socket.on("complaint_updated", onComplaint);
     return () => {
       ["tenant_assigned","tenant_removed","payment_completed","occupancy_update"].forEach(
         (e) => socket.off(e, refresh)
       );
+      socket.off("expense_updated", refresh);
       socket.off("complaint_created", onComplaint);
       socket.off("complaint_updated", onComplaint);
     };
@@ -221,7 +223,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
               <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">Total Unpaid Bills</p>
-              <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
+              <p className="text-[26px] font-bold font-numeric text-text-primary tracking-tight leading-none">
                 ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
               </p>
               <p className="text-xs text-text-tertiary mt-auto pt-2">
@@ -253,15 +255,15 @@ const AdminDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
             <div className="bg-emerald-50/60 rounded-xl border border-emerald-100/80 p-5 text-center">
               <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1.5">Total Income</p>
-              <p className="text-2xl font-black text-emerald-600">₹{totalIncome.toLocaleString()}</p>
+              <p className="text-2xl font-black font-numeric text-emerald-600">₹{totalIncome.toLocaleString()}</p>
             </div>
             <div className="bg-red-50/60 rounded-xl border border-red-100/80 p-5 text-center">
               <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1.5">Total Expenses</p>
-              <p className="text-2xl font-black text-red-500">₹{totalExpenses.toLocaleString()}</p>
+              <p className="text-2xl font-black font-numeric text-red-500">₹{totalExpenses.toLocaleString()}</p>
             </div>
             <div className="bg-blue-50/60 rounded-xl border border-blue-100/80 p-5 text-center">
               <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1.5">Net Position</p>
-              <p className={`text-2xl font-black ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+              <p className={`text-2xl font-black font-numeric ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
                 ₹{net.toLocaleString()}
               </p>
             </div>

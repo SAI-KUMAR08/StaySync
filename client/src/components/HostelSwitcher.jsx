@@ -3,25 +3,13 @@ import { MdAdd, MdCheck, MdKeyboardArrowDown, MdSearch, MdApartment, MdClose } f
 import api from "../api/axios";
 import toast from "react-hot-toast";
 
-// ── Mini avatar with gradient based on name ──
-const gradientPairs = [
-  "from-violet-500 to-purple-600",
-  "from-emerald-500 to-teal-600",
-  "from-blue-500 to-indigo-600",
-  "from-amber-500 to-orange-600",
-  "from-rose-500 to-pink-600",
-  "from-cyan-500 to-sky-600",
-  "from-lime-500 to-green-600",
-  "from-fuchsia-500 to-pink-600",
-];
-
+// ── Mini avatar using theme primary color ──
 const HostelAvatar = ({ name, size = "sm", className = "" }) => {
   const initial = (name || "H")[0].toUpperCase();
-  const gradientIdx = [...(name || "H")].reduce((acc, c) => acc + c.charCodeAt(0), 0) % gradientPairs.length;
   const dims = size === "sm" ? "w-7 h-7 text-[11px]" : "w-9 h-9 text-sm";
   return (
     <div
-      className={`${dims} rounded-lg bg-gradient-to-br ${gradientPairs[gradientIdx]} flex items-center justify-center text-white font-bold shrink-0 ${className}`}
+      className={`${dims} rounded-lg bg-primary text-white flex items-center justify-center font-bold shrink-0 ${className}`}
       aria-hidden="true"
     >
       {initial}

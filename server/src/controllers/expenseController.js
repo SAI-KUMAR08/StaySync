@@ -5,6 +5,7 @@ import { AppError } from "../middleware/error.middleware.js";
 import Expense from "../models/Expense.js";
 import { ownerFilter } from "../utils/scope.js";
 import { escapeRegex } from "../utils/regex.js";
+import { emitToHostel } from "../utils/socketEvents.js";
 
 const filter = (req) => ownerFilter(req);
 
@@ -52,6 +53,7 @@ export const createExpense = asyncHandler(async (req, res) => {
     isRecurring: isRecurring || false,
   });
 
+  emitToHostel(req, "expense_updated", { hostelId: req.user?.hostelId, action: "created" });
   return success(res, expense, 201);
 });
 
@@ -69,12 +71,14 @@ export const updateExpense = asyncHandler(async (req, res) => {
   if (isRecurring !== undefined) expense.isRecurring = isRecurring;
 
   await expense.save();
+  emitToHostel(req, "expense_updated", { hostelId: req.user?.hostelId, action: "updated" });
   return success(res, expense);
 });
 
 export const deleteExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findOneAndDelete({ _id: req.validated.params.id, ...filter(req) });
   if (!expense) throw new AppError("Expense not found", 404);
+  emitToHostel(req, "expense_updated", { hostelId: req.user?.hostelId, action: "deleted" });
   return success(res, { deleted: true });
 });
 
