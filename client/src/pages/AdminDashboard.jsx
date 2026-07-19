@@ -234,7 +234,11 @@ const AdminDashboard = () => {
       )}
 
       {/* ── Multi-Hostel Financial Overview ── */}
-      {hostelSummaries.length > 0 && (
+      {hostelSummaries.length > 0 && (() => {
+        const totalIncome = hostelSummaries.reduce((s, h) => s + (h.monthlyIncome || 0), 0);
+        const totalExpenses = hostelSummaries.reduce((s, h) => s + (h.monthlyExpenses || 0), 0);
+        const net = totalIncome - totalExpenses;
+        return (
         <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
           <div className="px-6 py-5 border-b border-border/50 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -247,67 +251,25 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
-          <div className="divide-y divide-border/40">
-            {hostelSummaries.map((h) => {
-              const net = h.monthlyIncome - h.monthlyExpenses;
-              return (
-                <div key={h._id} className="px-6 py-4 flex items-center justify-between hover:bg-black/[0.02] transition-colors">
-                  <div className="flex items-center gap-3 min-w-[140px]">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
-                      {(h.name || "H")[0].toUpperCase()}
-                    </div>
-                    <span className="font-semibold text-text-primary text-sm">{h.name}</span>
-                  </div>
-                  <div className="flex items-center gap-6 md:gap-10 text-xs">
-                    <div className="text-center">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Residents</p>
-                      <p className="font-bold text-text-primary tabular-nums">{h.activeResidents}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Income</p>
-                      <p className="font-bold text-emerald-600 tabular-nums">₹{h.monthlyIncome.toLocaleString()}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Expenses</p>
-                      <p className="font-bold text-red-500 tabular-nums">₹{h.monthlyExpenses.toLocaleString()}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Net</p>
-                      <p className={`font-bold tabular-nums ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                        {net >= 0 ? "+" : ""}₹{net.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Unpaid</p>
-                      <p className="font-bold text-amber-600 tabular-nums">
-                        {h.unpaidAmount > 0 ? `₹${h.unpaidAmount.toLocaleString()}` : "—"}
-                      </p>
-                    </div>
-                    <div className="text-center min-w-[44px]">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Beds</p>
-                      <p className="font-bold text-text-primary tabular-nums">
-                        {h.occupiedBeds}<span className="text-text-tertiary/60 font-medium">/{h.totalBeds}</span>
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[9px] font-semibold text-text-tertiary uppercase tracking-wider mb-0.5">Occ.</p>
-                      <span className={`inline-flex text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        h.occupancyRate >= 90
-                          ? "text-emerald-600 bg-emerald-50"
-                          : h.occupancyRate >= 50
-                          ? "text-amber-600 bg-amber-50"
-                          : "text-text-tertiary/60 bg-black/[0.04]"
-                      }`}>
-                        {h.occupancyRate}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
+            <div className="bg-emerald-50/60 rounded-xl border border-emerald-100/80 p-5 text-center">
+              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1.5">Total Income</p>
+              <p className="text-2xl font-black text-emerald-600">₹{totalIncome.toLocaleString()}</p>
+            </div>
+            <div className="bg-red-50/60 rounded-xl border border-red-100/80 p-5 text-center">
+              <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-1.5">Total Expenses</p>
+              <p className="text-2xl font-black text-red-500">₹{totalExpenses.toLocaleString()}</p>
+            </div>
+            <div className="bg-blue-50/60 rounded-xl border border-blue-100/80 p-5 text-center">
+              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1.5">Net Position</p>
+              <p className={`text-2xl font-black ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                ₹{net.toLocaleString()}
+              </p>
+            </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Support Desk */}
       <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
