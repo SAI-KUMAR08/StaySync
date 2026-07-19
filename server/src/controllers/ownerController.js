@@ -194,6 +194,12 @@ export const getDashboard = asyncHandler(async (req, res) => {
   return success(res, { stats, charts: { occupancy, payments, complaints } });
 });
 
+export const getHostelsSummary = asyncHandler(async (req, res) => {
+  const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
+  const rows = await analyticsService.getHostelsSummary(resolvedOwnerId);
+  return success(res, rows);
+});
+
 export const getFinancialOverview = asyncHandler(async (req, res) => {
   const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
   const currentMonth = new Date().toLocaleString("en-US", { month: "long" });

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Room, Bed, Complaint, Payment, Tenant } from "../models/index.js";
+import { Room, Bed, Complaint, Payment, Tenant, Expense, Hostel } from "../models/index.js";
 import { getOccupancySummary } from "./occupancyService.js";
 import { countOverdueTenants, sumOutstandingByStatus } from "./paymentService.js";
 
@@ -120,4 +120,65 @@ export async function getComplaintTrends(ownerId, hostelId) {
     { $sort: { _id: 1 } },
     { $project: { date: "$_id", count: 1, _id: 0 } },
   ]);
+}
+
+export async function getHostelsSummary(ownerId) {
+  const hostels = await Hostel.find({ ownerId, isActive: true }).select("_id name").lean();
+  if (!hostels.length) return [];
+
+  const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
+  const currentYear = new Date().getFullYear();
+
+  const rows = await Promise.all(
+    hostels.map(async (h) => {
+      const [occupancy, tenantCount, monthlyRevenue, expenseAgg, dues] = await Promise.all([
+        getOccupancySummary(ownerId, h._id),
+        Tenant.countDocuments({ ownerId, hostelId: h._id, isActive: true }),
+        Payment.aggregate([
+          {
+            $match: {
+              ownerId: oid(ownerId),
+              hostelId: oid(h._id),
+              paymentStatus: "paid",
+              year: currentYear,
+              paymentMonth: currentMonth,
+            },
+          },
+          { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        ]),
+        Expense.aggregate([
+          {
+            $match: {
+              ownerId,
+              hostelId: h._id,
+              date: {
+                $gte: new Date(currentYear, new Date().getMonth(), 1),
+                $lt: new Date(currentYear, new Date().getMonth() + 1, 1),
+              },
+            },
+          },
+          { $group: { _id: null, total: { $sum: "$amount" } } },
+        ]),
+        sumOutstandingByStatus(ownerId, h._id),
+      ]);
+
+      return {
+        _id: h._id,
+        name: h.name,
+        activeResidents: tenantCount,
+        totalBeds: occupancy.totalBeds,
+        occupiedBeds: occupancy.occupiedBeds,
+        availableBeds: occupancy.availableBeds,
+        occupancyRate: occupancy.occupancyPercentage,
+        monthlyIncome: monthlyRevenue[0]?.total ?? 0,
+        monthlyExpenses: expenseAgg[0]?.total ?? 0,
+        unpaidCount: dues.unpaidCount,
+        unpaidAmount: dues.unpaidAmount,
+        overdueCount: dues.overdueCount,
+        overdueAmount: dues.overdueAmount,
+      };
+    })
+  );
+
+  return rows;
 }

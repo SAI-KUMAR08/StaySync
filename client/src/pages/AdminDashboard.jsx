@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import api from "../api/axios";
 import ErrorRetry from "../components/ErrorRetry";
 import {
-  MdPeople, MdReportProblem,
-  MdCheckCircle, MdTrendingUp,
-  MdArrowForward,
+  MdPeople, MdReportProblem, MdAttachMoney,
+  MdCheckCircle, MdTrendingUp, MdCurrencyRupee,
+  MdArrowForward, MdHotel,
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
@@ -46,27 +46,27 @@ const TrendBadge = ({ current, previous }) => {
   );
 };
 
-// ── Stat badge row (the original overview table) ──
-const StatBadge = ({ value, label, icon: Icon, trend, prefix = "" }) => {
-  const cleaned = String(value ?? 0).replace(/[^0-9.-]/g, "");
-  const numericVal = parseFloat(cleaned) || 0;
-  const animated = useAnimatedNumber(numericVal);
-  return (
-    <div className="flex flex-col items-center py-6 px-2">
-      {Icon && (
-        <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/15 flex items-center justify-center mb-3">
+// ── Stat card ──
+const StatCard = ({ label, value, icon: Icon, href, prefix = "", suffix = "", trend }) => {
+  const numeric = parseInt(String(value ?? 0).replace(/[^0-9.-]/g, "") || "0") || 0;
+  const animated = useAnimatedNumber(numeric);
+  const card = (
+    <div className="bg-white rounded-xl border border-border/60 p-5 hover:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.06)] hover:border-border transition-all duration-200 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-3">
+        <div className="w-9 h-9 rounded-lg bg-primary/[0.07] flex items-center justify-center">
           <Icon className="text-lg text-primary" />
         </div>
-      )}
-      <span className="text-3xl font-bold font-display text-text-primary tracking-tight">
-        {prefix}{animated.toLocaleString()}
-      </span>
-      <span className="text-[10px] font-medium text-text-secondary uppercase tracking-[0.12em] mt-1 text-center leading-tight">
+        {trend && <TrendBadge current={numeric} previous={trend} />}
+      </div>
+      <p className="text-[10px] font-medium text-text-tertiary uppercase tracking-wider mb-0.5">
         {label}
-      </span>
-      {trend && <div className="mt-1.5">{trend}</div>}
+      </p>
+      <p className="text-[26px] font-bold font-display text-text-primary tracking-tight leading-none">
+        {prefix}{animated.toLocaleString()}{suffix}
+      </p>
     </div>
   );
+  return href ? <Link to={href} className="block h-full">{card}</Link> : card;
 };
 
 const SUPPORT_FILTERS = [
@@ -77,9 +77,10 @@ const SUPPORT_FILTERS = [
 ];
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, hostels } = useAuth();
   const [stats, setStats] = useState(null);
   const [expenseSummary, setExpenseSummary] = useState(null);
+  const [hostelSummaries, setHostelSummaries] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -98,6 +99,7 @@ const AdminDashboard = () => {
     );
   }, []);
 
+  // Fetch selected-hostel dashboard data
   const fetchData = useCallback(async () => {
     setError(null);
     try {
@@ -116,7 +118,15 @@ const AdminDashboard = () => {
     }
   }, [fetchComplaints]);
 
-  // Clear stale dashboard state when hostel changes — prevents old cards from flashing
+  // Fetch all-hostels summary table data (independent of selected hostel)
+  const fetchHostelSummaries = useCallback(async () => {
+    try {
+      const res = await api.get("/owner/hostels-summary");
+      setHostelSummaries(res.data.data || []);
+    } catch { /* non-critical */ }
+  }, []);
+
+  // Clear stale dashboard state when hostel changes
   useEffect(() => {
     setStats(null);
     setExpenseSummary(null);
@@ -125,13 +135,17 @@ const AdminDashboard = () => {
 
   useEffect(() => { fetchData(); }, [fetchData, user?.hostelId]);
 
+  // Fetch all-hostels summary on mount and when hostels list changes
+  useEffect(() => { fetchHostelSummaries(); }, [fetchHostelSummaries, hostels?.length]);
+
   useEffect(() => {
     if (!loading) fetchComplaints(supportFilter).catch(() => {});
   }, [loading, supportFilter, fetchComplaints]);
 
+  // Socket events
   useEffect(() => {
     if (!socket) return;
-    const refresh = () => fetchData();
+    const refresh = () => { fetchData(); fetchHostelSummaries(); };
     const onComplaint = () => fetchComplaints(supRef.current);
     ["tenant_assigned","tenant_removed","payment_completed","occupancy_update"].forEach(
       (e) => socket.on(e, refresh)
@@ -145,7 +159,7 @@ const AdminDashboard = () => {
       socket.off("complaint_created", onComplaint);
       socket.off("complaint_updated", onComplaint);
     };
-  }, [socket, fetchData, fetchComplaints]);
+  }, [socket, fetchData, fetchComplaints, fetchHostelSummaries]);
 
   if (error && !stats) return <ErrorRetry message={error} onRetry={fetchData} />;
 
@@ -153,7 +167,7 @@ const AdminDashboard = () => {
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[...Array(8)].map((_, i) => (
+          {[...Array(4)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-border/60 p-5 space-y-3">
               <div className="shimmer w-9 h-9 rounded-lg" />
               <div className="shimmer h-3 w-20" />
@@ -167,14 +181,110 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8 pb-20">
-      {/* ── Stat badge table ── */}
+      {/* ── Overview Cards (selected hostel) ── */}
       {stats && (
-        <div className="bg-white/60 backdrop-blur rounded-2xl border border-border/60 overflow-hidden">
-          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border/40">
-            <StatBadge value={stats.totalTenants} label="Active Residents" icon={MdPeople} trend={<TrendBadge current={stats.totalTenants} previous={stats.previousTotalTenants} />} />
-            <StatBadge value={stats.monthlyRevenue ?? 0} label="Monthly Income" prefix="₹" />
-            <StatBadge value={expenseSummary?.thisMonthTotal ?? 0} label="Monthly Expenses" prefix="₹" />
-            <StatBadge value={stats.activeComplaints} label="Active Tickets" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <StatCard
+            label="Active Residents"
+            value={stats.totalTenants}
+            icon={MdPeople}
+            href="/admin/tenants"
+            trend={stats.previousTotalTenants}
+          />
+          <StatCard
+            label="Monthly Income"
+            value={stats.monthlyRevenue ?? 0}
+            prefix="₹"
+            icon={MdCurrencyRupee}
+            href="/admin/payments"
+          />
+          <StatCard
+            label="Monthly Expenses"
+            value={expenseSummary?.thisMonthTotal ?? 0}
+            prefix="₹"
+            icon={MdAttachMoney}
+            href="/admin/expenses"
+          />
+        </div>
+      )}
+
+      {/* ── All Hostels Summary Table ── */}
+      {hostelSummaries.length > 0 && (
+        <div className="bg-white rounded-xl border border-border/60 overflow-hidden">
+          <div className="px-6 pt-5 pb-4 border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <MdHotel className="text-primary shrink-0" size={18} />
+              <h3 className="text-base font-bold font-display text-text-primary">
+                All Hostels Summary
+              </h3>
+              <span className="text-[10px] font-medium text-text-tertiary/60 bg-black/[0.04] px-2 py-0.5 rounded-full ml-1">
+                {hostelSummaries.length}
+              </span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40 bg-black/[0.02]">
+                  <th className="text-left px-6 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Hostel</th>
+                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Residents</th>
+                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Income</th>
+                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Expenses</th>
+                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Net</th>
+                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Unpaid</th>
+                  <th className="text-right px-4 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Beds</th>
+                  <th className="text-right px-6 py-3.5 text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Occupancy</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {hostelSummaries.map((h) => {
+                  const net = h.monthlyIncome - h.monthlyExpenses;
+                  return (
+                    <tr key={h._id} className="hover:bg-black/[0.02] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-[11px] font-bold text-primary shrink-0">
+                            {(h.name || "H")[0].toUpperCase()}
+                          </div>
+                          <span className="font-semibold text-text-primary">{h.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-right font-semibold text-text-primary tabular-nums">{h.activeResidents}</td>
+                      <td className="px-4 py-4 text-right font-semibold text-text-primary tabular-nums">{h.monthlyIncome > 0 ? `₹${h.monthlyIncome.toLocaleString()}` : "—"}</td>
+                      <td className="px-4 py-4 text-right font-semibold text-text-primary tabular-nums">{h.monthlyExpenses > 0 ? `₹${h.monthlyExpenses.toLocaleString()}` : "—"}</td>
+                      <td className={`px-4 py-4 text-right font-semibold tabular-nums ${net >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {net >= 0 ? "+" : ""}₹{net.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-4 text-right">
+                        {h.unpaidCount > 0 ? (
+                          <span className="font-semibold text-amber-600 tabular-nums">
+                            ₹{h.unpaidAmount.toLocaleString()}
+                            <span className="text-[10px] text-amber-500/70 ml-1">({h.unpaidCount})</span>
+                          </span>
+                        ) : (
+                          <span className="text-text-tertiary/50">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right text-text-primary tabular-nums">
+                        <span className="font-semibold">{h.occupiedBeds}</span>
+                        <span className="text-text-tertiary/60">/{h.totalBeds}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={`inline-flex text-[11px] font-semibold px-2 py-0.5 rounded ${
+                          h.occupancyRate >= 90
+                            ? "text-emerald-600 bg-emerald-50"
+                            : h.occupancyRate >= 50
+                            ? "text-amber-600 bg-amber-50"
+                            : "text-text-tertiary/60 bg-black/[0.04]"
+                        }`}>
+                          {h.occupancyRate}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
