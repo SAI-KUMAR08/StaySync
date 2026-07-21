@@ -12,6 +12,7 @@ import {
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { usePaymentTotals } from "../context/PaymentContext";
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 
@@ -100,6 +101,7 @@ const AdminDashboard = () => {
   const [supportFilter, setSupportFilter] = useState("");
   const supRef = useRef(supportFilter);
   const { socket } = useSocket();
+  const { totals: paymentTotals, refreshTotals } = usePaymentTotals();
 
   // ── Inline Notice Creation ──
   const [showNoticeForm, setShowNoticeForm] = useState(false);
@@ -229,7 +231,10 @@ const AdminDashboard = () => {
     if (!socket) return;
     socket.on("tenant_assigned", fullRefresh);
     socket.on("tenant_removed", fullRefresh);
-    socket.on("payment_completed", fullRefresh);
+    socket.on("payment_completed", () => {
+      fullRefresh();
+      refreshTotals();
+    });
     socket.on("occupancy_update", fullRefresh);
     socket.on("expense_updated", fullRefresh);
     socket.on("notice_created", (notice) => {
@@ -244,7 +249,7 @@ const AdminDashboard = () => {
     return () => {
       socket.off("tenant_assigned", fullRefresh);
       socket.off("tenant_removed", fullRefresh);
-      socket.off("payment_completed", fullRefresh);
+      socket.off("payment_completed");
       socket.off("occupancy_update", fullRefresh);
       socket.off("expense_updated", fullRefresh);
       socket.off("notice_created");
@@ -275,6 +280,13 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* ═══ Section header — original pre-overhaul style ═══ */}
+      <div className="animate-slide-up-big">
+        <div className="section-ornament-diamond mb-4">Overview</div>
+        <h2 className="section-title">Live <span className="highlight">Overview</span></h2>
+        <p className="section-sub">Real-time health and occupancy metrics for your facility.</p>
+      </div>
+
       {/* ═══ Incomplete Profile Alerts ═══ */}
       {incompleteProfiles.length > 0 && (
         <div className="card border-2 border-danger-border/60 bg-danger-bg/30">
@@ -349,10 +361,10 @@ const AdminDashboard = () => {
               </div>
               <p className="text-xs font-medium text-text-tertiary mb-0.5">Total Unpaid Bills</p>
               <p className="text-2xl font-semibold font-numeric text-text-primary tracking-tight leading-none">
-                ₹{hostelSummaries.reduce((s, h) => s + (h.unpaidAmount || 0), 0).toLocaleString()}
+                ₹{(paymentTotals.totalPending + paymentTotals.totalOverdue).toLocaleString()}
               </p>
               <p className="text-xs text-text-tertiary mt-auto pt-2">
-                {hostelSummaries.reduce((s, h) => s + (h.unpaidCount || 0), 0)} outstanding
+                {paymentTotals.unpaidCount + paymentTotals.overdueCount} outstanding
               </p>
             </div>
           )}
@@ -462,22 +474,14 @@ const AdminDashboard = () => {
               <p className="text-xs font-semibold text-primary">Hostel Notices</p>
               <h3 className="text-sm font-semibold text-text-primary mt-0.5">Recent Notices</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setShowNoticeForm(true)}
-                icon={MdAdd}
-                variant="primary"
-                size="sm"
-              >
-                Add
-              </Button>
-              <Link
-                to="/admin/notifications"
-                className="btn btn-ghost btn-sm"
-              >
-                View all <MdArrowForward size={14} />
-              </Link>
-            </div>
+            <Button
+              onClick={() => setShowNoticeForm(true)}
+              icon={MdAdd}
+              variant="primary"
+              size="sm"
+            >
+              Add
+            </Button>
           </div>
           <div className="p-5 max-h-[320px] overflow-y-auto">
             {notices.length === 0 ? (
@@ -542,6 +546,15 @@ const AdminDashboard = () => {
                 ))}
               </div>
             )}
+          </div>
+          {/* View All at bottom */}
+          <div className="border-t border-border-light px-5 py-3 text-center">
+            <Link
+              to="/admin/notifications"
+              className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-primary hover:text-primary-hover transition-colors"
+            >
+              View All Notices <MdArrowForward size={14} />
+            </Link>
           </div>
         </div>
       </div>

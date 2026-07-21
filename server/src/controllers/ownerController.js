@@ -548,6 +548,8 @@ export const createTenant = asyncHandler(async (req, res) => {
 
 export const updateTenant = asyncHandler(async (req, res) => {
   const updates = { ...req.validated.body };
+
+  // Map display names to schema paths
   if (updates.name !== undefined) {
     updates["personalInfo.name"] = updates.name.trim();
     delete updates.name;
@@ -556,10 +558,20 @@ export const updateTenant = asyncHandler(async (req, res) => {
     updates["personalInfo.phone"] = normalizePhone(updates.phone);
     delete updates.phone;
   }
+  if (updates.email !== undefined) {
+    updates["personalInfo.email"] = updates.email.trim().toLowerCase();
+    delete updates.email;
+  }
+
+  // Direct field mappings (these are already top-level)
+  // emergencyContact, aadhaarNumber, idProof, offlineBookingForm, monthlyRent,
+  // isSecurityDepositPaid, securityDepositAmount, securityDepositDate
+  // These are passed through directly from req.validated.body
+
   const tenant = await Tenant.findOneAndUpdate(
     { _id: req.validated.params.id, ...filter(req) },
     { $set: updates },
-    { new: true }
+    { new: true, runValidators: true }
   );
   if (!tenant) throw new AppError("Tenant not found", 404);
   return success(res, tenant);
@@ -728,15 +740,21 @@ export const listPayments = asyncHandler(async (req, res) => {
   if (status) query.paymentStatus = status;
 
   if (search?.trim()) {
-    const safeSearch = escapeRegex(search.trim());
-    const tenants = await Tenant.find({
-      ...filter(req),
-      "personalInfo.name": { $regex: safeSearch, $options: "i" },
-    }).select("_id");
-    if (tenants.length) {
-      query.tenantId = { $in: tenants.map((t) => t._id) };
+    // Check if search term is a valid MongoDB ObjectId (24 hex chars)
+    const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
+    if (isValidObjectId(search.trim())) {
+      query.tenantId = new mongoose.Types.ObjectId(search.trim());
     } else {
-      return success(res, []);
+      const safeSearch = escapeRegex(search.trim());
+      const tenants = await Tenant.find({
+        ...filter(req),
+        "personalInfo.name": { $regex: safeSearch, $options: "i" },
+      }).select("_id");
+      if (tenants.length) {
+        query.tenantId = { $in: tenants.map((t) => t._id) };
+      } else {
+        return success(res, []);
+      }
     }
   }
 
@@ -831,6 +849,93 @@ export const updatePayment = asyncHandler(async (req, res) => {
     message: `Payment ${effectiveStatus}`,
   });
   return success(res, updated);
+});
+
+export const getPaymentTotals = asyncHandler(async (req, res) => {
+  const f = filter(req);
+  const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
+  const hostelId = f.hostelId;
+  const ownerId = resolvedOwnerId;
+
+  const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
+  const currentYear = new Date().getFullYear();
+
+  // Single aggregation for all payment stats
+  const [totals] = await Payment.aggregate([
+    {
+      $match: {
+        ownerId: new mongoose.Types.ObjectId(ownerId),
+        hostelId: new mongoose.Types.ObjectId(hostelId),
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalCollected: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: ["$paymentStatus", "paid"] }, { $eq: ["$paymentMonth", currentMonth] }, { $eq: ["$year", currentYear] }] },
+              "$totalAmount",
+              0,
+            ],
+          },
+        },
+        totalPending: {
+          $sum: {
+            $cond: [{ $eq: ["$paymentStatus", "unpaid"] }, "$totalAmount", 0],
+          },
+        },
+        totalOverdue: {
+          $sum: {
+            $cond: [{ $eq: ["$paymentStatus", "overdue"] }, "$totalAmount", 0],
+          },
+        },
+        paidCount: {
+          $sum: {
+            $cond: [{ $and: [{ $eq: ["$paymentStatus", "paid"] }, { $eq: ["$paymentMonth", currentMonth] }, { $eq: ["$year", currentYear] }] }, 1, 0],
+          },
+        },
+        unpaidCount: {
+          $sum: {
+            $cond: [{ $eq: ["$paymentStatus", "unpaid"] }, 1, 0],
+          },
+        },
+        overdueCount: {
+          $sum: {
+            $cond: [{ $eq: ["$paymentStatus", "overdue"] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  // Mask financial data for managers
+  if (req.user.role === "manager") {
+    return success(res, {
+      totalCollected: 0,
+      totalPending: 0,
+      totalOverdue: 0,
+      paidCount: totals?.paidCount || 0,
+      unpaidCount: totals?.unpaidCount || 0,
+      overdueCount: totals?.overdueCount || 0,
+      collectionRate: 0,
+    });
+  }
+
+  const result = {
+    totalCollected: totals?.totalCollected || 0,
+    totalPending: totals?.totalPending || 0,
+    totalOverdue: totals?.totalOverdue || 0,
+    paidCount: totals?.paidCount || 0,
+    unpaidCount: totals?.unpaidCount || 0,
+    overdueCount: totals?.overdueCount || 0,
+  };
+
+  // Calculate collection rate: totalCollected / (totalCollected + totalPending + totalOverdue) * 100
+  const totalBilled = result.totalCollected + result.totalPending + result.totalOverdue;
+  result.collectionRate = totalBilled > 0 ? Math.round((result.totalCollected / totalBilled) * 100) : 0;
+
+  return success(res, result);
 });
 
 export const listNotices = asyncHandler(async (req, res) => {
@@ -938,6 +1043,28 @@ export const getTenantHistory = asyncHandler(async (req, res) => {
     .populate("bedId", "bedNumber")
     .sort({ date: -1 });
   return success(res, history);
+});
+
+export const getTenantPayments = asyncHandler(async (req, res) => {
+  const f = filter(req);
+  const tenantId = req.validated.params.id;
+
+  // Verify tenant exists and belongs to this owner/hostel
+  const tenant = await Tenant.findOne({ _id: tenantId, ...f });
+  if (!tenant) throw new AppError("Tenant not found", 404);
+
+  const payments = await Payment.find({ ...f, tenantId })
+    .sort({ year: -1, dueDate: -1 })
+    .limit(200);
+
+  const totalPaid = payments
+    .filter(p => p.paymentStatus === "paid")
+    .reduce((sum, p) => sum + (p.totalAmount || p.amount || 0), 0);
+  const totalDue = payments
+    .filter(p => p.paymentStatus === "unpaid" || p.paymentStatus === "overdue")
+    .reduce((sum, p) => sum + (p.totalAmount || p.amount || 0), 0);
+
+  return success(res, { payments, totalPaid, totalDue });
 });
 
 export const listManagers = asyncHandler(async (req, res) => {

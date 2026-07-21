@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import api, { invalidateCache } from "../api/axios";
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
@@ -330,10 +330,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const contextValue = useMemo(() => ({
+    user, hostels, loading, loadingStates, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, setInitialPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout
+  }), [user, hostels, loading, loadingStates, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, setInitialPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout]);
+
   return (
-    <AuthContext.Provider
-      value={{ user, hostels, loading, loadingStates, login, sendOwnerLoginOtp, verifyOwnerLoginOtp, sendOTP, tenantLogin, checkTenantStatus, tenantPasswordLogin, setTenantPassword, setInitialPassword, sendForgotOtp, resetTenantPassword, registerOwner, loginVerifiedOwner, switchHostel, logout }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

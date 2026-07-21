@@ -58,6 +58,7 @@ router.get("/tenants", requirePermission(PERMISSIONS.READ_TENANTS), owner.listTe
 router.get("/tenants/incomplete-profiles", requirePermission(PERMISSIONS.READ_TENANTS), owner.getIncompleteProfiles);
 router.get("/tenants/:id", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenant);
 router.get("/tenants/:id/history", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenantHistory);
+router.get("/tenants/:id/payments", requirePermission(PERMISSIONS.READ_PAYMENTS), validate(idParamSchema), owner.getTenantPayments);
 router.post("/tenants", requirePermission(PERMISSIONS.CREATE_TENANTS), validate(tenantCreateSchema), owner.createTenant);
 router.patch("/tenants/:id", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(tenantUpdateSchema), owner.updateTenant);
 router.post("/tenants/:id/assign-bed", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(assignBedSchema), owner.assignBed);
@@ -70,6 +71,7 @@ router.patch("/complaints/:id", requirePermission(PERMISSIONS.UPDATE_COMPLAINTS)
 // ── Payments ─────────────────────────────────────────────
 router.get("/payments", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.listPayments);
 router.post("/payments", requirePermission(PERMISSIONS.CREATE_PAYMENTS), validate(paymentCreateSchema), owner.createPayment);
+router.get("/payments/totals", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.getPaymentTotals);
 router.patch("/payments/:id", requirePermission(PERMISSIONS.UPDATE_PAYMENTS), validate(paymentUpdateSchema), owner.updatePayment);
 
 // ── Notices ──────────────────────────────────────────────

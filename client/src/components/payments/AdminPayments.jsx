@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import api from "../../api/axios";
 import {
   MdPayment, MdCheckCircle, MdError, MdSearch,
@@ -12,6 +12,7 @@ import Button from "../../components/Button";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { getApiError } from "../../utils/getApiError";
+import { usePaymentTotals } from "../../context/PaymentContext";
 import { useDebounce } from "../../hooks/useDebounce";
 
 
@@ -42,6 +43,7 @@ const AdminPayments = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [fineAmount, setFineAmount] = useState(0);
   const { socket } = useSocket();
+  const { refreshTotals } = usePaymentTotals();
 
   // Payment Requests
   const [paymentRequests, setPaymentRequests] = useState([]);
@@ -62,7 +64,7 @@ const AdminPayments = () => {
   });
   
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     setError(null);
     try {
       setLoading(true);
@@ -76,11 +78,11 @@ const AdminPayments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchPayments();
-  }, [statusFilter, debouncedSearch, user?.hostelId]);
+  }, [fetchPayments, user?.hostelId]);
 
   useEffect(() => {
     if (socket) {
@@ -100,6 +102,7 @@ const AdminPayments = () => {
       });
       toast.success("Payment status updated");
       fetchPayments();
+      refreshTotals();
     } catch (error) {
       toast.error(getApiError(error));
     }
@@ -112,6 +115,7 @@ const AdminPayments = () => {
       toast.success("Fine added successfully");
       setShowFineModal(false);
       fetchPayments();
+      refreshTotals();
     } catch (error) {
       toast.error("Operation failed");
     }
@@ -169,6 +173,7 @@ const AdminPayments = () => {
         notes: "",
       });
       fetchPayments();
+      refreshTotals();
     } catch (error) {
       toast.error(getApiError(error));
     }
@@ -184,6 +189,7 @@ const AdminPayments = () => {
       await api.patch(`/owner/payment-requests/${id}`, { status });
       toast.success(`Payment request ${status} successfully`);
       fetchPayments();
+      refreshTotals();
       fetchPaymentRequests();
     } catch (error) {
       toast.error(getApiError(error));

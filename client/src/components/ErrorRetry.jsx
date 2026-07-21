@@ -1,7 +1,7 @@
 import React from "react";
 import { MdErrorOutline, MdRefresh } from "react-icons/md";
 
-export default function ErrorRetry({ message = "Something went wrong", onRetry }) {
+const ErrorRetry = ({ message = "Something went wrong", onRetry }) => {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-red-500 mb-4">
@@ -19,4 +19,6 @@ export default function ErrorRetry({ message = "Something went wrong", onRetry }
       )}
     </div>
   );
-}
+};
+
+export default React.memo(ErrorRetry);

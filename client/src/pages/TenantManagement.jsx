@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -88,7 +88,7 @@ const TenantManagement = () => {
   useEffect(() => {
     fetchTenants();
     fetchStructure();
-  }, [debouncedSearch, filter, user?.hostelId]);
+  }, [fetchTenants, fetchStructure, user?.hostelId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -104,9 +104,9 @@ const TenantManagement = () => {
       socket.off("tenant_assigned", refresh);
       socket.off("tenant_removed", refresh);
     };
-  }, [socket, user?.hostelId]);
+  }, [socket, fetchTenants, fetchStructure]);
 
-  const fetchTenants = async () => {
+  const fetchTenants = useCallback(async () => {
     setError(null);
     try {
       const res = await api.get(`/owner/tenants?search=${debouncedSearch}&status=${filter}`);
@@ -118,16 +118,16 @@ const TenantManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, filter]);
 
-  const fetchStructure = async () => {
+  const fetchStructure = useCallback(async () => {
     try {
       const res = await api.get("/owner/structure");
       setStructure(normalizeStructure(res.data.data.structure || []));
     } catch (error) {
       console.error(error);
     }
-  };
+  }, []);
 
   const handleSharingSelect = (type) => {
     setSelectedSharing(type);

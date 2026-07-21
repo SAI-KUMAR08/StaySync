@@ -10,6 +10,7 @@ import {
 } from "react-icons/md";
 import ErrorRetry from "../components/ErrorRetry";
 import Button from "../components/Button";
+import toast from "react-hot-toast";
 
 const DetailRow = ({ label, value, icon: Icon }) => (
   <div className="flex items-center justify-between py-3 border-b border-border/30 last:border-b-0">
@@ -40,6 +41,17 @@ const ResidentProfile = () => {
     isPaid: false,
     amount: 0,
   });
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    emergencyContact: "",
+    aadhaarNumber: "",
+    monthlyRent: 0,
+  });
+  const [saving, setSaving] = useState(false);
+  const [paymentData, setPaymentData] = useState({ totalPaid: 0, totalDue: 0 });
 
   const fetchData = useCallback(async () => {
     setError(null);
@@ -47,7 +59,7 @@ const ResidentProfile = () => {
       setLoading(true);
       const [tenantRes, paymentsRes, historyRes] = await Promise.all([
         api.get(`/owner/tenants/${id}`),
-        api.get(`/owner/payments?search=${id}`),
+        api.get(`/owner/tenants/${id}/payments`),
         api.get(`/owner/tenants/${id}/history`),
       ]);
       const t = tenantRes.data.data;
@@ -60,7 +72,9 @@ const ResidentProfile = () => {
         aadhaarNumber: t.aadhaarNumber || "",
         offlineBookingForm: t.offlineBookingForm || "",
       });
-      setPayments(Array.isArray(paymentsRes.data.data) ? paymentsRes.data.data : []);
+      const pd = paymentsRes.data.data;
+      setPayments(Array.isArray(pd.payments) ? pd.payments : []);
+      setPaymentData({ totalPaid: pd.totalPaid || 0, totalDue: pd.totalDue || 0 });
       setHistory(Array.isArray(historyRes.data.data) ? historyRes.data.data : []);
     } catch (error) {
       setError(error.response?.data?.message || "Failed to load resident profile");
@@ -106,16 +120,18 @@ const ResidentProfile = () => {
   if (error) return <ErrorRetry message={error} onRetry={fetchData} />;
   if (!tenant) return <ErrorRetry message="Resident not found" onRetry={fetchData} />;
 
-  const totalPaid = payments
+  // Use API-computed totals for consistency with backend
+  const totalPaid = paymentData.totalPaid || payments
     .filter((p) => (p.paymentStatus || p.status) === "paid")
     .reduce((sum, p) => sum + (p.totalAmount || p.amount || 0), 0);
-  const totalDue = payments
+  const totalDue = paymentData.totalDue || payments
     .filter((p) => (p.paymentStatus || p.status) === "unpaid" || (p.paymentStatus || p.status) === "overdue")
     .reduce((sum, p) => sum + (p.totalAmount || p.amount || 0), 0);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
-      {/* Back Button */}
+    <>
+      <div className="max-w-4xl mx-auto space-y-8 pb-20">
+        {/* Back Button */}
       <Link to="/admin/tenants" className="inline-flex items-center gap-1.5 text-text-secondary/50 hover:text-primary text-xs font-bold uppercase tracking-wider transition-colors">
         <MdArrowBack size={16} /> Back to Residents
       </Link>
@@ -140,6 +156,25 @@ const ResidentProfile = () => {
                 Waiting for {tenant.preferredSharing}-sharing room
               </div>
             )}
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                onClick={() => {
+                  setEditMode(true);
+                  setEditForm({
+                    name: tenant.name || "",
+                    phone: tenant.phone || "",
+                    email: tenant.email || "",
+                    emergencyContact: tenant.emergencyContact || "",
+                    aadhaarNumber: tenant.aadhaarNumber || "",
+                    monthlyRent: tenant.monthlyRent || 0,
+                  });
+                }}
+                size="sm"
+                icon={MdPerson}
+              >
+                Edit Profile
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -252,6 +287,20 @@ const ResidentProfile = () => {
           <h3 className="text-sm font-bold font-display text-text-primary tracking-tight mb-4 flex items-center gap-2">
             <MdDescription className="text-primary" /> Documents
           </h3>
+          {/* Missing document warning */}
+          {(!tenant.aadhaarNumber || !tenant.idProof || !tenant.offlineBookingForm) && (
+            <div className="mb-4 p-3 rounded-xl bg-danger-bg/30 border border-danger-border/30 flex items-start gap-3">
+              <MdClose className="text-danger text-lg shrink-0 mt-0.5" style={{ transform: 'rotate(45deg)' }} />
+              <div>
+                <p className="text-[10px] font-bold text-danger uppercase tracking-wider">Missing Documents</p>
+                <ul className="text-[10px] text-danger/70 mt-1 space-y-0.5">
+                  {!tenant.aadhaarNumber && <li>• Aadhaar Number not provided</li>}
+                  {!tenant.idProof && <li>• ID Proof document not uploaded</li>}
+                  {!tenant.offlineBookingForm && <li>• Registration Form not uploaded</li>}
+                </ul>
+              </div>
+            </div>
+          )}
           <div className="space-y-3">
             {tenant.idProof ? (
               <div className="p-3 rounded-xl bg-surface border border-border/50">
@@ -356,6 +405,84 @@ const ResidentProfile = () => {
         </div>
       )}
     </div>
+
+      {/* Edit Profile Modal */}
+      {editMode && (
+        <div className="modal-overlay">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setSaving(true);
+              try {
+                await api.patch(`/owner/tenants/${id}`, {
+                  name: editForm.name,
+                  phone: editForm.phone,
+                  email: editForm.email,
+                  emergencyContact: editForm.emergencyContact,
+                  aadhaarNumber: editForm.aadhaarNumber,
+                  monthlyRent: editForm.monthlyRent,
+                });
+                toast.success("Profile updated");
+                setEditMode(false);
+                fetchData();
+              } catch (error) {
+                toast.error(error.response?.data?.message || "Failed to update profile");
+              } finally {
+                setSaving(false);
+              }
+            }}
+            className="modal-card max-w-lg p-6 md:p-7 space-y-5"
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Edit Profile</h4>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Update resident information</p>
+              </div>
+              <button type="button" onClick={() => setEditMode(false)} className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all">
+                <MdClose size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Full Name</label>
+                <input required type="text" className="field" value={editForm.name}
+                  onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Phone</label>
+                <input required type="tel" className="field" value={editForm.phone}
+                  onChange={(e) => setEditForm({...editForm, phone: e.target.value.replace(/\D/g, "").slice(0, 10)})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Email</label>
+                <input type="email" className="field" value={editForm.email}
+                  onChange={(e) => setEditForm({...editForm, email: e.target.value})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Emergency Contact</label>
+                <input type="text" className="field" value={editForm.emergencyContact}
+                  onChange={(e) => setEditForm({...editForm, emergencyContact: e.target.value})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Aadhaar Number</label>
+                <input type="text" className="field" value={editForm.aadhaarNumber}
+                  onChange={(e) => setEditForm({...editForm, aadhaarNumber: e.target.value})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Monthly Rent (₹)</label>
+                <input type="number" min="0" className="field" value={editForm.monthlyRent}
+                  onChange={(e) => setEditForm({...editForm, monthlyRent: Number(e.target.value)})} />
+              </div>
+            </div>
+
+            <Button type="submit" fullWidth disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </div>
+      )}
+    </>
   );
 };
 

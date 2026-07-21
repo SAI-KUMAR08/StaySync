@@ -6,6 +6,7 @@ import { SocketProvider } from "./context/SocketContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./layouts/DashboardLayout";
+import { PaymentProvider } from "./context/PaymentContext";
 
 const ThemeAwareToaster = () => {
   return (
@@ -84,7 +85,9 @@ function App() {
                   {/* Owner/Manager Routes */}
                   <Route path="/admin" element={
                     <ProtectedRoute role={["owner", "manager"]}>
-                      <DashboardLayout />
+                      <PaymentProvider>
+                        <DashboardLayout />
+                      </PaymentProvider>
                     </ProtectedRoute>
                   }>
                     <Route index element={<Navigate to="dashboard" replace />} />

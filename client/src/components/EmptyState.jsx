@@ -1,3 +1,4 @@
+import React from "react";
 import { MdInbox } from "react-icons/md";
 
 const EmptyState = ({ icon: Icon, title, description, action, size = "md" }) => {
@@ -12,4 +13,4 @@ const EmptyState = ({ icon: Icon, title, description, action, size = "md" }) => 
   );
 };
 
-export default EmptyState;
+export default React.memo(EmptyState);
