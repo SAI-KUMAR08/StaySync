@@ -32,7 +32,7 @@ const PaymentCard = ({ payment, onPay, processing, variant = "unpaid" }) => {
     </div>
     {onPay && (
       <button type="button" onClick={() => onPay(payment)} disabled={processing}
-        className="btn-primary w-full py-4 text-sm flex items-center justify-center gap-2">
+        className="btn btn-primary w-full py-4 gap-2">
         <MdPayment size={18} />
         {processing ? "Processing..." : "Pay Now"}
       </button>

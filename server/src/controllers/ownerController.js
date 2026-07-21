@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { success } from "../utils/apiResponse.js";
 import { AppError } from "../middleware/error.middleware.js";
-import { emitTenantAssigned, emitTenantRemoved, emitOccupancyUpdate } from "../utils/socketEvents.js";
+import { emitTenantAssigned, emitTenantRemoved, emitOccupancyUpdate, emitToHostel } from "../utils/socketEvents.js";
 import {
   Room, Bed, Tenant, Complaint, Payment, Notice, Hostel, BedShiftRequest, Floor, Owner, RoomAssignmentHistory, PaymentRequest,
 } from "../models/index.js";
@@ -157,7 +157,22 @@ export const setupHostel = asyncHandler(async (req, res) => {
 });
 
 export const getOccupancy = asyncHandler(async (req, res) => {
-  const occupancy = await analyticsService.getOccupancyAnalytics(req.user.id, req.user.hostelId);
+  // Support per-hostel occupancy via x-hostel-id header (used by HostelSwitcher dropdown)
+  const requestedHostelId = req.headers["x-hostel-id"];
+  const hostelId = requestedHostelId || req.user.hostelId;
+  // Security: verify this hostel belongs to the owner when a different hostel is requested
+  if (requestedHostelId && requestedHostelId !== req.user.hostelId) {
+    const hostel = await mongoose.model("Hostel").findOne({
+      _id: requestedHostelId,
+      ownerId: req.user.role === "manager" ? req.user.ownerId : req.user.id,
+      isActive: true,
+    });
+    if (!hostel) throw new AppError("Hostel not found", 404);
+  }
+  const occupancy = await analyticsService.getOccupancyAnalytics(
+    req.user.role === "manager" ? req.user.ownerId : req.user.id,
+    hostelId
+  );
   return success(res, occupancy);
 });
 
@@ -173,8 +188,8 @@ export const getDashboard = asyncHandler(async (req, res) => {
     analyticsService.getComplaintTrends(resolvedOwnerId, f.hostelId),
   ]);
   
-  // Match the frontend property names
-  stats.totalTenants = stats.occupiedBeds; // Approximating since each bed = 1 tenant
+  // totalTenants is already the correct active-tenant count from getDashboardStats.
+  // Do NOT override with occupiedBeds — they can diverge (e.g., active tenant without a bed).
 
   // Mask financial data if manager
   if (req.user.role === "manager") {
@@ -598,6 +613,20 @@ export const removeTenant = asyncHandler(async (req, res) => {
     await occupancyService.freeTenantBed(tenant, session);
     tenant.isActive = false;
     tenant.moveOutDate = new Date();
+    // Immediately clear sensitive PII — keep only anonymized record for financial history
+    tenant.set({
+      "personalInfo.name": "Deleted Resident",
+      "personalInfo.email": `deleted-${tenant._id}@removed.local`,
+      "personalInfo.phone": "0000000000",
+      monthlyRent: 0,
+      emergencyContact: undefined,
+      idProof: undefined,
+      aadhaarNumber: undefined,
+      offlineBookingForm: undefined,
+      isSecurityDepositPaid: false,
+      securityDepositAmount: 0,
+      securityDepositDate: undefined,
+    });
     // Schedule deletion 15 days from now
     tenant.scheduledDeletionDate = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
     await tenant.save({ session });
@@ -746,6 +775,12 @@ export const createPayment = asyncHandler(async (req, res) => {
     notes,
     paymentStatus: "unpaid",
   });
+  emitToHostel(req, "payment_completed", {
+    hostelId: req.user?.hostelId,
+    action: "created",
+    paymentId: payment._id,
+    message: `New payment of ₹${totalAmount} created`,
+  });
   return success(res, payment, 201);
 });
 
@@ -787,6 +822,13 @@ export const updatePayment = asyncHandler(async (req, res) => {
       { path: "floorId", select: "floorName floorNumber" },
       { path: "bedId", select: "bedNumber" },
     ],
+  });
+  emitToHostel(req, "payment_completed", {
+    hostelId: req.user?.hostelId,
+    action: "updated",
+    paymentId: payment._id,
+    status: effectiveStatus,
+    message: `Payment ${effectiveStatus}`,
   });
   return success(res, updated);
 });
@@ -1112,4 +1154,32 @@ export const convertToPermanent = asyncHandler(async (req, res) => {
   } finally {
     session.endSession();
   }
+});
+
+// ── Incomplete Profile Validation ─────────────────────────
+
+export const getIncompleteProfiles = asyncHandler(async (req, res) => {
+  const f = filter(req);
+  const tenants = await Tenant.find({ ...f, isActive: true }).lean();
+
+  const incomplete = tenants.map((t) => {
+    const missing = [];
+    const name = t.name || t.personalInfo?.name;
+    if (!name || name.trim() === "") missing.push("Full Name");
+    if (!t.roomId) missing.push("Room Number");
+    if (!(t.personalInfo?.phone || t.phone)) missing.push("Mobile Number");
+    if (!t.emergencyContact) missing.push("Emergency Contact");
+    if (!t.aadhaarNumber) missing.push("Aadhaar Number");
+    if (!t.idProof) missing.push("ID Proof Document");
+    if (!t.offlineBookingForm) missing.push("Registration Form Document");
+    return {
+      _id: t._id,
+      name: name || "Unknown",
+      missing,
+      hostelId: t.hostelId,
+      isComplete: missing.length === 0,
+    };
+  });
+
+  return success(res, incomplete.filter((t) => !t.isComplete));
 });

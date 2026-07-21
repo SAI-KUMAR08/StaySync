@@ -25,6 +25,7 @@ const Login = () => {
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [tenantFlow, setTenantFlow] = useState("phone"); // "phone" | "password" | "set-password"
   const [tenantPassword, setTenantPassword] = useState("");
   const [showTenantPassword, setShowTenantPassword] = useState(false);
@@ -42,6 +43,7 @@ const Login = () => {
   const handlePhoneChange = (e) => {
     const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhone(raw);
+    if (loginError) setLoginError("");
     if (raw.length > 0 && raw.length !== 10) {
       setPhoneError("Must be exactly 10 digits");
     } else {
@@ -89,13 +91,19 @@ const Login = () => {
   const handleCheckPhone = async (e) => {
     e.preventDefault();
     if (phone.length !== 10) { setPhoneError("Must be exactly 10 digits"); return; }
+    setLoginError("");
     setLoading(true);
     try {
       const status = await checkTenantStatus(fullPhone());
       if (!status.exists) {
-        toast.error("No resident found with this number");
+        if (status.inactive) {
+          setLoginError("Resident account is inactive.");
+        } else {
+          setLoginError("Resident account not found.");
+        }
         return;
       }
+      setLoginError("");
       if (status.hasPassword) {
         setTenantFlow("password");
       } else {
@@ -103,7 +111,7 @@ const Login = () => {
         setTenantFlow("set-password");
       }
     } catch (err) {
-      toast.error("Something went wrong. Please try again.");
+      setLoginError(err.response?.status === 404 ? "Resident account not found." : "Something went wrong. Please try again.");
       console.error("Check phone error:", err);
     } finally {
       setLoading(false);
@@ -118,8 +126,17 @@ const Login = () => {
     try {
       await tenantPasswordLogin(fullPhone(), tenantPassword);
       navigate("/tenant/dashboard");
-    } catch {
-      // toast handled in context
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 404) {
+        setLoginError("Resident account not found.");
+      } else if (status === 401) {
+        setLoginError("Invalid password. Please try again.");
+      } else if (status === 429) {
+        setLoginError("Account locked due to too many attempts. Please try again later.");
+      } else {
+        setLoginError("Login failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -148,6 +165,7 @@ const Login = () => {
     setConfirmPassword("");
     setPhone("");
     setPhoneError("");
+    setLoginError("");
     setShowNewPassword(false);
   };
 
@@ -250,7 +268,7 @@ const Login = () => {
               ].map(({ key, label, icon: Icon }) => (
                 <button
                   key={key}
-                  onClick={() => { setRole(key); resetOwnerOtpState(); }}
+                  onClick={() => { setRole(key); resetOwnerOtpState(); setLoginError(""); }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
                     role === key
                       ? 'bg-primary text-white shadow-md shadow-primary/30'
@@ -281,8 +299,7 @@ const Login = () => {
                 <button
                   disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0 || !email}
                   type="submit"
-                  className="btn-primary w-full py-4 text-sm"
-                  style={{ cursor: (loadingStates.sendOwnerOtp || otpCooldown > 0) ? 'not-allowed' : 'pointer' }}
+                  className="btn btn-primary w-full py-4"
                 >
                   {loadingStates.sendOwnerOtp ? (
                     <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Sending...</>
@@ -325,7 +342,7 @@ const Login = () => {
                 <button
                   disabled={loading || loadingStates.verifyOwnerOtp || ownerOtp.length !== 6}
                   type="submit"
-                  className="btn-primary w-full py-4 text-sm"
+                  className="btn btn-primary w-full py-4"
                   style={{ cursor: loadingStates.verifyOwnerOtp ? 'not-allowed' : 'pointer' }}
                 >
                   {loadingStates.verifyOwnerOtp ? (
@@ -379,11 +396,14 @@ const Login = () => {
                   {phoneError && (
                     <p className="text-[10px] text-danger font-semibold mt-1 ml-1">{phoneError}</p>
                   )}
+                  {loginError && (
+                    <p className="text-[10px] text-danger font-semibold mt-1 ml-1">{loginError}</p>
+                  )}
                 </div>
                 <button
                   disabled={loading || loadingStates.checkStatus || phone.length !== 10}
                   type="submit"
-                  className="btn-primary w-full py-4 text-sm"
+                  className="btn btn-primary w-full py-4"
                   style={{ cursor: loadingStates.checkStatus ? 'not-allowed' : 'pointer' }}
                 >
                   {loadingStates.checkStatus ? (
@@ -397,7 +417,7 @@ const Login = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <button
                     type="button"
-                    onClick={() => { setTenantFlow("phone"); setTenantPassword(""); setNewPassword(""); setConfirmPassword(""); }}
+                    onClick={() => { setTenantFlow("phone"); setTenantPassword(""); setNewPassword(""); setConfirmPassword(""); setLoginError(""); }}
                     className="text-text-tertiary hover:text-text-primary transition-colors"
                   >
                     <MdArrowBack size={18} />
@@ -428,10 +448,13 @@ const Login = () => {
                     </button>
                   </div>
                 </div>
+                {loginError && (
+                  <p className="text-[10px] text-danger font-semibold">{loginError}</p>
+                )}
                 <button
                   disabled={loading || loadingStates.tenantPasswordLogin || !tenantPassword}
                   type="submit"
-                  className="btn-primary w-full py-4 text-sm"
+                  className="btn btn-primary w-full py-4"
                   style={{ cursor: loadingStates.tenantPasswordLogin ? 'not-allowed' : 'pointer' }}
                 >
                   {loadingStates.tenantPasswordLogin ? (
@@ -494,7 +517,7 @@ const Login = () => {
                 <button
                   disabled={loading || loadingStates.setInitialPassword || !newPassword || newPassword !== confirmPassword}
                   type="submit"
-                  className="btn-primary w-full py-4 text-sm"
+                  className="btn btn-primary w-full py-4"
                   style={{ cursor: loadingStates.setInitialPassword ? 'not-allowed' : 'pointer' }}
                 >
                   {loadingStates.setInitialPassword ? (

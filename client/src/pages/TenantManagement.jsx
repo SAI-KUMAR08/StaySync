@@ -7,13 +7,14 @@ import {
   MdCheckCircle, MdArrowForward, MdArrowBack, MdHome,
   MdSwapHoriz, MdInfo, MdOpenInNew
 } from "react-icons/md";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { normalizeStructure, getAvailableRooms } from "../utils/normalizeStructure";
 import { normalizePhone } from "../utils/phone";
 import { mapTenantForDisplay } from "../utils/tenantDisplay";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 import { useSocket } from "../context/SocketContext";
 import { useDebounce } from "../hooks/useDebounce";
 
@@ -30,6 +31,7 @@ const TenantManagement = () => {
 
   const { user } = useAuth();
   const { socket } = useSocket();
+  const navigate = useNavigate();
   
   const [tenants, setTenants] = useState([]);
   const [structure, setStructure] = useState([]);
@@ -56,6 +58,8 @@ const TenantManagement = () => {
     bedId: "",
     rentAmount: 0,
     idProof: "",
+    securityDepositPaid: false,
+    securityDepositAmount: 0,
   });
 
   const [reassigningTenant, setReassigningTenant] = useState(null);
@@ -72,7 +76,9 @@ const TenantManagement = () => {
       floorId: tenant.floorId?._id || "",
       roomId: tenant.roomId?._id || "",
       bedId: tenant.bedId?._id || "",
-      rentAmount: tenant.monthlyRent || 0
+      rentAmount: tenant.monthlyRent || 0,
+      securityDepositPaid: false,
+      securityDepositAmount: 0,
     });
     setReassigningTenant(tenant);
     setStep(2);
@@ -165,6 +171,11 @@ const TenantManagement = () => {
           isTemporary,
           ...(formData.idProof ? { idProof: formData.idProof } : {}),
           ...(isTemporary && preferredSharing ? { preferredSharing } : {}),
+          isSecurityDepositPaid: formData.securityDepositPaid,
+          ...(formData.securityDepositPaid && formData.securityDepositAmount > 0 ? {
+            securityDepositAmount: formData.securityDepositAmount,
+            securityDepositDate: new Date().toISOString(),
+          } : {}),
         });
         toast.success(isTemporary ? "Resident onboarded temporarily!" : "Resident onboarded successfully!");
       }
@@ -306,19 +317,19 @@ const TenantManagement = () => {
           <h2 className="section-title">Resident <span>Management</span></h2>
           <p className="section-sub">Manage resident lifecycle, unit assignments, and temporary allotments</p>
         </div>
-        <button
+        <Button
           onClick={() => {
-            setFormData({ name: "", phone: "", joiningDate: new Date().toISOString().split('T')[0], floorId: "", roomId: "", bedId: "", rentAmount: 0, idProof: "" });
+            setFormData({ name: "", phone: "", joiningDate: new Date().toISOString().split('T')[0], floorId: "", roomId: "", bedId: "", rentAmount: 0, idProof: "", securityDepositPaid: false, securityDepositAmount: 0 });
             setReassigningTenant(null);
             setIsTemporary(false);
             setPreferredSharing(null);
             setStep(1);
             setShowModal(true);
           }}
-          className="btn-primary flex items-center gap-2 text-sm"
+          icon={MdAdd}
         >
-          <MdAdd size={18} /> Add Resident
-        </button>
+          Add Resident
+        </Button>
       </div>
 
       {/* Search & Filter */}
@@ -341,7 +352,7 @@ const TenantManagement = () => {
             { id: "temporary", label: "Temporary" },
           ].map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setFilter(id)}
-              className={`px-4 py-2.5 rounded-xl text-[9px] font-bold font-sans uppercase tracking-wider transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-[9px] font-bold font-sans uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 filter === id
                   ? "bg-primary text-white shadow-md shadow-primary/20"
                   : "text-text-secondary/60 hover:text-text-secondary hover:bg-surface-hover/50"
@@ -433,20 +444,25 @@ const TenantManagement = () => {
           </thead>
           <tbody className="divide-y divide-border/40">
             {regularTenants?.map((tenant, i) => (
-              <tr key={tenant._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
+              <tr
+                key={tenant._id}
+                className="stagger-enter cursor-pointer"
+                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}
+                onClick={() => navigate(`/admin/tenants/${tenant._id}`)}
+              >
                 <td>
                   <div className="flex items-center gap-3.5">
-                    <Link to={`/admin/tenants/${tenant._id}`} className="flex items-center gap-3.5 group">
+                    <div className="flex items-center gap-3.5 group">
                       <div className={`w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm`}>
                         {(tenant.name?.[0] || "T").toUpperCase()}
                       </div>
                       <div>
                         <p className="font-semibold text-text-primary text-sm group-hover:text-primary transition-colors inline-flex items-center gap-1">
-                          {tenant.name} <MdOpenInNew className="text-text-tertiary/30 text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                          {tenant.name}
                         </p>
                         <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
                       </div>
-                    </Link>
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -466,7 +482,7 @@ const TenantManagement = () => {
                   </span>
                 </td>
                 <td className="text-right">
-                  <div className="flex justify-end gap-1.5">
+                  <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => handleReassignStart(tenant)}
                       className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}
@@ -485,20 +501,25 @@ const TenantManagement = () => {
             ))}
             {/* 🆕 Show temporary tenants in table */}
             {tempTenants.length > 0 && tempTenants.map((tenant, i) => (
-              <tr key={tenant._id} className="stagger-enter bg-primary-light" style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
+              <tr
+                key={tenant._id}
+                className="stagger-enter bg-primary-light cursor-pointer"
+                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}
+                onClick={() => navigate(`/admin/tenants/${tenant._id}`)}
+              >
                 <td>
                   <div className="flex items-center gap-3.5">
-                    <Link to={`/admin/tenants/${tenant._id}`} className="flex items-center gap-3.5 group">
+                    <div className="flex items-center gap-3.5 group">
                       <div className={`w-9 h-9 rounded-xl bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm`}>
                         {(tenant.name?.[0] || "T").toUpperCase()}
                       </div>
                       <div>
                         <p className="font-semibold text-text-primary text-sm group-hover:text-primary transition-colors inline-flex items-center gap-1">
-                          {tenant.name} <MdOpenInNew className="text-text-tertiary/30 text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                          {tenant.name}
                         </p>
                         <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
                       </div>
-                    </Link>
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -518,7 +539,7 @@ const TenantManagement = () => {
                   <span className="badge-amber">Temporary</span>
                 </td>
                 <td className="text-right">
-                  <div className="flex justify-end gap-1.5">
+                  <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                     {hasPreferredRoomAvailable(tenant) && (
                       <button
                         onClick={() => handleConvertToPermanent(tenant)}
@@ -696,6 +717,43 @@ const TenantManagement = () => {
                     </div>
                   </div>
 
+                  {/* ── Security Deposit ── */}
+                  {!reassigningTenant && (
+                    <div className="pt-4 border-t border-border/40 space-y-4">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <div
+                          onClick={() => setFormData({ ...formData, securityDepositPaid: !formData.securityDepositPaid, securityDepositAmount: formData.securityDepositPaid ? 0 : formData.securityDepositAmount })}
+                          className={`relative w-10 h-6 rounded-full transition-all duration-300 ${
+                            formData.securityDepositPaid ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-white/10'
+                          }`}
+                        >
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                            formData.securityDepositPaid ? 'translate-x-4' : 'translate-x-0'
+                          }`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-text-primary group-hover:text-primary transition-colors">Security Deposit Paid</p>
+                          <p className="text-[9px] text-text-secondary font-medium">Collected refundable deposit from resident</p>
+                        </div>
+                      </label>
+                      {formData.securityDepositPaid && (
+                        <div className="space-y-1.5 pl-[52px] animate-slide-down">
+                          <label className="text-[9px] font-bold font-sans text-primary uppercase tracking-wider ml-1">
+                            Deposit Amount (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            className="field"
+                            placeholder="e.g. 5000"
+                            value={formData.securityDepositAmount}
+                            onChange={(e) => setFormData({ ...formData, securityDepositAmount: Number(e.target.value) })}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* 🆕 Temporary Allotment Toggle */}
                   {!reassigningTenant && (
                     <div className="pt-4 border-t border-border/40 space-y-4">
@@ -742,10 +800,10 @@ const TenantManagement = () => {
                     </div>
                   )}
 
-                  <button onClick={() => setStep(2)} disabled={isTemporary && !preferredSharing}
-                    className="btn-primary w-full flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Continue <MdArrowForward size={18} />
-                  </button>
+                  <Button onClick={() => setStep(2)} disabled={isTemporary && !preferredSharing}
+                    fullWidth className="mt-4" icon={MdArrowForward} iconPosition="right">
+                    Continue
+                  </Button>
                 </div>
               )}
 
@@ -832,13 +890,14 @@ const TenantManagement = () => {
                       ))}
                   </div>
                   <div className="pt-4 space-y-3">
-                    <button
+                    <Button
                       onClick={handleSubmit}
                       disabled={!formData.name || !formData.phone || formData.phone.length !== 10 || !formData.bedId}
-                      className="btn-primary w-full py-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                      fullWidth
+                      size="xl"
                     >
                       {isTemporary ? "Finalize Temporary Assignment" : "Finalize Onboarding"}
-                    </button>
+                    </Button>
                     <button onClick={() => setStep(3)} className="w-full text-text-secondary/50 font-medium uppercase tracking-wider text-[10px] hover:text-text-secondary transition-colors flex items-center justify-center gap-1">
                       <MdArrowBack /> Choose Different Room
                     </button>

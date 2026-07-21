@@ -153,7 +153,7 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
     <div className="space-y-5">
       <button onClick={onNext}
         disabled={!formData.name || !formData.email || !formData.phone || !isPasswordValid(formData.password) || !formData.hostelName || !formData.address || !emailState.verified}
-        className="btn-primary w-full py-4 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+        className="btn btn-primary w-full py-4 gap-3">
         {emailState.verified ? <>Continue to Structure <MdChevronRight size={22} /></> : "Verify email to continue"}
       </button>
 
@@ -182,8 +182,8 @@ const Step2HostelConfig = ({ formData, onNext, onBack }) => (
       </div>
     </div>
     <div className="flex gap-4">
-      <button onClick={onBack} className="btn-secondary w-1/4 flex items-center justify-center gap-2"><MdChevronLeft size={20} /> Back</button>
-      <button onClick={onNext} className="btn-primary flex-1 py-4">Continue to Floors <MdChevronRight size={22} /></button>
+      <button onClick={onBack} className="btn btn-secondary w-1/4 gap-2"><MdChevronLeft size={20} /> Back</button>
+      <button onClick={onNext} className="btn btn-primary flex-1 py-4">Continue to Floors <MdChevronRight size={22} /></button>
     </div>
   </div>
 );
@@ -214,8 +214,8 @@ const Step3Floors = ({ floors, setFloors, onNext, onBack }) => {
         ))}
       </div>
       <div className="flex gap-4">
-        <button onClick={onBack} className="btn-secondary w-1/4 flex items-center justify-center gap-2"><MdChevronLeft size={20} /> Back</button>
-        <button onClick={onNext} disabled={floors.length === 0} className="btn-primary flex-1 py-4 disabled:opacity-50">Configure Rooms <MdChevronRight size={22} /></button>
+        <button onClick={onBack} className="btn btn-secondary w-1/4 gap-2"><MdChevronLeft size={20} /> Back</button>
+        <button onClick={onNext} disabled={floors.length === 0} className="btn btn-primary flex-1 py-4">Configure Rooms <MdChevronRight size={22} /></button>
       </div>
     </div>
   );
@@ -334,10 +334,10 @@ const Step4Rooms = ({ floors, setFloors, onSubmit, onBack, loading }) => {
       </div>
 
       <div className="flex gap-4 pt-6">
-        <button onClick={onBack} className="btn-secondary w-1/4 flex items-center justify-center gap-2">
+        <button onClick={onBack} className="btn btn-secondary w-1/4 gap-2">
           <MdChevronLeft size={20} /> Back
         </button>
-        <button disabled={loading || floors.length === 0} onClick={onSubmit} className="btn-primary flex-1 py-4 flex items-center justify-center gap-3">
+        <button disabled={loading || floors.length === 0} onClick={onSubmit} className="btn btn-primary flex-1 py-4 gap-3">
           {loading ? "Initializing..." : "Finalize & Launch"} <MdCheckCircle size={22} />
         </button>
       </div>
@@ -600,7 +600,7 @@ const OwnerOnboarding = () => {
                 Cancel
               </button>
               <button type="button" onClick={handleVerifyOtp} disabled={otp.length !== 6 || otpLoading || loadingStates?.verifyOwnerOtp}
-                className="btn-primary flex-1 py-4 disabled:opacity-50">
+                className="btn btn-primary flex-1 py-4">
                 {otpLoading || loadingStates?.verifyOwnerOtp ? (
                   <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Verifying...</>
                 ) : "Verify & Continue"}

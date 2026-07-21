@@ -248,7 +248,7 @@ const TenantPayments = () => {
                 <textarea className="field h-20" placeholder="Any additional information..."
                   value={requestForm.notes} onChange={(e) => setRequestForm({ ...requestForm, notes: e.target.value })} />
               </div>
-              <button type="submit" className="btn-primary w-full py-4">
+              <button type="submit" className="btn btn-primary w-full py-4">
                 Submit for Approval
               </button>
             </form>

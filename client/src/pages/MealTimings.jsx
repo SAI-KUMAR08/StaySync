@@ -8,6 +8,7 @@ import {
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 
 const MEAL_TYPES = ["breakfast", "lunch", "snacks", "dinner"];
 const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", snacks: "Snacks", dinner: "Dinner" };
@@ -165,10 +166,10 @@ const MealTimings = () => {
           <p className="section-sub">Manage daily meal schedules and menu items for residents</p>
         </div>
         {isOwner && (
-          <button onClick={() => { setEditing(null); resetForm(); setShowModal(true); }}
-            className="btn-primary flex items-center gap-2 text-sm">
-            <MdAdd size={18} /> Add Meal
-          </button>
+          <Button onClick={() => { setEditing(null); resetForm(); setShowModal(true); }}
+            icon={MdAdd}>
+            Add Meal
+          </Button>
         )}
       </div>
 
@@ -343,9 +344,9 @@ const MealTimings = () => {
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary w-full py-4">
+              <Button type="submit" fullWidth size="xl">
                 {editing ? "Update Meal" : "Add Meal"}
-              </button>
+              </Button>
             </form>
           </div>
         </div>

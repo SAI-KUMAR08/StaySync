@@ -25,7 +25,6 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
   const ref = useRef(null);
   const searchRef = useRef(null);
   const listRef = useRef(null);
-  const animRef = useRef(null);
 
   // Close on outside click
   useEffect(() => {
@@ -40,25 +39,10 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Animate dropdown open/close
-  useEffect(() => {
-    if (!animRef.current) return;
-    const el = animRef.current;
-    if (open) {
-      el.style.opacity = "1";
-      el.style.transform = "translateY(0) scale(1)";
-      // Focus search when opened
-      setTimeout(() => searchRef.current?.focus(), 80);
-    } else {
-      el.style.opacity = "0";
-      el.style.transform = "translateY(-6px) scale(0.96)";
-    }
-  }, [open]);
-
-  // Focus search when it appears
+  // Focus search input when dropdown mounts
   useEffect(() => {
     if (open && searchRef.current) {
-      setTimeout(() => searchRef.current?.focus(), 100);
+      setTimeout(() => searchRef.current?.focus(), 80);
     }
   }, [open]);
 
@@ -193,13 +177,12 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         />
       </button>
 
-      {/* ═══ Dropdown ═══ */}
+      {/* ═══ Dropdown — conditionally rendered so it does NOT intercept events when closed ═══ */}
+      {open && (
       <div
-        ref={animRef}
         role="listbox"
         onKeyDown={handleKeyDown}
-        className="absolute right-0 top-full mt-2 w-80 bg-white border border-border/80 rounded-2xl shadow-xl shadow-black/[0.08] z-50 overflow-hidden origin-top-right transition-all duration-200"
-        style={{ opacity: 0, transform: "translateY(-6px) scale(0.96)" }}
+        className="absolute right-0 top-full mt-2 w-80 bg-white border border-border/80 rounded-2xl shadow-xl shadow-black/[0.08] z-50 overflow-hidden origin-top-right animate-slide-down"
       >
         {/* ── Header ── */}
         <div className="px-4 pt-3 pb-2.5 border-b border-border/40">
@@ -255,7 +238,18 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             filtered.map((h, i) => {
               const isActive = h._id === activeHostelId;
               const isFocused = i === focusIdx;
-              const s = stats[h._id];
+              const raw = stats[h._id];
+              // `/owner/occupancy` returns an array of room objects — aggregate to summary
+              const s = Array.isArray(raw)
+                ? raw.reduce(
+                    (acc, r) => ({
+                      occupiedBeds: acc.occupiedBeds + (r.occupied || 0),
+                      totalBeds: acc.totalBeds + (r.capacity || 0),
+                      availableBeds: acc.availableBeds + (r.available || 0),
+                    }),
+                    { occupiedBeds: 0, totalBeds: 0, availableBeds: 0 }
+                  )
+                : raw;
               const occupancyPct = s?.totalBeds
                 ? Math.round((s.occupiedBeds / s.totalBeds) * 100)
                 : null;
@@ -364,6 +358,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 };

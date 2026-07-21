@@ -3,10 +3,12 @@ import api from "../../api/axios";
 import {
   MdPayment, MdCheckCircle, MdError, MdSearch,
   MdAddCircleOutline, MdClose, MdAttachMoney,
-  MdCalendarToday, MdThumbUp, MdThumbDown, MdHistory
+  MdCalendarToday, MdThumbUp, MdThumbDown, MdHistory,
+  MdAdd, MdPerson
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../../components/ErrorRetry";
+import Button from "../../components/Button";
 import { useSocket } from "../../context/SocketContext";
 import { useAuth } from "../../context/AuthContext";
 import { getApiError } from "../../utils/getApiError";
@@ -44,6 +46,20 @@ const AdminPayments = () => {
   // Payment Requests
   const [paymentRequests, setPaymentRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+
+  // Add Payment
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [tenants, setTenants] = useState([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [addPaymentForm, setAddPaymentForm] = useState({
+    tenantId: "",
+    amount: "",
+    paymentMonth: new Date().toLocaleString("en-US", { month: "long" }),
+    year: new Date().getFullYear(),
+    dueDate: new Date().toISOString().split("T")[0],
+    fineAmount: 0,
+    notes: "",
+  });
   
 
   const fetchPayments = async () => {
@@ -113,6 +129,56 @@ const AdminPayments = () => {
     }
   };
 
+  const fetchTenants = async () => {
+    try {
+      setLoadingTenants(true);
+      const res = await api.get("/owner/tenants?status=active");
+      const list = Array.isArray(res.data.data) ? res.data.data : [];
+      setTenants(list);
+    } catch (error) {
+      console.error("Failed to load tenants:", error);
+    } finally {
+      setLoadingTenants(false);
+    }
+  };
+
+  const handleCreatePayment = async (e) => {
+    e.preventDefault();
+    if (!addPaymentForm.tenantId || !addPaymentForm.amount) {
+      return toast.error("Please select a tenant and enter amount");
+    }
+    try {
+      await api.post("/owner/payments", {
+        tenantId: addPaymentForm.tenantId,
+        amount: Number(addPaymentForm.amount),
+        fineAmount: Number(addPaymentForm.fineAmount || 0),
+        paymentMonth: addPaymentForm.paymentMonth,
+        year: Number(addPaymentForm.year),
+        dueDate: addPaymentForm.dueDate,
+        notes: addPaymentForm.notes,
+      });
+      toast.success("Payment created successfully");
+      setShowAddPaymentModal(false);
+      setAddPaymentForm({
+        tenantId: "",
+        amount: "",
+        paymentMonth: new Date().toLocaleString("en-US", { month: "long" }),
+        year: new Date().getFullYear(),
+        dueDate: new Date().toISOString().split("T")[0],
+        fineAmount: 0,
+        notes: "",
+      });
+      fetchPayments();
+    } catch (error) {
+      toast.error(getApiError(error));
+    }
+  };
+
+  const MONTHS = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+
   const handleReviewRequest = async (id, status) => {
     try {
       await api.patch(`/owner/payment-requests/${id}`, { status });
@@ -131,11 +197,13 @@ const AdminPayments = () => {
   const now = new Date();
   const currentMonth = now.toLocaleString("en-US", { month: "long" });
   const currentYear = now.getFullYear();
+  // Use totalAmount only — it already includes fineAmount from the DB.
+  // Do NOT add fine/fineAmount on top (would double-count).
   const stats = {
     total: payments.reduce((acc, p) => {
       if (p.paymentStatus !== "paid" && p.status !== "paid") return acc;
       if ((p.paymentMonth || p.month) !== currentMonth || p.year !== currentYear) return acc;
-      return acc + (p.totalAmount || p.amount) + (p.fine || 0);
+      return acc + (p.totalAmount || p.amount);
     }, 0),
     pending: payments.filter((p) => (p.paymentStatus || p.status) === "unpaid").length,
     overdue: payments.filter((p) => (p.paymentStatus || p.status) === "overdue").length,
@@ -205,7 +273,7 @@ const AdminPayments = () => {
         <div className="flex gap-2">
           {['all', 'paid', 'unpaid', 'overdue'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s === 'all' ? '' : s)}
-              className={`px-6 py-3 rounded-2xl font-bold text-[9px] uppercase tracking-[0.12em] transition-all ${
+              className={`px-6 py-3 rounded-2xl font-bold text-[9px] uppercase tracking-[0.12em] transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 (statusFilter === s || (s === 'all' && statusFilter === ''))
                   ? 'bg-text-primary text-white shadow-lg shadow-text-primary/20'
                   : 'bg-card text-text-secondary/60 border border-border/60 hover:border-border'
@@ -301,11 +369,21 @@ const AdminPayments = () => {
 
       {/* Payment Requests Section */}
       <div className="space-y-5 pt-4">
-        <div className="flex items-center gap-3">
-          <MdHistory className="text-xl text-primary" />
-          <h3 className="text-base font-bold font-display text-text-primary tracking-tight">
-            Payment Requests ({paymentRequests.filter((r) => r.status === "pending").length})
-          </h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <MdHistory className="text-xl text-primary" />
+            <h3 className="text-base font-bold font-display text-text-primary tracking-tight">
+              Payment Requests ({paymentRequests.filter((r) => r.status === "pending").length})
+            </h3>
+          </div>
+          <Button
+            onClick={() => { fetchTenants(); setShowAddPaymentModal(true); }}
+            icon={MdAdd}
+            variant="secondary"
+            size="sm"
+          >
+            Add Payment
+          </Button>
         </div>
 
         {loadingRequests ? (
@@ -370,9 +448,94 @@ const AdminPayments = () => {
               <p className="text-[9px] text-text-secondary/60 text-center font-medium uppercase tracking-wider">
                 Added to base rent of <span className="text-text-primary font-bold">₹{selectedPayment?.amount}</span>.
               </p>
-              <button type="submit" className="btn-primary w-full py-4">
+              <Button type="submit" fullWidth size="xl">
                 Apply Penalty
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Payment Modal */}
+      {showAddPaymentModal && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center">
+              <div>
+                <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Add Manual Payment</h4>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Create a payment record for a resident</p>
+              </div>
+              <button onClick={() => setShowAddPaymentModal(false)} className="text-text-secondary/40 hover:text-accent transition-colors">
+                <MdClose size={22} />
               </button>
+            </div>
+            <form onSubmit={handleCreatePayment} className="p-6 space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Resident</label>
+                <select
+                  className="field-select"
+                  required
+                  value={addPaymentForm.tenantId}
+                  onChange={(e) => {
+                    const t = tenants.find((t) => t._id === e.target.value);
+                    setAddPaymentForm({
+                      ...addPaymentForm,
+                      tenantId: e.target.value,
+                      amount: t?.monthlyRent || addPaymentForm.amount,
+                    });
+                  }}
+                >
+                  <option value="">Select a resident...</option>
+                  {tenants.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name || t.personalInfo?.name} — ₹{t.monthlyRent}/mo
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Amount (₹)</label>
+                  <input required type="number" min="1" className="field" placeholder="5000"
+                    value={addPaymentForm.amount}
+                    onChange={(e) => setAddPaymentForm({ ...addPaymentForm, amount: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Fine (₹)</label>
+                  <input type="number" min="0" className="field" placeholder="0"
+                    value={addPaymentForm.fineAmount}
+                    onChange={(e) => setAddPaymentForm({ ...addPaymentForm, fineAmount: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Month</label>
+                  <select className="field-select" value={addPaymentForm.paymentMonth}
+                    onChange={(e) => setAddPaymentForm({ ...addPaymentForm, paymentMonth: e.target.value })}>
+                    {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Year</label>
+                  <input type="number" min="2020" max="2099" className="field"
+                    value={addPaymentForm.year}
+                    onChange={(e) => setAddPaymentForm({ ...addPaymentForm, year: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Due Date</label>
+                <input type="date" required className="field" value={addPaymentForm.dueDate}
+                  onChange={(e) => setAddPaymentForm({ ...addPaymentForm, dueDate: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Notes (optional)</label>
+                <input type="text" className="field" placeholder="e.g. Manual entry for June rent"
+                  value={addPaymentForm.notes}
+                  onChange={(e) => setAddPaymentForm({ ...addPaymentForm, notes: e.target.value })} />
+              </div>
+              <Button type="submit" fullWidth size="xl">
+                Create Payment Record
+              </Button>
             </form>
           </div>
         </div>

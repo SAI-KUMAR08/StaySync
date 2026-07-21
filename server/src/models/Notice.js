@@ -8,7 +8,7 @@ const noticeSchema = new mongoose.Schema(
     message: { type: String, required: true, trim: true },
     type: {
       type: String,
-      enum: ["maintenance", "water_shutdown", "curfew", "fee_reminder", "emergency", "general"],
+      enum: ["maintenance", "water_shutdown", "curfew", "fee_reminder", "emergency", "general", "system_incomplete_profile"],
       default: "general",
     },
     priority: { type: String, enum: ["low", "medium", "high"], default: "medium" },

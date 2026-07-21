@@ -9,6 +9,7 @@ import {
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 import { useDebounce } from "../hooks/useDebounce";
 
 
@@ -159,10 +160,10 @@ const Expenses = () => {
           <h2 className="section-title">Expense <span className="highlight">Tracker</span></h2>
           <p className="section-sub">Track and manage all hostel operational expenses</p>
         </div>
-        <button onClick={() => { setEditing(null); setForm({ category: "electricity", amount: "", description: "", date: new Date().toISOString().split('T')[0], paymentMethod: "cash", vendor: "" }); setShowModal(true); }}
-          className="btn-primary flex items-center gap-2 text-sm">
-          <MdAdd size={18} /> Add Expense
-        </button>
+        <Button onClick={() => { setEditing(null); setForm({ category: "electricity", amount: "", description: "", date: new Date().toISOString().split('T')[0], paymentMethod: "cash", vendor: "" }); setShowModal(true); }}
+          icon={MdAdd}>
+          Add Expense
+        </Button>
       </header>
 
       {/* Summary Cards */}
@@ -291,9 +292,9 @@ const Expenses = () => {
                 <input type="text" className="field" placeholder="Who was paid?"
                   value={form.vendor} onChange={(e) => setForm({...form, vendor: e.target.value})} />
               </div>
-              <button type="submit" className="btn-primary w-full py-4">
+              <Button type="submit" fullWidth size="xl">
                 {editing ? "Update Expense" : "Add Expense"}
-              </button>
+              </Button>
             </form>
           </div>
         </div>

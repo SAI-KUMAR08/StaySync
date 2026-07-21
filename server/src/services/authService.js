@@ -520,9 +520,13 @@ export async function verifyTenantOtp({ phone, otp }, meta = {}) {
  */
 export async function checkTenantStatus({ phone }) {
   const normalized = normalizePhone(phone);
-  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
+  // First try to find any tenant by phone (active or inactive)
+  const tenant = await Tenant.findOne({ "personalInfo.phone": normalized });
   if (!tenant) {
-    return { exists: false, hasPassword: false };
+    return { exists: false, hasPassword: false, inactive: false };
+  }
+  if (!tenant.isActive) {
+    return { exists: false, hasPassword: false, inactive: true };
   }
   return { exists: true, hasPassword: tenant.isPasswordSet };
 }

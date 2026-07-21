@@ -113,13 +113,18 @@ const DashboardLayout = () => {
       `}>
         {/* Brand */}
         <div className="px-5 h-14 flex items-center gap-3 border-b border-border flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-            <MdHome className="text-white" size={16} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-text-primary leading-tight">Sri Rama</p>
-            <p className="text-[9px] text-text-tertiary font-medium uppercase tracking-wider">Hostel Manager</p>
-          </div>
+          <Link
+            to={roleKey === "tenant" ? "/tenant/dashboard" : "/admin/dashboard"}
+            className="flex items-center gap-3 flex-1 min-w-0"
+          >
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+              <MdHome className="text-white" size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary leading-tight">Sri Rama</p>
+              <p className="text-[9px] text-text-tertiary font-medium uppercase tracking-wider">Hostel Manager</p>
+            </div>
+          </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-text-tertiary hover:text-text-primary">
             <MdClose size={18} />
           </button>
@@ -200,9 +205,6 @@ const DashboardLayout = () => {
                   <HostelSwitcher hostels={hostels} activeHostelId={user?.hostelId} onSwitch={switchHostel} />
                 </div>
               )}
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-semibold text-xs shadow-sm">
-                {user?.name?.[0]?.toUpperCase()}
-              </div>
             </div>
           </div>
         </header>

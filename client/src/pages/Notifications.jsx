@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 
 
 const TYPE_LABELS = {
@@ -20,6 +21,7 @@ const TYPE_LABELS = {
   general: "General",
   curfew: "Curfew",
   fee_reminder: "Fee reminder",
+  system_incomplete_profile: "⚠ System Alert",
 };
 
 const Notifications = () => {
@@ -129,9 +131,9 @@ const Notifications = () => {
           </p>
         </div>
         {user?.role === "owner" && (
-          <button type="button" onClick={() => setShowForm(true)} className="btn-primary flex items-center gap-2 text-sm">
-            <MdAdd size={18} /> Post Notice
-          </button>
+          <Button onClick={() => setShowForm(true)} icon={MdAdd}>
+            Post Notice
+          </Button>
         )}
       </header>
 
@@ -144,15 +146,21 @@ const Notifications = () => {
         <div className="space-y-4">
           {notices.map((n, i) => (
             <div key={n._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
-              <article className="arch-card p-6 md:p-7">
+              <article className={`arch-card p-6 md:p-7 ${
+                n.type === "system_incomplete_profile" ? "border-2 border-danger-border/40 bg-danger-bg/20" : ""
+              }`}>
                 <div className="flex justify-between items-start gap-4 mb-3">
                   <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-primary">
+                    <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                      n.type === "system_incomplete_profile" ? "text-danger" : "text-primary"
+                    }`}>
                       {TYPE_LABELS[n.type] || n.type}
                     </span>
-                    <h3 className="text-lg font-bold font-display text-text-primary mt-1">{n.title}</h3>
+                    <h3 className={`text-lg font-bold font-display mt-1 ${
+                      n.type === "system_incomplete_profile" ? "text-danger" : "text-text-primary"
+                    }`}>{n.title}</h3>
                   </div>
-                  {user?.role === "owner" && (
+                  {user?.role === "owner" && n.type !== "system_incomplete_profile" && (
                     <button type="button" onClick={() => handleDelete(n._id)} className="text-text-secondary/30 hover:text-accent p-1.5 transition-colors">
                       <MdClose size={20} />
                     </button>
@@ -191,9 +199,9 @@ const Notifications = () => {
             </select>
             <textarea required rows={4} placeholder="Message for all residents..." className="field"
               value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
-            <button type="submit" className="btn-primary w-full">
+            <Button type="submit" fullWidth size="lg">
               Broadcast to Residents
-            </button>
+            </Button>
           </form>
         </div>
       )}

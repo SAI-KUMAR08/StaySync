@@ -29,7 +29,7 @@ class ErrorBoundary extends React.Component {
             </p>
             <button 
               onClick={() => window.location.reload()}
-              className="btn-primary w-full flex items-center justify-center gap-3 py-4"
+              className="btn btn-primary w-full py-4 gap-3"
             >
               <MdRefresh size={20} /> Reload Application
             </button>

@@ -55,6 +55,7 @@ router.patch("/beds/:id", requirePermission(PERMISSIONS.UPDATE_BEDS), validate(b
 
 // ── Tenants ──────────────────────────────────────────────
 router.get("/tenants", requirePermission(PERMISSIONS.READ_TENANTS), owner.listTenants);
+router.get("/tenants/incomplete-profiles", requirePermission(PERMISSIONS.READ_TENANTS), owner.getIncompleteProfiles);
 router.get("/tenants/:id", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenant);
 router.get("/tenants/:id/history", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenantHistory);
 router.post("/tenants", requirePermission(PERMISSIONS.CREATE_TENANTS), validate(tenantCreateSchema), owner.createTenant);

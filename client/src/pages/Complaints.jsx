@@ -9,6 +9,7 @@ import {
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 import { useDebounce } from "../hooks/useDebounce";
 
 const PriorityBadge = ({ priority }) => {
@@ -178,9 +179,9 @@ const Complaints = () => {
           <p className="section-sub">Monitor and resolve resident issues</p>
         </div>
         {user?.role === "tenant" && (
-          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 text-sm">
-            <MdAdd size={18} /> Raise Ticket
-          </button>
+          <Button onClick={() => setShowModal(true)} icon={MdAdd}>
+            Raise Ticket
+          </Button>
         )}
       </div>
 
@@ -200,7 +201,7 @@ const Complaints = () => {
             { id: "resolved", label: "Resolved" },
           ].map(({ id, label }) => (
             <button key={id || "all"} onClick={() => setStatusFilter(id)}
-              className={`relative px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-wider transition-all duration-300 ${
+              className={`relative px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
                 (statusFilter === id)
                   ? 'text-primary border border-primary/30 scale-105 shadow-sm shadow-primary/5'
                   : 'bg-card text-text-secondary/60 border border-border/60 hover:border-primary/30 hover:text-text-primary/80'
@@ -355,9 +356,9 @@ const Complaints = () => {
                   placeholder="Provide details about the problem..."
                   value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
               </div>
-              <button type="submit" className="btn-primary w-full">
+              <Button type="submit" fullWidth size="lg">
                 Submit Support Ticket
-              </button>
+              </Button>
             </form>
           </div>
         </div>

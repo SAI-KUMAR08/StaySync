@@ -9,6 +9,7 @@ import {
   MdSwapHoriz, MdSecurity, MdVerifiedUser
 } from "react-icons/md";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 
 const DetailRow = ({ label, value, icon: Icon }) => (
   <div className="flex items-center justify-between py-3 border-b border-border/30 last:border-b-0">
@@ -34,6 +35,11 @@ const ResidentProfile = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editDeposit, setEditDeposit] = useState(false);
+  const [depositForm, setDepositForm] = useState({
+    isPaid: false,
+    amount: 0,
+  });
 
   const fetchData = useCallback(async () => {
     setError(null);
@@ -64,6 +70,21 @@ const ResidentProfile = () => {
   }, [id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleSaveDeposit = async () => {
+    try {
+      await api.patch(`/owner/tenants/${id}`, {
+        isSecurityDepositPaid: depositForm.isPaid,
+        securityDepositAmount: depositForm.isPaid ? depositForm.amount : 0,
+        securityDepositDate: depositForm.isPaid && depositForm.amount > 0 ? new Date().toISOString() : null,
+      });
+      toast.success("Security deposit updated");
+      setEditDeposit(false);
+      fetchData();
+    } catch (error) {
+      toast.error("Failed to update security deposit");
+    }
+  };
 
   if (loading) return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -157,18 +178,73 @@ const ResidentProfile = () => {
 
         {/* Security Deposit */}
         <div className="arch-card p-6">
-          <h3 className="text-sm font-bold font-display text-text-primary tracking-tight mb-4 flex items-center gap-2">
-            <MdSecurity className="text-primary" /> Security Deposit
-          </h3>
-          <div className="space-y-0">
-            <DetailRow label="Deposit Paid" value={tenant.isSecurityDepositPaid ? "Yes" : "No"} icon={MdCheckCircle} />
-            {tenant.isSecurityDepositPaid && (
-              <>
-                <DetailRow label="Deposit Amount" value={tenant.securityDepositAmount ? `₹${tenant.securityDepositAmount.toLocaleString()}` : "—"} icon={MdCreditCard} />
-                <DetailRow label="Deposit Date" value={tenant.securityDepositDate ? new Date(tenant.securityDepositDate).toLocaleDateString() : "—"} icon={MdCalendarToday} />
-              </>
-            )}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold font-display text-text-primary tracking-tight flex items-center gap-2">
+              <MdSecurity className="text-primary" /> Security Deposit
+            </h3>
+            <button
+              onClick={() => {
+                setEditDeposit(!editDeposit);
+                if (!editDeposit) {
+                  setDepositForm({
+                    isPaid: tenant.isSecurityDepositPaid || false,
+                    amount: tenant.securityDepositAmount || 0,
+                  });
+                }
+              }}
+              className="text-[9px] font-bold uppercase tracking-wider text-primary hover:text-primary-hover transition-colors"
+            >
+              {editDeposit ? "Cancel" : "Edit"}
+            </button>
           </div>
+          {editDeposit ? (
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div
+                  onClick={() => setDepositForm({ ...depositForm, isPaid: !depositForm.isPaid, amount: depositForm.isPaid ? 0 : depositForm.amount })}
+                  className={`relative w-10 h-6 rounded-full transition-all duration-300 shrink-0 ${
+                    depositForm.isPaid ? 'bg-primary shadow-sm shadow-primary/30' : 'bg-white/10'
+                  }`}
+                >
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                    depositForm.isPaid ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </div>
+                <span className="text-sm font-semibold text-text-primary">Deposit Paid</span>
+              </label>
+              {depositForm.isPaid && (
+                <div className="space-y-1.5 animate-slide-down">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Deposit Amount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="field"
+                    placeholder="e.g. 5000"
+                    value={depositForm.amount}
+                    onChange={(e) => setDepositForm({ ...depositForm, amount: Number(e.target.value) })}
+                  />
+                </div>
+              )}
+              <div className="flex gap-2 pt-2">
+                <Button onClick={handleSaveDeposit} size="sm" disabled={depositForm.isPaid && !depositForm.amount}>
+                  Save
+                </Button>
+                <Button onClick={() => setEditDeposit(false)} variant="secondary" size="sm">
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-0">
+              <DetailRow label="Deposit Paid" value={tenant.isSecurityDepositPaid ? "Yes" : "No"} icon={MdCheckCircle} />
+              {tenant.isSecurityDepositPaid && (
+                <>
+                  <DetailRow label="Deposit Amount" value={tenant.securityDepositAmount ? `₹${tenant.securityDepositAmount.toLocaleString()}` : "—"} icon={MdCreditCard} />
+                  <DetailRow label="Deposit Date" value={tenant.securityDepositDate ? new Date(tenant.securityDepositDate).toLocaleDateString() : "—"} icon={MdCalendarToday} />
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Documents */}

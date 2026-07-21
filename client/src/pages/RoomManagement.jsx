@@ -8,6 +8,7 @@ import {
 } from "react-icons/md";
 import { toast } from "react-hot-toast";
 import ErrorRetry from "../components/ErrorRetry";
+import Button from "../components/Button";
 import { normalizeStructure } from "../utils/normalizeStructure";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
@@ -262,7 +263,7 @@ const RoomManagement = () => {
               </div>
 
               <div className="flex justify-end gap-4">
-                <button onClick={() => setIsSettingUp(false)} className="btn-secondary px-8">
+                <button onClick={() => setIsSettingUp(false)} className="btn btn-secondary px-8">
                   Cancel
                 </button>
                 <button
@@ -281,7 +282,7 @@ const RoomManagement = () => {
                     setSetupFloors(newFloors);
                     setSetupStep(2);
                   }}
-                  className="btn-primary px-8 flex items-center gap-2"
+                  className="btn btn-primary px-8 gap-2"
                 >
                   Configure Rooms <MdChevronRight size={18} />
                 </button>
@@ -314,7 +315,7 @@ const RoomManagement = () => {
                         </span>
                         <h4 className="font-bold text-text-primary">Floor Details</h4>
                       </div>
-                      <button onClick={() => addSetupRoom(fIdx)} className="btn-ghost flex items-center gap-1.5">
+                      <button onClick={() => addSetupRoom(fIdx)} className="btn btn-ghost gap-1.5">
                         <MdAdd size={16} /> New Room
                       </button>
                     </div>
@@ -375,10 +376,10 @@ const RoomManagement = () => {
               </div>
 
               <div className="flex gap-4 pt-6">
-                <button onClick={() => setSetupStep(1)} className="btn-secondary w-1/4 flex items-center justify-center gap-2">
+                <button onClick={() => setSetupStep(1)} className="btn btn-secondary w-1/4 gap-2">
                   <MdChevronLeft size={20} /> Back
                 </button>
-                <button disabled={setupLoading || setupFloors.length === 0} onClick={handleSetupSubmit} className="btn-primary flex-1 py-4 flex items-center justify-center gap-3">
+                <button disabled={setupLoading || setupFloors.length === 0} onClick={handleSetupSubmit} className="btn btn-primary flex-1 py-4 gap-3">
                   {setupLoading ? "Initializing..." : "Finalize & Launch"} <MdCheckCircle size={20} />
                 </button>
               </div>
@@ -391,9 +392,9 @@ const RoomManagement = () => {
             </div>
             <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Empty Inventory</h3>
             <p className="text-text-secondary font-medium max-w-xs mt-3 mb-6">Start by running the setup wizard to define your hostel's floors and rooms.</p>
-            <button onClick={startSetupWizard} className="btn-primary px-8 flex items-center gap-2">
-              Configure floors and beds <MdChevronRight size={18} />
-            </button>
+            <Button onClick={startSetupWizard} icon={MdChevronRight} iconPosition="right">
+              Configure floors and beds
+            </Button>
           </div>
         )
       ) : (
@@ -550,7 +551,7 @@ const RoomManagement = () => {
                 </select>
               </div>
 
-              <button type="submit" className="btn-primary w-full py-4 text-sm">
+              <button type="submit" className="btn btn-primary w-full py-4">
                 {editingRoom ? "Save Configuration" : "Save"}
               </button>
             </form>
