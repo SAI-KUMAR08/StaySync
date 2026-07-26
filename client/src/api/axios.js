@@ -136,11 +136,12 @@ api.interceptors.response.use(
 
       return new Promise((resolve, reject) => {
         api
-          .post("/auth/refresh")
+          .post("/auth/refresh", { refreshToken: localStorage.getItem("refreshToken") })
           .then(({ data }) => {
             const newAccessToken = data?.data?.accessToken;
             if (newAccessToken) {
               localStorage.setItem("token", newAccessToken);
+              if (data?.data?.refreshToken) localStorage.setItem("refreshToken", data.data.refreshToken);
               api.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
               originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               processQueue(null, newAccessToken);
@@ -150,6 +151,7 @@ api.interceptors.response.use(
               processQueue(refreshErr, null);
               reject(refreshErr);
               localStorage.removeItem("token");
+              localStorage.removeItem("refreshToken");
               if (window.location.pathname !== "/login" && window.location.pathname !== "/onboarding") {
                 window.location.href = "/login";
               }
@@ -159,6 +161,7 @@ api.interceptors.response.use(
             processQueue(err, null);
             reject(err);
             localStorage.removeItem("token");
+            localStorage.removeItem("refreshToken");
             if (window.location.pathname !== "/login" && window.location.pathname !== "/onboarding") {
               window.location.href = "/login";
             }
