@@ -12,6 +12,7 @@ const otpSchema = new mongoose.Schema(
 );
 
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+otpSchema.index({ userId: 1, verified: 1 });
 
 // Virtual properties for compatibility with ownerId and tenantId
 otpSchema.virtual("ownerId")

@@ -60,6 +60,7 @@ tenantSchema.set("toJSON", { virtuals: true });
 tenantSchema.set("toObject", { virtuals: true });
 
 tenantSchema.index({ ownerId: 1, hostelId: 1 });
+tenantSchema.index({ ownerId: 1, hostelId: 1, isActive: 1 });
 tenantSchema.index({ ownerId: 1, hostelId: 1, "personalInfo.email": 1 }, { unique: true });
 tenantSchema.index({ ownerId: 1, hostelId: 1, floorId: 1 });
 tenantSchema.index({ ownerId: 1, hostelId: 1, roomId: 1 });
