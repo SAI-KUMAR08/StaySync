@@ -47,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   });
 
   useEffect(() => {
-    const token = sessionStorage.getItem("token");
+    const token = localStorage.getItem("token");
     if (token) {
       fetchUser();
     } else {
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Only clear auth on real auth failures (401), not transient network errors
       if (err.response?.status === 401) {
-        sessionStorage.removeItem("token");
+        localStorage.removeItem("token");
         setUser(null);
         setHostels([]);
       } else {
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, login: true}));
     try {
       const res = await api.post("/auth/login", { email, password });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       if (res.data.data.user?.role === "owner") {
         const hostelsRes = await api.get("/owner/hostels");
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, verifyOwnerOtp: true}));
     try {
       const res = await api.post("/auth/owner/login/verify-otp", { email, otp });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       if (res.data.data.user?.role === "owner") {
         const hostelsRes = await api.get("/owner/hostels");
@@ -142,7 +142,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, register: true}));
     try {
       const res = await api.post("/auth/register", formData);
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       const hostelsRes = await api.get("/owner/hostels");
       setHostels(hostelsRes.data.data || []);
@@ -179,7 +179,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, verifyOtp: true}));
     try {
       const res = await api.post("/auth/tenant/verify-otp", { phone, otp });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Login successful!");
@@ -193,11 +193,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const switchHostel = async (hostelId) => {
-    const token = sessionStorage.getItem("token");
+    const token = localStorage.getItem("token");
     if (!token) throw new Error("No active session");
     try {
       const res = await api.post("/auth/switch-hostel", { hostelId });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       invalidateCache(); // Clear stale cached data from previous hostel
       setUser(res.data.data.user);
       const hostelsRes = await api.get("/owner/hostels");
@@ -211,7 +211,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const loginVerifiedOwner = async (userData, token) => {
-    sessionStorage.setItem("token", token);
+    localStorage.setItem("token", token);
     setUser(userData);
     try {
       const hostelsRes = await api.get("/owner/hostels");
@@ -237,7 +237,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, tenantPasswordLogin: true}));
     try {
       const res = await api.post("/auth/tenant/login", { phone, password });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Welcome back!");
@@ -254,7 +254,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, setPassword: true}));
     try {
       const res = await api.post("/auth/tenant/set-password", { phone, otp, password });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Password set successfully!");
@@ -271,7 +271,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, setInitialPassword: true}));
     try {
       const res = await api.post("/auth/tenant/set-initial-password", { phone, password });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Password set successfully!");
@@ -302,7 +302,7 @@ export const AuthProvider = ({ children }) => {
     setLoadingStates(prev => ({...prev, resetPassword: true}));
     try {
       const res = await api.post("/auth/tenant/reset-password", { phone, otp, newPassword });
-      sessionStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("token", res.data.data.accessToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Password reset successfully!");
@@ -322,7 +322,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to invalidate session on backend:", error);
     } finally {
-      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
       setUser(null);
       setHostels([]);
       toast.success("Logged out");

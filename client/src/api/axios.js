@@ -45,7 +45,7 @@ const api = axios.create({
 const pendingRefreshes = new Map();
 
 api.interceptors.request.use(async (config) => {
-  const token = sessionStorage.getItem("token");
+  const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
 
   // Stale-while-revalidate for GET requests
@@ -140,7 +140,7 @@ api.interceptors.response.use(
           .then(({ data }) => {
             const newAccessToken = data?.data?.accessToken;
             if (newAccessToken) {
-              sessionStorage.setItem("token", newAccessToken);
+              localStorage.setItem("token", newAccessToken);
               api.defaults.headers.common["Authorization"] = `Bearer ${newAccessToken}`;
               originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               processQueue(null, newAccessToken);
@@ -149,7 +149,7 @@ api.interceptors.response.use(
               const refreshErr = new Error("No token in refresh response");
               processQueue(refreshErr, null);
               reject(refreshErr);
-              sessionStorage.removeItem("token");
+              localStorage.removeItem("token");
               if (window.location.pathname !== "/login" && window.location.pathname !== "/onboarding") {
                 window.location.href = "/login";
               }
@@ -158,7 +158,7 @@ api.interceptors.response.use(
           .catch((err) => {
             processQueue(err, null);
             reject(err);
-            sessionStorage.removeItem("token");
+            localStorage.removeItem("token");
             if (window.location.pathname !== "/login" && window.location.pathname !== "/onboarding") {
               window.location.href = "/login";
             }
@@ -170,7 +170,7 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      sessionStorage.removeItem("token");
+      localStorage.removeItem("token");
       if (window.location.pathname !== "/login" && window.location.pathname !== "/onboarding") {
         window.location.href = "/login";
       }
