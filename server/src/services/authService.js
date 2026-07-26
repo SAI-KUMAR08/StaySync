@@ -73,7 +73,7 @@ async function buildTenantProfile(tenantOrId) {
   if (tenantOrId && typeof tenantOrId === "object" && tenantOrId._id) {
     tenant = tenantOrId;
     if (!tenant.populated("floorId") || !tenant.populated("roomId") || !tenant.populated("bedId")) {
-      await tenant.populate([
+    await tenant.populate([
         { path: "floorId", select: "floorName floorNumber" },
         { path: "roomId", select: "roomNumber floor" },
         { path: "bedId", select: "bedNumber" },
@@ -228,7 +228,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
   );
 
   // Send OTP via email
-  sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Registration", name: name.trim() }).catch(err => console.error("[EMAIL] Failed to send:", err.message));
+  await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Registration", name: name.trim() });
 
   return { message: "OTP sent successfully", ...(!env.SEND_REAL_EMAIL ? { otp: otpVal } : {}) };
 }
@@ -326,7 +326,7 @@ export async function sendOwnerLoginOtp({ email }) {
   );
 
   // Send OTP via email
-  sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Login", name: owner.name }).catch(err => console.error("[EMAIL] Failed to send:", err.message));
+  await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Login", name: owner.name });
 
   return { message: "OTP sent to your email" };
 }
@@ -436,7 +436,7 @@ export async function sendTenantOtp({ phone }) {
   // Send OTP via email
   const tenantEmail = tenant.personalInfo?.email || tenant.email;
   if (tenantEmail) {
-    sendOtpEmail({ to: tenantEmail, otp: otpVal, purpose: "Resident Login", name: tenant.personalInfo?.name || tenant.name }).catch(err => console.error("[EMAIL] Failed to send:", err.message));
+    await sendOtpEmail({ to: tenantEmail, otp: otpVal, purpose: "Resident Login", name: tenant.personalInfo?.name || tenant.name });
   }
 
   return { message: "OTP sent successfully", ...(!env.SEND_REAL_EMAIL ? { otp: otpVal } : {}) };
@@ -585,7 +585,7 @@ export async function sendTenantForgotOtp({ phone }) {
   );
 
   // Send OTP via email
-  sendOtpEmail({ to: email, otp: otpVal, purpose: "Password Reset", name: tenant.personalInfo?.name || tenant.name }).catch(err => console.error("[EMAIL] Failed to send:", err.message));
+  await sendOtpEmail({ to: email, otp: otpVal, purpose: "Password Reset", name: tenant.personalInfo?.name || tenant.name });
 
   return { message: "OTP sent to your registered email" };
 }
