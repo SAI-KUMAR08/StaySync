@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Only clear auth on real auth failures (401), not transient network errors
       if (err.response?.status === 401) {
-        localStorage.removeItem("token");
+        localStorage.removeItem("token"); localStorage.removeItem("refreshToken");
         setUser(null);
         setHostels([]);
       } else {
@@ -85,6 +85,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       if (res.data.data.user?.role === "owner") {
         const hostelsRes = await api.get("/owner/hostels");
@@ -121,6 +122,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/owner/login/verify-otp", { email, otp });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       if (res.data.data.user?.role === "owner") {
         const hostelsRes = await api.get("/owner/hostels");
@@ -143,6 +145,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/register", formData);
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       const hostelsRes = await api.get("/owner/hostels");
       setHostels(hostelsRes.data.data || []);
@@ -180,6 +183,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/tenant/verify-otp", { phone, otp });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Login successful!");
@@ -198,6 +202,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/switch-hostel", { hostelId });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       invalidateCache(); // Clear stale cached data from previous hostel
       setUser(res.data.data.user);
       const hostelsRes = await api.get("/owner/hostels");
@@ -238,6 +243,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/tenant/login", { phone, password });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Welcome back!");
@@ -255,6 +261,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/tenant/set-password", { phone, otp, password });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Password set successfully!");
@@ -272,6 +279,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/tenant/set-initial-password", { phone, password });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Password set successfully!");
@@ -303,6 +311,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post("/auth/tenant/reset-password", { phone, otp, newPassword });
       localStorage.setItem("token", res.data.data.accessToken);
+      localStorage.setItem("refreshToken", res.data.data.refreshToken);
       setUser(res.data.data.user);
       setHostels([]);
       toast.success("Password reset successfully!");
@@ -322,7 +331,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to invalidate session on backend:", error);
     } finally {
-      localStorage.removeItem("token");
+      localStorage.removeItem("token"); localStorage.removeItem("refreshToken");
+      localStorage.removeItem("refreshToken");
       setUser(null);
       setHostels([]);
       toast.success("Logged out");
