@@ -228,7 +228,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
   );
 
   // Send OTP via email
-  await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Registration", name: name.trim() });
+  sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Registration", name: name.trim() }).catch(() => {});
 
   return { message: "OTP sent successfully" };
 }
@@ -326,7 +326,7 @@ export async function sendOwnerLoginOtp({ email }) {
   );
 
   // Send OTP via email
-  await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Login", name: owner.name });
+  sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Login", name: owner.name }).catch(() => {});
 
   return { message: "OTP sent to your email" };
 }
@@ -436,7 +436,7 @@ export async function sendTenantOtp({ phone }) {
   // Send OTP via email
   const tenantEmail = tenant.personalInfo?.email || tenant.email;
   if (tenantEmail) {
-    await sendOtpEmail({ to: tenantEmail, otp: otpVal, purpose: "Resident Login", name: tenant.personalInfo?.name || tenant.name });
+    sendOtpEmail({ to: tenantEmail, otp: otpVal, purpose: "Resident Login", name: tenant.personalInfo?.name || tenant.name }).catch(() => {});
   }
 
   return { message: "OTP sent successfully" };
@@ -585,7 +585,7 @@ export async function sendTenantForgotOtp({ phone }) {
   );
 
   // Send OTP via email
-  await sendOtpEmail({ to: email, otp: otpVal, purpose: "Password Reset", name: tenant.personalInfo?.name || tenant.name });
+  sendOtpEmail({ to: email, otp: otpVal, purpose: "Password Reset", name: tenant.personalInfo?.name || tenant.name }).catch(() => {});
 
   return { message: "OTP sent to your registered email" };
 }
