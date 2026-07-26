@@ -180,7 +180,8 @@ export const getDashboard = asyncHandler(async (req, res) => {
   const f = ownerFilter(req);
   const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
 
-  await syncPaymentStatusesOnly(resolvedOwnerId, f.hostelId);
+  // Fire payment status sync in background — don't block dashboard render
+  syncPaymentStatusesOnly(resolvedOwnerId, f.hostelId).catch(() => {});
   const [stats, occupancy, payments, complaints] = await Promise.all([
     analyticsService.getDashboardStats(resolvedOwnerId, f.hostelId),
     analyticsService.getOccupancyAnalytics(resolvedOwnerId, f.hostelId),

@@ -48,6 +48,7 @@ router.post("/floors", requirePermission(PERMISSIONS.CREATE_ROOMS), validate(flo
 
 // ── Rooms & Beds ─────────────────────────────────────────
 router.get("/rooms", requirePermission(PERMISSIONS.READ_ROOMS), owner.listRooms);
+router.post("/rooms", requirePermission(PERMISSIONS.CREATE_ROOMS), validate(roomSchema), owner.createRoom);
 router.get("/beds", requirePermission(PERMISSIONS.READ_BEDS), owner.listBeds);
 router.patch("/rooms/:id", requirePermission(PERMISSIONS.UPDATE_ROOMS), validate(roomUpdateSchema), owner.updateRoom);
 router.delete("/rooms/:id", requirePermission(PERMISSIONS.DELETE_ROOMS), validate(idParamSchema), owner.deleteRoom);

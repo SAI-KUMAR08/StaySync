@@ -17,6 +17,7 @@ import { useSocket } from "../context/SocketContext";
 const RoomManagement = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
+  const isOwner = user?.role === "owner" || user?.role === "manager";
   
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -397,8 +398,21 @@ const RoomManagement = () => {
             </Button>
           </div>
         )
-      ) : (
-        structure.map((floor) => (
+      ) : (<>
+        <div className="text-right">
+          {isOwner && (
+            <Button onClick={async () => {
+              try {
+                await api.post("/owner/floors", {});
+                toast.success("New floor added");
+                fetchStructure();
+              } catch (e) {
+                toast.error("Failed to add floor");
+              }
+            }} icon={MdAdd} variant="secondary" size="sm">Add Floor</Button>
+          )}
+        </div>
+        {structure.map((floor) => (
           <section key={floor._id} className="space-y-6 animate-slide-up">
             <div className="flex items-center gap-5 px-2">
               <div className={`bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-bold font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10`}>
@@ -406,6 +420,42 @@ const RoomManagement = () => {
               </div>
               <div className={`h-[1px] flex-1 bg-border/80 rounded-full`}></div>
               <p className="text-[9px] font-medium text-text-secondary uppercase tracking-wider">{floor.rooms.length} Units</p>
+              {isOwner && (
+                <div className="flex gap-1">
+                  <button onClick={async () => {
+                    const roomNum = prompt("Enter room number (e.g. 101):");
+                    if (!roomNum) return;
+                    try {
+                      await api.post("/owner/rooms", {
+                        roomNumber: roomNum,
+                        floorId: floor._id,
+                        capacity: 1,
+                        pricing: 0,
+                      });
+                      toast.success("Room added");
+                      fetchStructure();
+                    } catch (e) {
+                      toast.error("Failed to add room");
+                    }
+                  }} className={`p-1.5 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-lg transition-all`} title="Add Room">
+                    <MdAddCircle size={16} />
+                  </button>
+                  <button onClick={async () => {
+                    if (!window.confirm(`Delete Floor ${floor.number} and all its rooms?`)) return;
+                    try {
+                      for (const room of floor.rooms || []) {
+                        if (room._id) await api.delete(`/owner/rooms/${room._id}`);
+                      }
+                      toast.success(`Floor ${floor.number} cleared`);
+                      fetchStructure();
+                    } catch (e) {
+                      toast.error("Failed to delete rooms");
+                    }
+                  }} className={`p-1.5 text-text-secondary/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all`} title="Delete Floor">
+                    <MdDelete size={16} />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
@@ -494,8 +544,8 @@ const RoomManagement = () => {
               ))}
             </div>
           </section>
-        ))
-      )}
+        ))}
+      </>)}
 
       {/* Edit Room Modal */}
       {showModal && (
