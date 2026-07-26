@@ -381,7 +381,7 @@ const OwnerOnboarding = () => {
 
   const startCooldown = () => {
     if (cooldownRef.current) clearInterval(cooldownRef.current);
-    setCooldown(60);
+    setCooldown(15);
     cooldownRef.current = setInterval(() => {
       setCooldown((prev) => {
         if (prev <= 1) {
@@ -440,7 +440,7 @@ const OwnerOnboarding = () => {
 
   const startEmailCooldown = () => {
     if (emailCooldownRef.current) clearInterval(emailCooldownRef.current);
-    setEmailState(prev => ({ ...prev, cooldown: 60 }));
+    setEmailState(prev => ({ ...prev, cooldown: 15 }));
     emailCooldownRef.current = setInterval(() => {
       setEmailState(prev => {
         if (prev.cooldown <= 1) {

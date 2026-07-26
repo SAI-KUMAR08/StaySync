@@ -64,7 +64,7 @@ const Login = () => {
     try {
       await sendOwnerLoginOtp(email);
       setOwnerOtpSent(true);
-      setOtpCooldown(60);
+      setOtpCooldown(15);
       toast.success("OTP sent to your email!");
     } catch (error) {
       // toast handled in context

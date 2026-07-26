@@ -44,8 +44,8 @@ async function resolveOwnerHostel(user) {
 /** Check if a 60-second OTP cooldown is still active for this user. Throws if too soon. */
 async function checkOtpCooldown(userId) {
   const latestOtp = await OTP.findOne({ userId }).sort({ createdAt: -1 });
-  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
-    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
+  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 15 * 1000)) {
+    throw new AppError("Please wait 15 seconds before requesting a new OTP.", 429);
   }
 }
 
