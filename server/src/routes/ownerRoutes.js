@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticate, authorize, ownerScope, requirePermission } from "../middleware/auth.js";
+import { authenticate, ownerScope, requirePermission } from "../middleware/auth.js";
 import { PERMISSIONS } from "../config/permissions.js";
 import { validate } from "../middleware/validate.js";
 import * as owner from "../controllers/ownerController.js";
@@ -32,7 +32,7 @@ import {
 const router = Router();
 
 // Shared Owner & Manager routes
-router.use(authenticate, authorize("owner", "manager"), ownerScope);
+router.use(authenticate, ownerScope);
 
 // ── Dashboard & Overview ─────────────────────────────────
 router.get("/dashboard", requirePermission(PERMISSIONS.READ_DASHBOARD), owner.getDashboard);
@@ -104,11 +104,11 @@ router.post("/managers", requirePermission(PERMISSIONS.CREATE_MANAGERS), validat
 router.delete("/managers/:id", requirePermission(PERMISSIONS.DELETE_MANAGERS), validate(idParamSchema), owner.deleteManager);
 
 // ── Meal Timings (owner/manager) ────────────────────────────
-router.get("/meal-timings", mealTimingCtrl.listMealTimings);
-router.get("/meal-timings/:id", mealTimingCtrl.getMealTiming);
-router.post("/meal-timings", validate(mealTimingSchema), mealTimingCtrl.createMealTiming);
-router.patch("/meal-timings/:id", validate(mealTimingUpdateSchema), mealTimingCtrl.updateMealTiming);
-router.delete("/meal-timings/:id", validate(idParamSchema), mealTimingCtrl.deleteMealTiming);
+router.get("/meal-timings", requirePermission(PERMISSIONS.READ_HOSTEL), mealTimingCtrl.listMealTimings);
+router.get("/meal-timings/:id", requirePermission(PERMISSIONS.READ_HOSTEL), validate(idParamSchema), mealTimingCtrl.getMealTiming);
+router.post("/meal-timings", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(mealTimingSchema), mealTimingCtrl.createMealTiming);
+router.patch("/meal-timings/:id", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(mealTimingUpdateSchema), mealTimingCtrl.updateMealTiming);
+router.delete("/meal-timings/:id", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(idParamSchema), mealTimingCtrl.deleteMealTiming);
 
 // ── Payment Requests (owner review) ─────────────────────────
 router.get("/payment-requests", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.listPaymentRequests);

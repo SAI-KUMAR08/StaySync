@@ -13,7 +13,6 @@ import Button from "../components/Button";
 const MEAL_TYPES = ["breakfast", "lunch", "snacks", "dinner"];
 const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", snacks: "Snacks", dinner: "Dinner" };
 const MEAL_ICONS = { breakfast: "🌅", lunch: "☀️", snacks: "🍪", dinner: "🌙" };
-const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const ITEM_PRESETS = [
   "Idli", "Dosa", "Vada", "Sambar", "Chutney", "Pongal", "Upma", "Puri", "Chapati",
@@ -30,17 +29,30 @@ const MealTimings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showScheduling, setShowScheduling] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [activeDay, setActiveDay] = useState(null);
 
   const [form, setForm] = useState({
     mealType: "breakfast",
-    name: "",
     items: [],
-
-    startTime: "",
-    endTime: "",
     dayOfWeek: null,
+  });
+
+  function timeStr(hour, min, ampm) {
+    if (!hour) return "";
+    return `${hour.padStart(2, "0")}:${(min || "00").padStart(2, "0")} ${ampm || "AM"}`;
+  }
+  function parseTime(str) {
+    if (!str) return { hour: "", min: "00", ampm: "AM" };
+    const parts = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!parts) return { hour: "", min: "00", ampm: "AM" };
+    return { hour: parts[1], min: parts[2], ampm: parts[3].toUpperCase() };
+  }
+  const [schedForm, setSchedForm] = useState({
+    breakfast: { startTime: "", endTime: "" },
+    lunch: { startTime: "", endTime: "" },
+    snacks: { startTime: "", endTime: "" },
+    dinner: { startTime: "", endTime: "" },
   });
 
   const [itemInput, setItemInput] = useState("");
@@ -51,7 +63,16 @@ const MealTimings = () => {
       setLoading(true);
       const base = isOwner ? "/owner/meal-timings" : "/tenant/meal-timings";
       const res = await api.get(base);
-      setTimings(Array.isArray(res.data.data) ? res.data.data : []);
+      const data = Array.isArray(res.data.data) ? res.data.data : [];
+      setTimings(data);
+      // Pre-fill scheduling form from existing data
+      const sched = { breakfast: { startTime: "", endTime: "" }, lunch: { startTime: "", endTime: "" }, snacks: { startTime: "", endTime: "" }, dinner: { startTime: "", endTime: "" } };
+      data.forEach((t) => {
+        if (t.dayOfWeek === null && t.startTime) {
+          sched[t.mealType] = { startTime: t.startTime || "", endTime: t.endTime || "" };
+        }
+      });
+      setSchedForm(sched);
     } catch (error) {
       setError(error.response?.data?.message || "Failed to load meal timings");
     } finally {
@@ -63,25 +84,18 @@ const MealTimings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) {
-      toast.error("Please enter a meal name");
-      return;
-    }
     try {
       const payload = {
         mealType: form.mealType,
-        name: form.name.trim(),
         items: form.items,
-        startTime: form.startTime,
-        endTime: form.endTime,
-        dayOfWeek: form.dayOfWeek,
+        dayOfWeek: form.dayOfWeek ?? null,
       };
       if (editing) {
         await api.patch(`/owner/meal-timings/${editing._id}`, payload);
-        toast.success("Meal timing updated");
+        toast.success("Meal updated");
       } else {
         await api.post("/owner/meal-timings", payload);
-        toast.success("Meal timing added");
+        toast.success("Meal added");
       }
       setShowModal(false);
       setEditing(null);
@@ -92,11 +106,32 @@ const MealTimings = () => {
     }
   };
 
+  const handleSaveTimings = async () => {
+    try {
+      const promises = MEAL_TYPES.map((type) => {
+        const existing = timings.find((t) => t.mealType === type && t.dayOfWeek === null);
+        const t = schedForm[type];
+        if (!existing && !t.startTime && !t.endTime) return null;
+        const payload = { startTime: t.startTime, endTime: t.endTime, mealType: type, items: existing?.items || [], dayOfWeek: null };
+        if (existing) {
+          return api.patch(`/owner/meal-timings/${existing._id}`, payload);
+        }
+        return api.post("/owner/meal-timings", payload);
+      }).filter(Boolean);
+      if (promises.length > 0) await Promise.all(promises);
+      toast.success("Timings saved");
+      setShowScheduling(false);
+      fetchTimings();
+    } catch (error) {
+      toast.error(getApiError(error));
+    }
+  };
+
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this meal timing?")) return;
+    if (!window.confirm("Delete this meal?")) return;
     try {
       await api.delete(`/owner/meal-timings/${id}`);
-      toast.success("Meal timing deleted");
+      toast.success("Meal deleted");
       fetchTimings();
     } catch (error) {
       toast.error(getApiError(error));
@@ -107,10 +142,7 @@ const MealTimings = () => {
     setEditing(timing);
     setForm({
       mealType: timing.mealType,
-      name: timing.name || "",
       items: timing.items || [],
-      startTime: timing.startTime || "",
-      endTime: timing.endTime || "",
       dayOfWeek: timing.dayOfWeek ?? null,
     });
     setItemInput("");
@@ -118,7 +150,7 @@ const MealTimings = () => {
   };
 
   const resetForm = () => {
-    setForm({ mealType: "breakfast", name: "", items: [], startTime: "", endTime: "", dayOfWeek: null });
+    setForm({ mealType: "breakfast", items: [], dayOfWeek: null });
     setItemInput("");
   };
 
@@ -145,15 +177,16 @@ const MealTimings = () => {
   };
 
   // Group by day
+  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const grouped = {};
   timings.forEach((t) => {
     const key = t.dayOfWeek !== null ? DAY_NAMES[t.dayOfWeek] : "Everyday";
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(t);
+    if (!grouped[key]) grouped[key] = {};
+    if (!grouped[key][t.mealType]) grouped[key][t.mealType] = t;
   });
-
   const dayOrder = ["Everyday", ...DAY_NAMES];
   const sortedDays = Object.keys(grouped).sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+  const sortedTypes = ["breakfast", "lunch", "snacks", "dinner"];
 
   if (error && timings.length === 0) return <ErrorRetry message={error} onRetry={fetchTimings} />;
 
@@ -166,10 +199,16 @@ const MealTimings = () => {
           <p className="section-sub">Manage daily meal schedules and menu items for residents</p>
         </div>
         {isOwner && (
-          <Button onClick={() => { setEditing(null); resetForm(); setShowModal(true); }}
-            icon={MdAdd}>
-            Add Meal
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => { setEditing(null); resetForm(); setShowModal(true); }}
+              icon={MdAdd}>
+              Add Meal
+            </Button>
+            <Button onClick={() => setShowScheduling(true)}
+              variant="secondary" icon={MdAccessTime}>
+              Set Timings
+            </Button>
+          </div>
         )}
       </div>
 
@@ -199,14 +238,12 @@ const MealTimings = () => {
           {sortedDays.map((day) => (
             <section key={day} className="space-y-4">
               <div className="flex items-center gap-4">
-                <span className={`px-4 py-1.5 rounded-xl bg-primary text-white text-[9px] font-bold uppercase tracking-wider shadow-sm`}>
-                  {day}
-                </span>
+                <span className="px-4 py-1.5 rounded-xl bg-primary text-white text-[9px] font-bold uppercase tracking-wider shadow-sm">{day}</span>
                 <div className="h-px flex-1 bg-border/60" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {MEAL_TYPES.map((type) => {
-                  const meal = grouped[day]?.find((t) => t.mealType === type);
+                {sortedTypes.map((type) => {
+                  const meal = grouped[day]?.[type];
                   if (!meal) return null;
                   const timeStr = [meal.startTime, meal.endTime].filter(Boolean).join(" – ");
                   return (
@@ -214,11 +251,11 @@ const MealTimings = () => {
                       {isOwner && (
                         <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => handleEdit(meal)}
-                            className={`p-1.5 bg-surface text-text-secondary/50 hover:text-primary rounded-lg transition-all`}>
+                            className="p-1.5 bg-surface text-text-secondary/50 hover:text-primary rounded-lg transition-all">
                             <MdEdit size={14} />
                           </button>
                           <button onClick={() => handleDelete(meal._id)}
-                            className={`p-1.5 bg-surface text-text-secondary/50 hover:text-red-500 rounded-lg transition-all`}>
+                            className="p-1.5 bg-surface text-text-secondary/50 hover:text-red-500 rounded-lg transition-all">
                             <MdDelete size={14} />
                           </button>
                         </div>
@@ -227,15 +264,14 @@ const MealTimings = () => {
                         <span className="text-2xl">{MEAL_ICONS[type]}</span>
                         <div>
                           <p className="text-[9px] font-bold text-primary uppercase tracking-wider">{MEAL_LABELS[type]}</p>
-                          <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">{meal.name || MEAL_LABELS[type]}</h4>
+                          {timeStr && (
+                            <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/50 mt-1">
+                              <MdAccessTime size={13} />
+                              <span className="font-medium">{timeStr}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {timeStr && (
-                        <div className="flex items-center gap-1.5 text-[10px] text-text-secondary/50 mb-3">
-                          <MdAccessTime size={13} />
-                          <span className="font-medium">{timeStr}</span>
-                        </div>
-                      )}
                       {meal.items?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {meal.items.map((item, i) => (
@@ -254,17 +290,17 @@ const MealTimings = () => {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* Add Meal Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-card max-w-lg">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
               <div>
                 <h4 className="text-lg font-bold font-display text-text-primary">{editing ? "Edit Meal" : "Add Meal"}</h4>
-                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Meal Schedule Configuration</p>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Menu Items</p>
               </div>
               <button onClick={() => setShowModal(false)}
-                className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all">
                 <MdClose size={20} />
               </button>
             </div>
@@ -284,25 +320,6 @@ const MealTimings = () => {
                     <option value="">Every Day</option>
                     {DAY_NAMES.map((name, i) => <option key={i} value={i}>{name}</option>)}
                   </select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Meal Name</label>
-                <input type="text" className="field" placeholder="e.g. South Indian Breakfast"
-                  value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Start Time</label>
-                  <input type="time" className="field" value={form.startTime}
-                    onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">End Time</label>
-                  <input type="time" className="field" value={form.endTime}
-                    onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
                 </div>
               </div>
 
@@ -348,6 +365,73 @@ const MealTimings = () => {
                 {editing ? "Update Meal" : "Add Meal"}
               </Button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Set Timings Modal */}
+      {showScheduling && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="p-6 border-b border-border/60 flex justify-between items-center">
+              <div>
+                <h4 className="text-lg font-bold font-display text-text-primary">Set Meal Timings</h4>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Same schedule for all days</p>
+              </div>
+              <button onClick={() => setShowScheduling(false)}
+                className="w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all">
+                <MdClose size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              {MEAL_TYPES.map((type) => {
+                const st = parseTime(schedForm[type].startTime);
+                const et = parseTime(schedForm[type].endTime);
+                return (
+                <div key={type} className="space-y-2">
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                    {MEAL_ICONS[type]} {MEAL_LABELS[type]}
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[8px] text-text-secondary/40 font-medium mb-1">Start</p>
+                      <div className="flex gap-1.5">
+                        <input type="text" inputMode="numeric" maxLength="2" placeholder="HH" className="field w-12 text-center"
+                          value={st.hour} onChange={(e) => setSchedForm({ ...schedForm, [type]: { ...schedForm[type], startTime: timeStr(e.target.value, st.min, st.ampm) } })} />
+                        <span className="text-text-secondary/30 self-center">:</span>
+                        <input type="text" inputMode="numeric" maxLength="2" placeholder="MM" className="field w-12 text-center"
+                          value={st.min} onChange={(e) => setSchedForm({ ...schedForm, [type]: { ...schedForm[type], startTime: timeStr(st.hour, e.target.value, st.ampm) } })} />
+                        <select className="field-select w-16 text-xs" value={st.ampm}
+                          onChange={(e) => setSchedForm({ ...schedForm, [type]: { ...schedForm[type], startTime: timeStr(st.hour, st.min, e.target.value) } })}>
+                          <option value="AM">AM</option><option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[8px] text-text-secondary/40 font-medium mb-1">End</p>
+                      <div className="flex gap-1.5">
+                        <input type="text" inputMode="numeric" maxLength="2" placeholder="HH" className="field w-12 text-center"
+                          value={et.hour} onChange={(e) => setSchedForm({ ...schedForm, [type]: { ...schedForm[type], endTime: timeStr(e.target.value, et.min, et.ampm) } })} />
+                        <span className="text-text-secondary/30 self-center">:</span>
+                        <input type="text" inputMode="numeric" maxLength="2" placeholder="MM" className="field w-12 text-center"
+                          value={et.min} onChange={(e) => setSchedForm({ ...schedForm, [type]: { ...schedForm[type], endTime: timeStr(et.hour, e.target.value, et.ampm) } })} />
+                        <select className="field-select w-16 text-xs" value={et.ampm}
+                          onChange={(e) => setSchedForm({ ...schedForm, [type]: { ...schedForm[type], endTime: timeStr(et.hour, et.min, e.target.value) } })}>
+                          <option value="AM">AM</option><option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                );
+              })}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowScheduling(false)}
+                  className="btn btn-outline flex-1">Cancel</button>
+                <button onClick={handleSaveTimings}
+                  className="btn btn-primary flex-1">Save Timings</button>
+              </div>
+            </div>
           </div>
         </div>
       )}

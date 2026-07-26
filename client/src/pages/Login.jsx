@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { COUNTRY_CODES } from "../utils/phone";
 import {
   MdEmail, MdLock,
   MdVpnKey, MdPerson, MdBusiness, MdArrowForward,
@@ -9,15 +10,6 @@ import {
 import toast from "react-hot-toast";
 
 const Login = () => {
-  const COUNTRY_CODES = [
-    { code: "+91", label: "IN", flag: "🇮🇳" },
-    { code: "+1", label: "US", flag: "🇺🇸" },
-    { code: "+44", label: "UK", flag: "🇬🇧" },
-    { code: "+61", label: "AU", flag: "🇦🇺" },
-    { code: "+971", label: "UAE", flag: "🇦🇪" },
-    { code: "+65", label: "SG", flag: "🇸🇬" },
-  ];
-
   const [role, setRole] = useState("owner");
   const [email, setEmail] = useState("");
 
@@ -36,6 +28,8 @@ const Login = () => {
   const [ownerOtpSent, setOwnerOtpSent] = useState(false);
   const [ownerOtp, setOwnerOtp] = useState("");
   const [otpCooldown, setOtpCooldown] = useState(0);
+  const [ownerOtpMode, setOwnerOtpMode] = useState(false);
+  const [ownerPassword, setOwnerPassword] = useState();
   const [loading, setLoading] = useState(false);
   const { sendOwnerLoginOtp, verifyOwnerLoginOtp, checkTenantStatus, tenantPasswordLogin, setInitialPassword, loadingStates } = useAuth();
   const navigate = useNavigate();
@@ -48,6 +42,19 @@ const Login = () => {
       setPhoneError("Must be exactly 10 digits");
     } else {
       setPhoneError("");
+    }
+  };
+
+  const handleOwnerPasswordLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await login(email, ownerPassword);
+      navigate("/admin/dashboard");
+    } catch (error) {
+      // toast handled in context
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -280,89 +287,75 @@ const Login = () => {
               ))}
             </div>
 
-            {role === "owner" ? !ownerOtpSent ? (
-              <form onSubmit={handleOwnerSendOtp} className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="form-label">Work Email</label>
-                  <div className="relative group">
-                    <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg group-focus-within:text-primary transition-colors" />
-                    <input
-                      required
-                      type="email"
-                      className="field-input pl-11"
-                      placeholder="name@company.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
+            {role === "owner" ? (
+              <>
+                {ownerOtpMode ? !ownerOtpSent ? (
+                  <form onSubmit={handleOwnerSendOtp} className="space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="form-label">Work Email</label>
+                      <div className="relative group">
+                        <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg group-focus-within:text-primary transition-colors" />
+                        <input required type="email" className="field-input pl-11" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                      </div>
+                    </div>
+                    <button disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0 || !email} type="submit" className="btn btn-primary w-full py-4">
+                      {loadingStates.sendOwnerOtp ? (
+                        <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Sending...</>
+                      ) : otpCooldown > 0 ? (
+                        `Resend in ${otpCooldown}s`
+                      ) : "Send OTP to Email"}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleOwnerVerifyOtp} className="space-y-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <button type="button" onClick={() => { setOwnerOtpSent(false); setOwnerOtp(""); }} className="text-text-tertiary hover:text-text-primary transition-colors">
+                        <MdArrowBack size={18} />
+                      </button>
+                      <p className="text-xs text-text-secondary font-medium">OTP sent to {email}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Verification Code</label>
+                      <div className="relative">
+                        <MdVpnKey className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                        <input required type="text" inputMode="numeric" autoFocus maxLength="6" className="field-input pl-11 tracking-[0.5em] text-center font-bold text-2xl" placeholder="000000" value={ownerOtp} onChange={(e) => setOwnerOtp(e.target.value.replace(/D/g, "").slice(0, 6))} />
+                      </div>
+                    </div>
+                    <button disabled={loading || loadingStates.verifyOwnerOtp || ownerOtp.length !== 6} type="submit" className="btn btn-primary w-full py-4">
+                      {loadingStates.verifyOwnerOtp ? (
+                        <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Verifying...</>
+                      ) : "Verify & Login"}
+                    </button>
+                    <button type="button" onClick={handleOwnerSendOtp} disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0} className="w-full text-[10px] text-primary font-semibold hover:underline">
+                      {loadingStates.sendOwnerOtp ? (<><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" /> Resending...</>) : otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend OTP"}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleOwnerPasswordLogin} className="space-y-5">
+                    <div className="space-y-1.5">
+                      <label className="form-label">Work Email</label>
+                      <div className="relative group">
+                        <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg group-focus-within:text-primary transition-colors" />
+                        <input required type="email" className="field-input pl-11" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="form-label">Password</label>
+                      <div className="relative">
+                        <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                        <input required type="password" className="field-input pl-11" placeholder="Enter your password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} />
+                      </div>
+                    </div>
+                    <button disabled={loading || loadingStates.login || !email || !ownerPassword} type="submit" className="btn btn-primary w-full py-4">
+                      {loadingStates.login ? (<><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Signing in...</>) : "Login"}
+                    </button>
+                  </form>
+                )}
+                <div className="flex items-center gap-2 mt-3">
+                  <input type="checkbox" id="ownerOtpMode" checked={ownerOtpMode} onChange={(e) => { setOwnerOtpMode(e.target.checked); setOwnerOtpSent(false); setOwnerOtp(""); }} className="rounded border-border/60 text-primary focus:ring-primary" />
+                  <label htmlFor="ownerOtpMode" className="text-xs text-text-secondary font-medium cursor-pointer select-none hover:text-text-primary transition-colors">Login with OTP</label>
                 </div>
-                <button
-                  disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0 || !email}
-                  type="submit"
-                  className="btn btn-primary w-full py-4"
-                >
-                  {loadingStates.sendOwnerOtp ? (
-                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Sending...</>
-                  ) : otpCooldown > 0 ? (
-                    `Resend in ${otpCooldown}s`
-                  ) : "Send OTP to Email"}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleOwnerVerifyOtp} className="space-y-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <button
-                    type="button"
-                    onClick={() => { setOwnerOtpSent(false); setOwnerOtp(""); }}
-                    className="text-text-tertiary hover:text-text-primary transition-colors"
-                  >
-                    <MdArrowBack size={18} />
-                  </button>
-                  <p className="text-xs text-text-secondary font-medium">
-                    OTP sent to {email}
-                  </p>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="form-label">Verification Code</label>
-                  <div className="relative">
-                    <MdVpnKey className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
-                    <input
-                      required
-                      type="text"
-                      inputMode="numeric"
-                      autoFocus
-                      maxLength="6"
-                      className="field-input pl-11 tracking-[0.5em] text-center font-bold text-2xl"
-                      placeholder="000000"
-                      value={ownerOtp}
-                      onChange={(e) => setOwnerOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    />
-                  </div>
-                </div>
-                <button
-                  disabled={loading || loadingStates.verifyOwnerOtp || ownerOtp.length !== 6}
-                  type="submit"
-                  className="btn btn-primary w-full py-4"
-                  style={{ cursor: loadingStates.verifyOwnerOtp ? 'not-allowed' : 'pointer' }}
-                >
-                  {loadingStates.verifyOwnerOtp ? (
-                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" /> Verifying...</>
-                  ) : "Verify & Login"}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOwnerSendOtp}
-                  disabled={loading || loadingStates.sendOwnerOtp || otpCooldown > 0}
-                  className="w-full text-[10px] text-primary font-semibold hover:underline"
-                  style={{ cursor: (loadingStates.sendOwnerOtp || otpCooldown > 0) ? 'not-allowed' : 'pointer' }}
-                >
-                  {loadingStates.sendOwnerOtp ? (
-                    <><span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" /> Resending...</>
-                  ) : otpCooldown > 0 ? (
-                    `Resend in ${otpCooldown}s`
-                  ) : "Resend OTP"}
-                </button>
-              </form>
+              </>
             ) : tenantFlow === "phone" ? (
               <form onSubmit={handleCheckPhone} className="space-y-5">
                 <div className="space-y-1.5">

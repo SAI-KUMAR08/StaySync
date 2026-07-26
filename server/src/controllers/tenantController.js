@@ -162,6 +162,7 @@ export const listNotices = asyncHandler(async (req, res) => {
   const notices = await Notice.find({
     ...scope(req),
     isActive: true,
+    type: { $not: /^system_/ },
     $or: [{ expiresAt: null }, { expiresAt: { $gte: new Date() } }],
   }).sort({ createdAt: -1 });
   return success(res, notices);
@@ -230,16 +231,24 @@ export const createPaymentRequest = asyncHandler(async (req, res) => {
   const tenant = await Tenant.findById(req.user.id);
   if (!tenant?.isActive) throw new AppError("Account is deactivated", 403);
 
-  // Prevent duplicate pending requests for same period
-  const existing = await PaymentRequest.findOne({
+  // Prevent duplicate requests for same period
+  const existingRequest = await PaymentRequest.findOne({
     ownerId: req.user.ownerId,
     hostelId: req.user.hostelId,
     tenantId: req.user.id,
-    paymentMonth,
-    year,
-    status: "pending",
+    paymentMonth, year,
+    status: { $in: ["pending", "approved"] },
   });
-  if (existing) throw new AppError("You already have a pending payment request for this period", 409);
+  if (existingRequest) throw new AppError(`You already submitted a payment request for ${paymentMonth} ${year}`, 409);
+
+  // Check if already paid for this month
+  const existingPayment = await Payment.findOne({
+    tenantId: req.user.id,
+    paymentMonth, year,
+    paymentType: { $ne: "deposit" },
+    paymentStatus: "paid",
+  });
+  if (existingPayment) throw new AppError(`You already paid rent for ${paymentMonth} ${year}`, 409);
 
   const request = await PaymentRequest.create({
     ownerId: req.user.ownerId,

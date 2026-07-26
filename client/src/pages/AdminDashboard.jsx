@@ -142,10 +142,10 @@ const AdminDashboard = () => {
     setError(null);
     try {
       const [s, e, f, n] = await Promise.all([
-        api.get("/owner/dashboard"),
-        api.get("/owner/expenses/summary"),
-        api.get("/owner/financial-overview").catch(() => ({ data: { data: null } })),
-        api.get("/owner/notices").catch(() => ({ data: { data: [] } })),
+        api.get("/owner/dashboard", { _skipCache: true }),
+        api.get("/owner/expenses/summary", { _skipCache: true }),
+        api.get("/owner/financial-overview", { _skipCache: true }).catch(() => ({ data: { data: null } })),
+        api.get("/owner/notices", { _skipCache: true }).catch(() => ({ data: { data: [] } })),
       ]);
       setStats(s.data.data.stats || null);
       setExpenseSummary(e.data.data || null);
@@ -351,6 +351,13 @@ const AdminDashboard = () => {
             value={stats.activeComplaints ?? 0}
             icon={MdReportProblem}
             href="/admin/complaints"
+          />
+          <StatCard
+            label="Deposits Held"
+            value={stats?.totalDeposits ?? 0}
+            prefix="₹"
+            icon={MdCurrencyRupee}
+            href="/admin/payments"
           />
           {hostelSummaries.length > 0 && (
             <div className="card card-md card-hover h-full flex flex-col">

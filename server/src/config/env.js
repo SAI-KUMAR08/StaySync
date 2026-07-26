@@ -26,6 +26,10 @@ const envSchema = z.object({
     .enum(["true", "false", "1", "0"])
     .default("false")
     .transform((v) => v === "true" || v === "1"),
+  RUN_MIGRATIONS: z
+    .enum(["true", "false", "1", "0"])
+    .default("true")
+    .transform((v) => v === "true" || v === "1"),
 });
 
 const parsed = envSchema.safeParse(process.env);

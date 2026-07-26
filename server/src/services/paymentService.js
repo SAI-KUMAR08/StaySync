@@ -7,7 +7,8 @@ const MONTHS = [
 ];
 
 export function monthIndex(monthName) {
-  return MONTHS.indexOf(monthName);
+  const idx = MONTHS.indexOf(monthName);
+  return idx >= 0 ? idx : 0; // Invalid months sort to January (safe default)
 }
 
 /** Rent due on the same calendar day each month after join (capped at last day of shorter months) */
@@ -220,6 +221,7 @@ export async function countOverdueTenants(ownerId, hostelId) {
     hostelId,
     tenantId: { $in: activeIds },
     paymentStatus: "overdue",
+    paymentType: { $ne: "deposit" },
   }).then((ids) => ids.length);
 }
 
@@ -232,6 +234,7 @@ export async function sumOutstandingByStatus(ownerId, hostelId) {
         ownerId: oId,
         hostelId: hId,
         paymentStatus: { $in: ["unpaid", "overdue"] },
+        paymentType: { $ne: "deposit" },
       },
     },
     // Only count payments from active tenants

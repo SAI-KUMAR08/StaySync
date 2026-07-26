@@ -1,23 +1,17 @@
-import mongoose from "mongoose";
-import { Room, Bed, Complaint, Payment, Tenant, Expense, Hostel } from "../models/index.js";
+import { Room, Complaint, Payment, Tenant, Expense, Hostel } from "../models/index.js";
 import { getOccupancySummary } from "./occupancyService.js";
 import { countOverdueTenants, sumOutstandingByStatus } from "./paymentService.js";
-
-function oid(id) {
-  if (!id || !mongoose.isValidObjectId(id)) return null;
-  return new mongoose.Types.ObjectId(id);
-}
+import { toObjectId } from "../utils/scope.js";
 
 export async function getDashboardStats(ownerId, hostelId) {
   const now = new Date();
   const currentMonth = now.toLocaleString("en-US", { month: "long" });
   const currentYear = now.getFullYear();
 
-  // Calculate previous month end for trend comparison
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  // End of previous month for trend comparison
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  const [occupancy, activeComplaints, totalTenants, previousTotalTenants, overdueTenants, dues, monthlyRevenue] =
+  const [occupancy, activeComplaints, totalTenants, previousTotalTenants, overdueTenants, dues, monthlyRevenue, totalDeposits] =
     await Promise.all([
       getOccupancySummary(ownerId, hostelId),
       Complaint.countDocuments({
@@ -38,11 +32,23 @@ export async function getDashboardStats(ownerId, hostelId) {
       Payment.aggregate([
         {
           $match: {
-            ownerId: oid(ownerId),
-            hostelId: oid(hostelId),
+            ownerId: toObjectId(ownerId),
+            hostelId: toObjectId(hostelId),
             paymentStatus: "paid",
+            paymentType: { $ne: "deposit" },
             year: currentYear,
             paymentMonth: currentMonth,
+          },
+        },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]),
+      Payment.aggregate([
+        {
+          $match: {
+            ownerId: toObjectId(ownerId),
+            hostelId: toObjectId(hostelId),
+            paymentType: "deposit",
+            paymentStatus: "paid",
           },
         },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
@@ -61,6 +67,7 @@ export async function getDashboardStats(ownerId, hostelId) {
     overdueAmount: dues.overdueAmount,
     unpaidAmount: dues.unpaidAmount,
     monthlyRevenue: monthlyRevenue[0]?.total ?? 0,
+    totalDeposits: totalDeposits[0]?.total ?? 0,
   };
 }
 
@@ -83,7 +90,7 @@ export async function getPaymentAnalytics(ownerId, hostelId) {
   ];
 
   const data = await Payment.aggregate([
-    { $match: { ownerId: oid(ownerId), hostelId: oid(hostelId), year } },
+    { $match: { ownerId: toObjectId(ownerId), hostelId: toObjectId(hostelId), paymentType: { $ne: "deposit" }, year } },
     {
       $group: {
         _id: "$paymentMonth",
@@ -110,7 +117,7 @@ export async function getComplaintTrends(ownerId, hostelId) {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   return Complaint.aggregate([
-    { $match: { ownerId: oid(ownerId), hostelId: oid(hostelId), createdAt: { $gte: thirtyDaysAgo } } },
+    { $match: { ownerId: toObjectId(ownerId), hostelId: toObjectId(hostelId), createdAt: { $gte: thirtyDaysAgo } } },
     {
       $group: {
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -137,9 +144,10 @@ export async function getHostelsSummary(ownerId) {
         Payment.aggregate([
           {
             $match: {
-              ownerId: oid(ownerId),
-              hostelId: oid(h._id),
+              ownerId: toObjectId(ownerId),
+              hostelId: toObjectId(h._id),
               paymentStatus: "paid",
+              paymentType: { $ne: "deposit" },
               year: currentYear,
               paymentMonth: currentMonth,
             },
@@ -149,8 +157,8 @@ export async function getHostelsSummary(ownerId) {
         Expense.aggregate([
           {
             $match: {
-              ownerId: oid(ownerId),
-              hostelId: oid(h._id),
+              ownerId: toObjectId(ownerId),
+              hostelId: toObjectId(h._id),
               date: {
                 $gte: new Date(currentYear, new Date().getMonth(), 1),
                 $lt: new Date(currentYear, new Date().getMonth() + 1, 1),

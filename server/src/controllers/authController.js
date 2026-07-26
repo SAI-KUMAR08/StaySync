@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { success, fail } from "../utils/apiResponse.js";
+import { success } from "../utils/apiResponse.js";
 import * as authService from "../services/authService.js";
 import { Owner, Tenant } from "../models/index.js";
 import { AppError } from "../middleware/error.middleware.js";
@@ -17,14 +17,19 @@ function getClientMeta(req) {
   };
 }
 
-export const register = asyncHandler(async (req, res) => {
-  const result = await authService.registerOwner(req.validated.body);
-  res.cookie("refreshToken", result.refreshToken, {
+/** Set httpOnly refresh token cookie on the response */
+function setRefreshCookie(res, token) {
+  res.cookie("refreshToken", token, {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "None" : "Lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+}
+
+export const register = asyncHandler(async (req, res) => {
+  const result = await authService.registerOwner(req.validated.body);
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result, 201);
 });
 
@@ -35,12 +40,7 @@ export const sendOwnerOtp = asyncHandler(async (req, res) => {
 
 export const verifyOwnerOtp = asyncHandler(async (req, res) => {
   const result = await authService.verifyOwnerOtpAndRegister(req.validated.body);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
@@ -52,24 +52,14 @@ export const sendOwnerLoginOtp = asyncHandler(async (req, res) => {
 export const verifyOwnerLoginOtp = asyncHandler(async (req, res) => {
   const meta = getClientMeta(req);
   const result = await authService.verifyOwnerLoginOtp(req.validated.body, meta);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
 export const login = asyncHandler(async (req, res) => {
   const meta = getClientMeta(req);
   const result = await authService.loginUser(req.validated.body, meta);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
@@ -81,12 +71,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
 export const verifyOtp = asyncHandler(async (req, res) => {
   const meta = getClientMeta(req);
   const result = await authService.verifyTenantOtp(req.validated.body, meta);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
@@ -98,34 +83,19 @@ export const checkTenantStatus = asyncHandler(async (req, res) => {
 export const tenantLogin = asyncHandler(async (req, res) => {
   const meta = getClientMeta(req);
   const result = await authService.loginTenantWithPassword(req.validated.body, meta);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
 export const tenantSetPassword = asyncHandler(async (req, res) => {
   const result = await authService.setTenantPassword(req.validated.body);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
 export const tenantSetInitialPassword = asyncHandler(async (req, res) => {
   const result = await authService.setInitialTenantPassword(req.validated.body);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
@@ -136,26 +106,16 @@ export const sendForgotOtp = asyncHandler(async (req, res) => {
 
 export const resetPassword = asyncHandler(async (req, res) => {
   const result = await authService.resetTenantPassword(req.validated.body);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
 export const refresh = asyncHandler(async (req, res) => {
   const token = req.body?.refreshToken || req.cookies?.refreshToken;
-  if (!token) return fail(res, "Refresh token required", 401);
+  if (!token) throw new AppError("Refresh token required", 401);
   const meta = getClientMeta(req);
   const result = await authService.refreshSession(token, meta);
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 
@@ -181,12 +141,7 @@ export const switchHostel = asyncHandler(async (req, res) => {
     ownerId: req.user.id,
     hostelId: req.validated.body.hostelId,
   });
-  res.cookie("refreshToken", result.refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
+  setRefreshCookie(res, result.refreshToken);
   return success(res, result);
 });
 

@@ -16,7 +16,6 @@ import { syncHostelPaymentStatuses, syncPaymentStatusesOnly, ensureTenantRentInv
 import { normalizePhone } from "../utils/phone.js";
 import { escapeRegex } from "../utils/regex.js";
 
-const filter = (req) => ownerFilter(req);
 
 export const listHostels = asyncHandler(async (req, res) => {
   const hostels = await Hostel.find({ ownerId: req.user.id, isActive: true }).sort({ createdAt: -1 });
@@ -38,14 +37,14 @@ export const createHostel = asyncHandler(async (req, res) => {
 });
 
 export const listFloors = asyncHandler(async (req, res) => {
-  const floors = await Floor.find({ ...filter(req), isActive: true }).sort({ floorNumber: 1 });
+  const floors = await Floor.find({ ...ownerFilter(req), isActive: true }).sort({ floorNumber: 1 });
   return success(res, floors);
 });
 
 
 
 export const getHostelStructure = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const ownerId = f.ownerId instanceof mongoose.Types.ObjectId ? f.ownerId : new mongoose.Types.ObjectId(f.ownerId);
   const hostelId = f.hostelId instanceof mongoose.Types.ObjectId ? f.hostelId : new mongoose.Types.ObjectId(f.hostelId);
 
@@ -93,7 +92,7 @@ export const getHostelStructure = asyncHandler(async (req, res) => {
 });
 
 export const createFloor = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const body = req.validated.body || {};
   let floorName = body.floorName || body.name;
   let floorNumber = body.floorNumber ?? body.level;
@@ -108,7 +107,7 @@ export const createFloor = asyncHandler(async (req, res) => {
 });
 
 export const setupHostel = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const { floors } = req.body; // Array of floors, each with rooms
 
   const session = await mongoose.startSession();
@@ -150,7 +149,8 @@ export const setupHostel = asyncHandler(async (req, res) => {
     return success(res, { message: "Hostel setup complete" }, 201);
   } catch (e) {
     await session.abortTransaction();
-    throw new AppError(e.message, 400);
+    console.error("[setupHostel]", e);
+    throw new AppError("Hostel setup failed", 400);
   } finally {
     session.endSession();
   }
@@ -177,7 +177,7 @@ export const getOccupancy = asyncHandler(async (req, res) => {
 });
 
 export const getDashboard = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
 
   await syncPaymentStatusesOnly(resolvedOwnerId, f.hostelId);
@@ -234,6 +234,7 @@ export const getFinancialOverview = asyncHandler(async (req, res) => {
       $match: {
         ownerId: new mongoose.Types.ObjectId(resolvedOwnerId),
         paymentStatus: "paid",
+        paymentType: { $ne: "deposit" },
         year: currentYear,
         paymentMonth: currentMonth,
       },
@@ -275,14 +276,14 @@ export const getFinancialOverview = asyncHandler(async (req, res) => {
 });
 
 export const listRooms = asyncHandler(async (req, res) => {
-  const rooms = await Room.find({ ...filter(req), isActive: true })
+  const rooms = await Room.find({ ...ownerFilter(req), isActive: true })
     .populate("floorId", "floorName floorNumber")
     .sort({ roomNumber: 1 });
   return success(res, rooms);
 });
 
 export const createRoom = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const { roomNumber, floor, floorId, pricing, monthlyRent, capacity, amenities } = req.validated.body;
 
   const effectivePricing = pricing ?? monthlyRent ?? 0;
@@ -320,7 +321,7 @@ export const createRoom = asyncHandler(async (req, res) => {
 });
 
 export const updateRoom = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const room = await Room.findOne({ _id: req.validated.params.id, ...f });
   if (!room) throw new AppError("Room not found", 404);
 
@@ -344,20 +345,30 @@ export const updateRoom = asyncHandler(async (req, res) => {
 });
 
 export const deleteRoom = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const room = await Room.findOne({ _id: req.validated.params.id, ...f });
   if (!room) throw new AppError("Room not found", 404);
   const occupied = await Bed.countDocuments({ ...f, roomId: room._id, occupancyStatus: "occupied" });
   if (occupied > 0) throw new AppError("Cannot delete room with occupied beds", 400);
 
-  await Bed.deleteMany({ ...f, roomId: room._id });
-  room.isActive = false;
-  await room.save();
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    await Bed.deleteMany({ ...f, roomId: room._id }, { session });
+    room.isActive = false;
+    await room.save({ session });
+    await session.commitTransaction();
+  } catch (e) {
+    await session.abortTransaction();
+    throw new AppError("Failed to delete room", 400);
+  } finally {
+    session.endSession();
+  }
   return success(res, { message: "Room deleted" });
 });
 
 export const listBeds = asyncHandler(async (req, res) => {
-  const query = { ...filter(req) };
+  const query = { ...ownerFilter(req) };
   if (req.query.roomId) query.roomId = req.query.roomId;
   const beds = await Bed.find(query)
     .populate("tenantId", "personalInfo.name personalInfo.email")
@@ -367,7 +378,7 @@ export const listBeds = asyncHandler(async (req, res) => {
 });
 
 export const updateBed = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const { status, bedLabel, monthlyRent, bedNumber, pricing } = req.validated.body;
 
   // Use actual DB field names
@@ -401,7 +412,7 @@ export const updateBed = asyncHandler(async (req, res) => {
 });
 
 export const listTenants = asyncHandler(async (req, res) => {
-  const query = { ...filter(req) };
+  const query = { ...ownerFilter(req) };
   const { search, status } = req.query;
 
   if (status === "active") query.isActive = true;
@@ -427,7 +438,7 @@ export const listTenants = asyncHandler(async (req, res) => {
 });
 
 export const getTenant = asyncHandler(async (req, res) => {
-  const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...filter(req) })
+  const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...ownerFilter(req) })
     .populate("hostelId", "name")
     .populate("floorId", "floorName floorNumber")
     .populate("roomId", "roomNumber floor")
@@ -437,7 +448,7 @@ export const getTenant = asyncHandler(async (req, res) => {
 });
 
 export const createTenant = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const {
     name,
     email,
@@ -449,23 +460,28 @@ export const createTenant = asyncHandler(async (req, res) => {
     monthlyRent,
     joinDate,
     idProof,
+    isSecurityDepositPaid,
+    securityDepositAmount,
   } = req.validated.body;
 
-  const normalizedEmail = email.trim().toLowerCase();
   const normalizedPhone = normalizePhone(phone);
   if (normalizedPhone.length < 10) {
     throw new AppError("Enter a valid 10-digit mobile number", 400);
   }
 
-  const ownerClash = await Owner.findOne({ email: normalizedEmail });
-  if (ownerClash) throw new AppError("Email is already used by a hostel owner", 409);
+  const normalizedEmail = email ? email.trim().toLowerCase() : undefined;
 
-  const existsEmail = await Tenant.findOne({
-    "personalInfo.email": normalizedEmail,
-    ownerId: f.ownerId,
-    hostelId: f.hostelId,
-  });
-  if (existsEmail) throw new AppError("Tenant email already exists in this hostel", 409);
+  if (normalizedEmail) {
+    const ownerClash = await Owner.findOne({ email: normalizedEmail });
+    if (ownerClash) throw new AppError("Email is already used by a hostel owner", 409);
+
+    const existsEmail = await Tenant.findOne({
+      "personalInfo.email": normalizedEmail,
+      ownerId: f.ownerId,
+      hostelId: f.hostelId,
+    });
+    if (existsEmail) throw new AppError("Tenant email already exists in this hostel", 409);
+  }
 
   const existsPhone = await Tenant.findOne({ "personalInfo.phone": normalizedPhone });
   if (existsPhone) throw new AppError("Tenant already registered with this number", 409);
@@ -516,6 +532,34 @@ export const createTenant = asyncHandler(async (req, res) => {
 
     await ensureTenantRentInvoices(result, session);
 
+    // Create security deposit payment for new residents (one-time, separate from rent)
+    const depositAmount = securityDepositAmount || 0;
+    if (depositAmount > 0) {
+      const existingDeposit = await Payment.findOne({
+        tenantId: result._id,
+        paymentType: "deposit",
+      }).session(session);
+      if (!existingDeposit) {
+        const now = new Date();
+        await Payment.create([{
+          ownerId: f.ownerId,
+          hostelId: f.hostelId,
+          tenantId: result._id,
+          amount: depositAmount,
+          fineAmount: 0,
+          totalAmount: depositAmount,
+          paymentMonth: now.toLocaleString("en-US", { month: "long" }),
+          year: now.getFullYear(),
+          dueDate: isSecurityDepositPaid ? now : new Date(now.getFullYear(), now.getMonth() + 1, 5),
+          paidDate: isSecurityDepositPaid ? now : null,
+          paymentStatus: isSecurityDepositPaid ? "paid" : "unpaid",
+          paymentMethod: isSecurityDepositPaid ? "cash" : undefined,
+          paymentType: "deposit",
+          notes: `Security deposit for ${result.name || result.personalInfo?.name || "new resident"}`,
+        }], { session });
+      }
+    }
+
     await session.commitTransaction();
     await logActivity({
       ...f,
@@ -540,7 +584,8 @@ export const createTenant = asyncHandler(async (req, res) => {
   } catch (e) {
     await session.abortTransaction();
     if (e instanceof AppError) throw e;
-    throw new AppError(e.message || "Failed to create tenant", 400);
+    console.error("[createTenant]", e);
+    throw new AppError("Failed to create tenant", 400);
   } finally {
     session.endSession();
   }
@@ -563,22 +608,48 @@ export const updateTenant = asyncHandler(async (req, res) => {
     delete updates.email;
   }
 
-  // Direct field mappings (these are already top-level)
-  // emergencyContact, aadhaarNumber, idProof, offlineBookingForm, monthlyRent,
-  // isSecurityDepositPaid, securityDepositAmount, securityDepositDate
-  // These are passed through directly from req.validated.body
-
   const tenant = await Tenant.findOneAndUpdate(
-    { _id: req.validated.params.id, ...filter(req) },
+    { _id: req.validated.params.id, ...ownerFilter(req) },
     { $set: updates },
     { new: true, runValidators: true }
   );
   if (!tenant) throw new AppError("Tenant not found", 404);
+
+  // If deposit was marked as paid in the update, create a Payment record
+  if (updates.isSecurityDepositPaid === true) {
+    const existingDeposit = await Payment.findOne({
+      tenantId: tenant._id,
+      paymentType: "deposit",
+    });
+    if (!existingDeposit) {
+      const now = new Date();
+      const amount = updates.securityDepositAmount || tenant.securityDepositAmount || 0;
+      if (amount > 0) {
+        await Payment.create({
+          ownerId: tenant.ownerId,
+          hostelId: tenant.hostelId,
+          tenantId: tenant._id,
+          amount,
+          fineAmount: 0,
+          totalAmount: amount,
+          paymentMonth: now.toLocaleString("en-US", { month: "long" }),
+          year: now.getFullYear(),
+          dueDate: now,
+          paidDate: now,
+          paymentStatus: "paid",
+          paymentMethod: "cash",
+          paymentType: "deposit",
+          notes: `Security deposit for ${tenant.name || tenant.personalInfo?.name || "resident"}`,
+        });
+      }
+    }
+  }
+
   return success(res, tenant);
 });
 
 export const assignBed = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
@@ -608,14 +679,15 @@ export const assignBed = asyncHandler(async (req, res) => {
     return success(res, result);
   } catch (e) {
     await session.abortTransaction();
-    throw new AppError(e.message, 400);
+    console.error("[assignBed]", e);
+    throw new AppError("Failed to assign bed", 400);
   } finally {
     session.endSession();
   }
 });
 
 export const removeTenant = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...f });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
@@ -664,7 +736,7 @@ export const removeTenant = asyncHandler(async (req, res) => {
 });
 
 export const listComplaints = asyncHandler(async (req, res) => {
-  const query = { ...filter(req) };
+  const query = { ...ownerFilter(req) };
   const { status, search } = req.query;
 
   if (status === "in_progress") {
@@ -676,7 +748,7 @@ export const listComplaints = asyncHandler(async (req, res) => {
   if (search?.trim()) {
     const safeSearch = escapeRegex(search.trim());
     const tenants = await Tenant.find({
-      ...filter(req),
+      ...ownerFilter(req),
       "personalInfo.name": { $regex: safeSearch, $options: "i" },
     }).select("_id");
     query.$or = [
@@ -696,7 +768,7 @@ export const listComplaints = asyncHandler(async (req, res) => {
 });
 
 export const updateComplaint = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const complaint = await Complaint.findOne({ _id: req.validated.params.id, ...f });
   if (!complaint) throw new AppError("Complaint not found", 404);
 
@@ -731,7 +803,7 @@ export const updateComplaint = asyncHandler(async (req, res) => {
 });
 
 export const listPayments = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   await syncHostelPaymentStatuses(f.ownerId, f.hostelId);
 
   const query = { ...f };
@@ -747,7 +819,7 @@ export const listPayments = asyncHandler(async (req, res) => {
     } else {
       const safeSearch = escapeRegex(search.trim());
       const tenants = await Tenant.find({
-        ...filter(req),
+        ...ownerFilter(req),
         "personalInfo.name": { $regex: safeSearch, $options: "i" },
       }).select("_id");
       if (tenants.length) {
@@ -774,13 +846,20 @@ export const listPayments = asyncHandler(async (req, res) => {
 });
 
 export const createPayment = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const { tenantId, amount, fineAmount, paymentMonth, month, year, dueDate, notes } = req.validated.body;
   const tenant = await Tenant.findOne({ _id: tenantId, ...f, isActive: true });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
-  const totalAmount = amount + (fineAmount ?? 0);
   const effectivePaymentMonth = paymentMonth || month;
+  // Prevent duplicate rent payments for the same month/year
+  const existingPaid = await Payment.findOne({
+    tenantId, paymentMonth: effectivePaymentMonth, year,
+    paymentType: { $ne: "deposit" }, paymentStatus: "paid",
+  });
+  if (existingPaid) throw new AppError(`${tenant.name || "Resident"} already paid rent for ${effectivePaymentMonth} ${year}`, 409);
+
+  const totalAmount = amount + (fineAmount ?? 0);
   const payment = await Payment.create({
     ...f,
     tenantId,
@@ -803,7 +882,7 @@ export const createPayment = asyncHandler(async (req, res) => {
 });
 
 export const updatePayment = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const payment = await Payment.findOne({ _id: req.validated.params.id, ...f });
   if (!payment) throw new AppError("Payment not found", 404);
 
@@ -822,14 +901,12 @@ export const updatePayment = asyncHandler(async (req, res) => {
   }
   delete updates.status;
 
-  // Compute new totalAmount if fineAmount changes
+  // Always apply all updates; recalculate totalAmount if fineAmount changes
+  payment.set(updates);
   if (updates.fineAmount !== undefined) {
-    payment.fineAmount = updates.fineAmount;
     payment.totalAmount = payment.amount + payment.fineAmount;
-    await payment.save();
-  } else {
-    await payment.set(updates).save();
   }
+  await payment.save();
 
   // Re-fetch to return the up-to-date document with populated references
   const updated = await Payment.findById(payment._id).populate({
@@ -852,7 +929,7 @@ export const updatePayment = asyncHandler(async (req, res) => {
 });
 
 export const getPaymentTotals = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const resolvedOwnerId = req.user.role === "manager" ? req.user.ownerId : req.user.id;
   const hostelId = f.hostelId;
   const ownerId = resolvedOwnerId;
@@ -866,6 +943,7 @@ export const getPaymentTotals = asyncHandler(async (req, res) => {
       $match: {
         ownerId: new mongoose.Types.ObjectId(ownerId),
         hostelId: new mongoose.Types.ObjectId(hostelId),
+        paymentType: { $ne: "deposit" },
       },
     },
     {
@@ -939,12 +1017,12 @@ export const getPaymentTotals = asyncHandler(async (req, res) => {
 });
 
 export const listNotices = asyncHandler(async (req, res) => {
-  const notices = await Notice.find(filter(req)).sort({ createdAt: -1 }).limit(100);
+  const notices = await Notice.find(ownerFilter(req)).sort({ createdAt: -1 }).limit(100);
   return success(res, notices);
 });
 
 export const createNotice = asyncHandler(async (req, res) => {
-  const notice = await Notice.create({ ...filter(req), ...req.validated.body, isActive: true });
+  const notice = await Notice.create({ ...ownerFilter(req), ...req.validated.body, isActive: true });
 
   const io = req.app.get("io");
   if (io) {
@@ -957,21 +1035,21 @@ export const createNotice = asyncHandler(async (req, res) => {
 export const deleteNotice = asyncHandler(async (req, res) => {
   const notice = await Notice.findOneAndDelete({
     _id: req.validated.params.id,
-    ...filter(req),
+    ...ownerFilter(req),
   });
   if (!notice) throw new AppError("Notice not found", 404);
   return success(res, { message: "Notice deleted" });
 });
 
 export const getHostel = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const hostel = await Hostel.findOne({ ownerId: f.ownerId, _id: f.hostelId });
   if (!hostel) throw new AppError("Hostel not found", 404);
   return success(res, hostel);
 });
 
 export const updateHostel = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const hostel = await Hostel.findOneAndUpdate(
     { ownerId: f.ownerId, _id: f.hostelId },
     { $set: req.validated.body },
@@ -982,7 +1060,7 @@ export const updateHostel = asyncHandler(async (req, res) => {
 });
 
 export const listBedShiftRequests = asyncHandler(async (req, res) => {
-  const requests = await BedShiftRequest.find(filter(req))
+  const requests = await BedShiftRequest.find(ownerFilter(req))
     .populate("tenantId", "personalInfo.name personalInfo.email")
     .populate("currentBedId", "bedNumber")
     .sort({ createdAt: -1 });
@@ -990,7 +1068,7 @@ export const listBedShiftRequests = asyncHandler(async (req, res) => {
 });
 
 export const updateBedShiftRequest = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const request = await BedShiftRequest.findOne({ _id: req.validated.params.id, ...f });
   if (!request) throw new AppError("Request not found", 404);
 
@@ -1032,7 +1110,7 @@ export const updateBedShiftRequest = asyncHandler(async (req, res) => {
 });
 
 export const getTenantHistory = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const history = await RoomAssignmentHistory.find({
     tenantId: req.validated.params.id,
     ownerId: f.ownerId,
@@ -1046,7 +1124,7 @@ export const getTenantHistory = asyncHandler(async (req, res) => {
 });
 
 export const getTenantPayments = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const tenantId = req.validated.params.id;
 
   // Verify tenant exists and belongs to this owner/hostel
@@ -1116,7 +1194,7 @@ export const deleteManager = asyncHandler(async (req, res) => {
 // ── Payment Requests (owner review) ────────────────────────
 
 export const listPaymentRequests = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const { status } = req.query;
   const query = { ...f };
   if (status) query.status = status;
@@ -1129,7 +1207,7 @@ export const listPaymentRequests = asyncHandler(async (req, res) => {
 });
 
 export const reviewPaymentRequest = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const { status, reviewNotes } = req.validated.body;
   const request = await PaymentRequest.findOne({ _id: req.validated.params.id, ...f });
   if (!request) throw new AppError("Payment request not found", 404);
@@ -1184,7 +1262,7 @@ export const reviewPaymentRequest = asyncHandler(async (req, res) => {
 // ── Convert Temporary to Permanent ──────────────────────────
 
 export const convertToPermanent = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const tenant = await Tenant.findOne({ _id: req.validated.params.id, ...f });
   if (!tenant) throw new AppError("Tenant not found", 404);
   if (!tenant.isTemporary) throw new AppError("Tenant is already permanent", 400);
@@ -1277,7 +1355,8 @@ export const convertToPermanent = asyncHandler(async (req, res) => {
     });
   } catch (e) {
     await session.abortTransaction();
-    throw new AppError(e.message || "Failed to convert tenant to permanent", 400);
+    console.error("[convertToPermanent]", e);
+    throw new AppError("Failed to convert tenant to permanent", 400);
   } finally {
     session.endSession();
   }
@@ -1286,7 +1365,7 @@ export const convertToPermanent = asyncHandler(async (req, res) => {
 // ── Incomplete Profile Validation ─────────────────────────
 
 export const getIncompleteProfiles = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const f = ownerFilter(req);
   const tenants = await Tenant.find({ ...f, isActive: true }).lean();
 
   const incomplete = tenants.map((t) => {

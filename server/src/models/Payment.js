@@ -20,7 +20,7 @@ const paymentSchema = new mongoose.Schema(
     paymentMethod: { type: String, trim: true },
     receiptNumber: { type: String, trim: true },
     notes: { type: String, trim: true },
-    
+    paymentType: { type: String, enum: ["rent", "deposit", "fee"], default: "rent" },
   },
   { timestamps: true }
 );
@@ -32,8 +32,8 @@ paymentSchema.set("toObject", { virtuals: true });
 paymentSchema.index({ ownerId: 1, hostelId: 1, tenantId: 1 });
 paymentSchema.index({ ownerId: 1, hostelId: 1, paymentStatus: 1 });
 paymentSchema.index({ ownerId: 1, hostelId: 1, year: 1, paymentMonth: 1 });
-// Prevent duplicate invoices for the same tenant-period
-paymentSchema.index({ tenantId: 1, paymentMonth: 1, year: 1 }, { unique: true });
+// Prevent duplicate invoices for the same tenant-period and type
+paymentSchema.index({ tenantId: 1, paymentMonth: 1, year: 1, paymentType: 1 }, { unique: true });
 
 export const Payment = mongoose.model("Payment", paymentSchema);
 

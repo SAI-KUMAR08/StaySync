@@ -18,6 +18,7 @@ export const initCronJobs = () => {
       let rentCount = 0;
 
       for (const hostel of hostels) {
+        try {
         const tenants = await Tenant.find({
           isActive: true,
           ownerId: hostel.ownerId,
@@ -80,6 +81,9 @@ export const initCronJobs = () => {
             )
           );
         }
+        } catch (err) {
+          console.error("[cron] Rent generation error for hostel", hostel._id, err);
+        }
       }
 
       console.log(`✅ Created ${rentCount} new rent invoices today.`);
@@ -89,6 +93,7 @@ export const initCronJobs = () => {
       const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
       for (const hostel of hostels) {
+        try {
         const unpaidPayments = await Payment.find({
           ownerId: hostel.ownerId,
           hostelId: hostel._id,
@@ -133,6 +138,9 @@ export const initCronJobs = () => {
         if (bulkOps.length > 0) {
           await Payment.bulkWrite(bulkOps);
         }
+        } catch (err) {
+          console.error("[cron] Late fee error for hostel", hostel._id, err);
+        }
       }
 
       console.log(`✅ Updated ${lateCount} overdue invoices with late fees today.`);
@@ -153,6 +161,7 @@ export const initCronJobs = () => {
       let createdCount = 0;
 
       for (const hostel of hostels) {
+        try {
         const tenants = await Tenant.find({
           isActive: true,
           ownerId: hostel.ownerId,
@@ -204,6 +213,9 @@ export const initCronJobs = () => {
             )
           );
         }
+        } catch (err) {
+          console.error("[cron] Monthly payment error for hostel", hostel._id, err);
+        }
       }
 
       console.log(`✅ Created ${createdCount} monthly rent payments for all active residents.`);
@@ -221,6 +233,7 @@ export const initCronJobs = () => {
       let resolvedCount = 0;
 
       for (const hostel of hostels) {
+        try {
         const f = { ownerId: hostel.ownerId, hostelId: hostel._id };
         const tenants = await Tenant.find({ ...f, isActive: true }).lean();
 
@@ -287,6 +300,9 @@ export const initCronJobs = () => {
             });
             createdCount++;
           }
+        }
+        } catch (err) {
+          console.error("[cron] Incomplete profile error for hostel", hostel._id, err);
         }
       }
 

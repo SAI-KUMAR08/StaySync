@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "./AuthContext";
 
@@ -16,7 +16,6 @@ export const PaymentProvider = ({ children }) => {
     collectionRate: 0,
   });
   const [loading, setLoading] = useState(false);
-  const fetchRef = useRef(null);
 
   const fetchTotals = useCallback(async () => {
     if (!user?.hostelId) return;
@@ -33,8 +32,6 @@ export const PaymentProvider = ({ children }) => {
       setLoading(false);
     }
   }, [user?.hostelId]);
-
-  fetchRef.current = fetchTotals;
 
   // Fetch on hostel change
   useEffect(() => {

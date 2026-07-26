@@ -5,8 +5,57 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/
 import { AppError } from "../middleware/error.middleware.js";
 import { normalizePhone } from "../utils/phone.js";
 
-import { isMockOtp, DEMO_OTP } from "../config/payments.js";
 import { sendOtpEmail } from "./emailService.js";
+import { generateTemporaryPassword } from "../utils/password.js";
+
+/**
+ * Verify an OTP code for a given user. Marks the OTP as verified on success.
+ * Throws AppError with appropriate message on failure (missing, invalid, expired).
+ */
+async function verifyOTP(userId, otp) {
+  const otpDoc = await OTP.findOne({ userId, verified: false }).sort({ createdAt: -1 });
+  if (!otpDoc) {
+    throw new AppError("OTP session not found. Please request a new OTP.", 404);
+  }
+
+  const storedOk = otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
+
+  if (!storedOk) {
+    throw new AppError("Invalid or expired OTP", 401);
+  }
+
+  otpDoc.verified = true;
+  await otpDoc.save();
+  return otpDoc;
+}
+
+/**
+ * Resolve ownerId, hostelId, and hostel for an owner or manager user.
+ */
+async function resolveOwnerHostel(user) {
+  if (user.role === "manager") {
+    const hostel = await Hostel.findOne({ _id: user.hostelId, isActive: true });
+    return { ownerId: user.ownerId, hostelId: user.hostelId, hostel };
+  }
+  const hostel = await Hostel.findOne({ ownerId: user._id, isActive: true });
+  return { ownerId: user._id, hostelId: hostel?._id, hostel };
+}
+
+/** Check if a 60-second OTP cooldown is still active for this user. Throws if too soon. */
+async function checkOtpCooldown(userId) {
+  const latestOtp = await OTP.findOne({ userId }).sort({ createdAt: -1 });
+  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
+    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
+  }
+}
+
+/** Generate a new OTP value and expiry (10 min from now) */
+function generateOtp() {
+  return {
+    otpVal: crypto.randomInt(100000, 999999).toString(),
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+  };
+}
 
 function buildAuthUser(entity, role, extra = {}) {
   return {
@@ -119,6 +168,7 @@ export async function registerOwner({ name, email, password, phone, hostelName, 
 export async function sendOwnerOtp({ name, email, password, phone, hostelName, address, city }) {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedPhone = normalizePhone(phone);
+  password = password || generateTemporaryPassword();
 
   if (normalizedPhone.length < 10) {
     throw new AppError("Enter a valid 10-digit mobile number", 400);
@@ -131,8 +181,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
   ]);
   if (existingOwner || existingTenant) throw new AppError("Email already registered", 409);
 
-  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  const { otpVal, expiresAt } = generateOtp();
 
   // Find or update/create inactive Owner record
   let owner = await Owner.findOne({ email: normalizedEmail, isActive: false });
@@ -170,12 +219,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
     });
   }
 
-  // Check for 60-second OTP cooldown
-  const latestOtp = await OTP.findOne({ userId: owner._id }).sort({ createdAt: -1 });
-  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
-    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
-  }
-
+  await checkOtpCooldown(owner);
   // Save OTP in the OTP collection
   await OTP.findOneAndUpdate(
     { userId: owner._id, mobile: normalizedPhone },
@@ -185,11 +229,6 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
 
   // Send OTP via email
   await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Registration", name: name.trim() });
-
-  if (isMockOtp()) {
-    console.log(`[DEMO OTP] Owner registration ${normalizedEmail} → ${DEMO_OTP}`);
-    return { message: "OTP sent successfully", otp: DEMO_OTP, mock: true };
-  }
 
   return { message: "OTP sent successfully" };
 }
@@ -236,22 +275,7 @@ export async function verifyOwnerOtpAndRegister({ email, otp }) {
     throw new AppError("Owner registration session not found. Please register again.", 404);
   }
 
-  const otpDoc = await OTP.findOne({ userId: owner._id, verified: false }).sort({ createdAt: -1 });
-  if (!otpDoc) {
-    throw new AppError("OTP session not found. Please request a new OTP.", 404);
-  }
-
-  const demoOk = isMockOtp() && otp === DEMO_OTP;
-  const storedOk =
-    otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
-
-  if (!demoOk && !storedOk) {
-    throw new AppError("Invalid or expired OTP", 401);
-  }
-
-  // Mark OTP as verified
-  otpDoc.verified = true;
-  await otpDoc.save();
+  await verifyOTP(owner._id, otp);
 
   // Activate owner
   owner.isActive = true;
@@ -292,14 +316,8 @@ export async function sendOwnerLoginOtp({ email }) {
     throw new AppError("No active account found with this email", 404);
   }
 
-  // Check for 60-second OTP cooldown
-  const latestOtp = await OTP.findOne({ userId: owner._id }).sort({ createdAt: -1 });
-  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
-    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
-  }
-
-  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await checkOtpCooldown(owner);
+  const { otpVal, expiresAt } = generateOtp();
 
   await OTP.findOneAndUpdate(
     { userId: owner._id, mobile: normalizedEmail },
@@ -309,11 +327,6 @@ export async function sendOwnerLoginOtp({ email }) {
 
   // Send OTP via email
   await sendOtpEmail({ to: normalizedEmail, otp: otpVal, purpose: "Owner Login", name: owner.name });
-
-  if (isMockOtp()) {
-    console.log(`[DEMO OTP] Owner login ${normalizedEmail} → ${DEMO_OTP}`);
-    return { message: "OTP sent to your email", otp: DEMO_OTP, mock: true };
-  }
 
   return { message: "OTP sent to your email" };
 }
@@ -329,38 +342,12 @@ export async function verifyOwnerLoginOtp({ email, otp }, meta = {}) {
     throw new AppError("No active account found with this email", 404);
   }
 
-  const otpDoc = await OTP.findOne({ userId: owner._id, verified: false }).sort({ createdAt: -1 });
-  if (!otpDoc) {
-    throw new AppError("OTP session not found. Please request a new OTP.", 404);
-  }
-
-  const demoOk = isMockOtp() && otp === DEMO_OTP;
-  const storedOk = otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
-
-  if (!demoOk && !storedOk) {
-    throw new AppError("Invalid or expired OTP", 401);
-  }
-
-  // Mark OTP as verified
-  otpDoc.verified = true;
-  await otpDoc.save();
+  await verifyOTP(owner._id, otp);
 
   // Reset any previous lockout
   await owner.resetLoginAttempts();
 
-  let ownerId = owner._id;
-  let hostelId;
-  let hostel;
-
-  if (owner.role === "manager") {
-    ownerId = owner.ownerId;
-    hostelId = owner.hostelId;
-    hostel = await Hostel.findOne({ _id: hostelId, isActive: true });
-  } else {
-    hostel = await Hostel.findOne({ ownerId: owner._id, isActive: true });
-    hostelId = hostel?._id;
-  }
-
+  const { ownerId, hostelId, hostel } = await resolveOwnerHostel(owner);
   if (!hostel) throw new AppError("No active hostel found", 404);
 
   const tokens = await issueTokens(owner, owner.role, {
@@ -408,19 +395,7 @@ export async function loginUser({ email, password }, meta = {}) {
   // ✅ Successful login — reset attempts
   await user.resetLoginAttempts();
 
-  let ownerId = user._id;
-  let hostelId;
-  let hostel;
-
-  if (user.role === "manager") {
-    ownerId = user.ownerId;
-    hostelId = user.hostelId;
-    hostel = await Hostel.findOne({ _id: hostelId, isActive: true });
-  } else {
-    hostel = await Hostel.findOne({ ownerId: user._id, isActive: true });
-    hostelId = hostel?._id;
-  }
-
+  const { ownerId, hostelId, hostel } = await resolveOwnerHostel(user);
   if (!hostel) throw new AppError("No active hostel found", 404);
 
   const tokens = await issueTokens(user, user.role, {
@@ -448,14 +423,8 @@ export async function sendTenantOtp({ phone }) {
   const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
-  // Check for 60-second OTP cooldown
-  const latestOtp = await OTP.findOne({ userId: tenant._id }).sort({ createdAt: -1 });
-  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
-    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
-  }
-
-  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  await checkOtpCooldown(tenant);
+  const { otpVal, expiresAt } = generateOtp();
 
   // Save OTP in OTP collection
   await OTP.findOneAndUpdate(
@@ -470,11 +439,6 @@ export async function sendTenantOtp({ phone }) {
     await sendOtpEmail({ to: tenantEmail, otp: otpVal, purpose: "Resident Login", name: tenant.personalInfo?.name || tenant.name });
   }
 
-  if (isMockOtp()) {
-    console.log(`[DEMO OTP] Tenant ${normalized} → ${DEMO_OTP}`);
-    return { message: "OTP sent successfully", otp: DEMO_OTP, mock: true };
-  }
-
   return { message: "OTP sent successfully" };
 }
 
@@ -484,22 +448,7 @@ export async function verifyTenantOtp({ phone, otp }, meta = {}) {
   const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
-  const otpDoc = await OTP.findOne({ userId: tenant._id, verified: false }).sort({ createdAt: -1 });
-  if (!otpDoc) {
-    throw new AppError("OTP session not found. Please request a new OTP.", 404);
-  }
-
-  const demoOk = isMockOtp() && otp === DEMO_OTP;
-  const storedOk =
-    otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
-
-  if (!demoOk && !storedOk) {
-    throw new AppError("Invalid or expired OTP", 401);
-  }
-
-  // Mark OTP as verified
-  otpDoc.verified = true;
-  await otpDoc.save();
+  await verifyOTP(tenant._id, otp);
 
   const tokens = await issueTokens(tenant, "tenant", {
     ownerId: tenant.ownerId,
@@ -589,22 +538,7 @@ export async function setTenantPassword({ phone, otp, password }) {
     throw new AppError("Password already set. Please login with your password.", 400);
   }
 
-  // Verify OTP before allowing password set
-  const otpDoc = await OTP.findOne({ userId: tenant._id, verified: false }).sort({ createdAt: -1 });
-  if (!otpDoc) {
-    throw new AppError("OTP session not found. Please request a new OTP.", 404);
-  }
-
-  const demoOk = isMockOtp() && otp === DEMO_OTP;
-  const storedOk = otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
-
-  if (!demoOk && !storedOk) {
-    throw new AppError("Invalid or expired OTP", 401);
-  }
-
-  // Mark OTP as verified
-  otpDoc.verified = true;
-  await otpDoc.save();
+  await verifyOTP(tenant._id, otp);
 
   tenant.personalInfo.password = password;
   tenant.isPasswordSet = true;
@@ -640,14 +574,9 @@ export async function sendTenantForgotOtp({ phone }) {
     throw new AppError("No valid email on record. Contact your hostel owner to update your email.", 400);
   }
 
-  // Check 60-second cooldown
-  const latestOtp = await OTP.findOne({ userId: tenant._id }).sort({ createdAt: -1 });
-  if (latestOtp && (Date.now() - latestOtp.createdAt.getTime() < 60 * 1000)) {
-    throw new AppError("Please wait 60 seconds before requesting a new OTP.", 429);
-  }
+  await checkOtpCooldown(tenant._id);
 
-  const otpVal = isMockOtp() ? DEMO_OTP : crypto.randomInt(100000, 999999).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  const { otpVal, expiresAt } = generateOtp();
 
   await OTP.findOneAndUpdate(
     { userId: tenant._id, mobile: normalized },
@@ -657,11 +586,6 @@ export async function sendTenantForgotOtp({ phone }) {
 
   // Send OTP via email
   await sendOtpEmail({ to: email, otp: otpVal, purpose: "Password Reset", name: tenant.personalInfo?.name || tenant.name });
-
-  if (isMockOtp()) {
-    console.log(`[DEMO OTP] Forgot password for ${email} → ${DEMO_OTP}`);
-    return { message: "OTP sent to your registered email", otp: DEMO_OTP, mock: true };
-  }
 
   return { message: "OTP sent to your registered email" };
 }
@@ -674,20 +598,7 @@ export async function resetTenantPassword({ phone, otp, newPassword }) {
   const tenant = await Tenant.findOne({ "personalInfo.phone": normalized, isActive: true });
   if (!tenant) throw new AppError("Tenant not found", 404);
 
-  const otpDoc = await OTP.findOne({ userId: tenant._id, verified: false }).sort({ createdAt: -1 });
-  if (!otpDoc) {
-    throw new AppError("OTP session not found. Please request a new OTP.", 404);
-  }
-
-  const demoOk = isMockOtp() && otp === DEMO_OTP;
-  const storedOk = otpDoc.otp === otp && otpDoc.expiresAt >= new Date();
-
-  if (!demoOk && !storedOk) {
-    throw new AppError("Invalid or expired OTP", 401);
-  }
-
-  otpDoc.verified = true;
-  await otpDoc.save();
+  await verifyOTP(tenant._id, otp);
 
   tenant.personalInfo.password = newPassword;
   tenant.isPasswordSet = true;
@@ -783,18 +694,7 @@ export async function refreshSession(token, meta = {}) {
     const user = await Owner.findById(decoded.sub);
     if (!user?.isActive) throw new AppError("User inactive", 401);
 
-    let ownerId = user._id;
-    let hostelId;
-    let hostel;
-
-    if (user.role === "manager") {
-      ownerId = user.ownerId;
-      hostelId = user.hostelId;
-      hostel = await Hostel.findOne({ _id: hostelId, isActive: true });
-    } else {
-      hostel = await Hostel.findOne({ ownerId: user._id, isActive: true });
-      hostelId = hostel?._id;
-    }
+    const { ownerId, hostelId, hostel } = await resolveOwnerHostel(user);
     if (!hostel) throw new AppError("No active hostel found", 404);
 
     // Rotate: issue new tokens in same family, old becomes non-current
@@ -894,18 +794,7 @@ export async function getMe(userId, role) {
     const user = await Owner.findById(userId);
     if (!user) throw new AppError("User not found", 404);
 
-    let ownerId = user._id;
-    let hostelId;
-    let hostel;
-
-    if (user.role === "manager") {
-      ownerId = user.ownerId;
-      hostelId = user.hostelId;
-      hostel = await Hostel.findOne({ _id: hostelId, isActive: true });
-    } else {
-      hostel = await Hostel.findOne({ ownerId: user._id, isActive: true });
-      hostelId = hostel?._id;
-    }
+    const { ownerId, hostelId, hostel } = await resolveOwnerHostel(user);
 
     return buildAuthUser(user, user.role, {
       ownerId: ownerId.toString(),

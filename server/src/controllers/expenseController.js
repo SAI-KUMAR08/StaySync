@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { success } from "../utils/apiResponse.js";
 import { AppError } from "../middleware/error.middleware.js";

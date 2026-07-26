@@ -27,14 +27,14 @@ export const listMealTimings = asyncHandler(async (req, res) => {
 });
 
 export const getMealTiming = asyncHandler(async (req, res) => {
-  const timing = await MealTiming.findOne({ _id: req.params.id, ...filter(req) });
+  const timing = await MealTiming.findOne({ _id: req.validated.params.id, ...filter(req) });
   if (!timing) throw new AppError("Meal timing not found", 404);
   return success(res, timing);
 });
 
 export const createMealTiming = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const { mealType, name, items, startTime, endTime, dayOfWeek } = req.body;
+  const { mealType, name, items, startTime, endTime, dayOfWeek } = req.validated.body;
   const timing = await MealTiming.create({
     ...f,
     mealType,
@@ -48,9 +48,9 @@ export const createMealTiming = asyncHandler(async (req, res) => {
 });
 
 export const updateMealTiming = asyncHandler(async (req, res) => {
-  const timing = await MealTiming.findOne({ _id: req.params.id, ...filter(req) });
+  const timing = await MealTiming.findOne({ _id: req.validated.params.id, ...filter(req) });
   if (!timing) throw new AppError("Meal timing not found", 404);
-  const { mealType, name, items, startTime, endTime, dayOfWeek, isActive } = req.body;
+  const { mealType, name, items, startTime, endTime, dayOfWeek, isActive } = req.validated.body;
   if (mealType !== undefined) timing.mealType = mealType;
   if (name !== undefined) timing.name = name;
   if (items !== undefined) timing.items = items;
@@ -63,7 +63,7 @@ export const updateMealTiming = asyncHandler(async (req, res) => {
 });
 
 export const deleteMealTiming = asyncHandler(async (req, res) => {
-  const timing = await MealTiming.findOneAndDelete({ _id: req.params.id, ...filter(req) });
+  const timing = await MealTiming.findOneAndDelete({ _id: req.validated.params.id, ...filter(req) });
   if (!timing) throw new AppError("Meal timing not found", 404);
   return success(res, { deleted: true });
 });

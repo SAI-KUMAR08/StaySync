@@ -11,7 +11,7 @@ import toast from "react-hot-toast";
 
 
 const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp, onVerifyOtp, onResendOtp }) => {
-  const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
 
@@ -24,10 +24,6 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
   const handleVerifyOtp = async () => {
     if (otp.length !== 6) return toast.error("Enter 6-digit code");
     await onVerifyOtp(otp);
-  };
-
-  const isPasswordValid = (pwd) => {
-    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(pwd);
   };
 
   return (
@@ -118,6 +114,21 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
             value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
         </div>
         <div className="space-y-1.5">
+          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Account Password</label>
+          <input type="password" className="field-input" placeholder="Min 8 chars, uppercase, lowercase, number"
+            value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
+        </div>
+        {formData.password && (
+          <div className="space-y-1.5">
+            <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Confirm Password</label>
+            <input type="password" className="field-input" placeholder="Re-enter password"
+              value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            {confirmPassword && formData.password !== confirmPassword && (
+              <p className="text-[9px] text-danger font-bold mt-1">Passwords do not match</p>
+            )}
+          </div>
+        )}
+        <div className="space-y-1.5">
           <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Hostel Type</label>
           <div className="grid grid-cols-3 gap-3">
             {['Boys', 'Girls', 'Co-living'].map(type => (
@@ -130,19 +141,6 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
             ))}
           </div>
         </div>
-        <div className="space-y-1.5 relative">
-          <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Account Password</label>
-          <div className="relative">
-            <input type={showPassword ? "text" : "password"} className="field-input pr-12" placeholder="Min 8 chars, 1 uppercase, 1 special"
-              value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary/40 hover:text-text-secondary">
-              {showPassword ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
-            </button>
-          </div>
-          {formData.password && !isPasswordValid(formData.password) && (
-            <p className="text-[9px] text-accent font-bold mt-1 ml-1">Requires 8+ chars, uppercase, lowercase, number & special char.</p>
-          )}
-        </div>
         <div className="md:col-span-2 space-y-1.5">
           <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Physical Address</label>
           <textarea className="field-input" placeholder="Complete physical location details..."
@@ -152,7 +150,7 @@ const Step1Information = ({ formData, setFormData, onNext, emailState, onSendOtp
     </div>
     <div className="space-y-5">
       <button onClick={onNext}
-        disabled={!formData.name || !formData.email || !formData.phone || !isPasswordValid(formData.password) || !formData.hostelName || !formData.address || !emailState.verified}
+        disabled={!formData.name || !formData.email || !formData.phone || !formData.password || formData.password.length < 8 || formData.password !== confirmPassword || !formData.hostelName || !formData.address || !emailState.verified}
         className="btn btn-primary w-full py-4 gap-3">
         {emailState.verified ? <>Continue to Structure <MdChevronRight size={22} /></> : "Verify email to continue"}
       </button>
@@ -372,8 +370,8 @@ const OwnerOnboarding = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
     phone: "",
+    password: "",
     hostelName: "",
     hostelType: "Boys",
     address: ""

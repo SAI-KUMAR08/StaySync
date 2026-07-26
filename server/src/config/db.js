@@ -19,7 +19,24 @@ export async function connectDB() {
         bufferCommands: false, // fail fast instead of silent 10s timeout
       });
       console.log(`✓ MongoDB connected (database: ${mongoose.connection.db.databaseName})`);
-      await runSchemaMigration();
+      if (env.RUN_MIGRATIONS) {
+        await runSchemaMigration();
+      } else {
+        console.log("🛠️ Schema migration skipped (set RUN_MIGRATIONS=true to enable). Dropping stale indices only.");
+        // Always drop conflicting old indices regardless of migration flag
+        const db = mongoose.connection.db;
+        const dropIndexSafely = async (collectionName, indexName) => {
+          try { await db.collection(collectionName).dropIndex(indexName); }
+          catch (e) { /* index doesn't exist, ignore */ }
+        };
+        await dropIndexSafely("hostels", "ownerId_1_hostelName_1");
+        await dropIndexSafely("floors", "ownerId_1_hostelId_1_level_1");
+        await dropIndexSafely("beds", "ownerId_1_hostelId_1_roomId_1_bedLabel_1");
+        await dropIndexSafely("tenants", "ownerId_1_hostelId_1_email_1");
+        await dropIndexSafely("payments", "ownerId_1_hostelId_1_status_1");
+        await dropIndexSafely("payments", "ownerId_1_hostelId_1_year_1_month_1");
+        await dropIndexSafely("payments", "tenantId_1_paymentMonth_1_year_1");
+      }
       return;
     } catch (error) {
 
@@ -58,6 +75,8 @@ async function runSchemaMigration() {
     await dropIndexSafely("tenants", "ownerId_1_hostelId_1_email_1");
     await dropIndexSafely("payments", "ownerId_1_hostelId_1_status_1");
     await dropIndexSafely("payments", "ownerId_1_hostelId_1_year_1_month_1");
+    // Drop old unique index that conflicts with the new paymentType-scoped index
+    await dropIndexSafely("payments", "tenantId_1_paymentMonth_1_year_1");
 
     // 1. Migrate Hostels: rename hostelName -> name
 

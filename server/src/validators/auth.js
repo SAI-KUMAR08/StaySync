@@ -27,7 +27,7 @@ export const ownerSendOtpSchema = z.object({
   body: z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
-    password: strongPassword,
+    password: strongPassword.optional(),
     phone: z.string().min(10, "Phone must be at least 10 digits"),
     hostelName: z.string().min(2, "Hostel name must be at least 2 characters"),
     address: z.string().optional(),

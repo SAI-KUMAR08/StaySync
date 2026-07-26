@@ -48,7 +48,7 @@ export const bedUpdateSchema = z.object({
 export const tenantCreateSchema = z.object({
   body: z.object({
     name: z.string().min(2),
-    email: z.string().email(),
+    email: z.string().email("Invalid email").regex(/@gmail\.com$/i, "Only @gmail.com email addresses are accepted").optional(),
     phone: z.string().min(10),
     emergencyContact: z.string().optional(),
     // Enforce Hostel -> Floor -> Room -> Bed at creation time
@@ -59,6 +59,9 @@ export const tenantCreateSchema = z.object({
     joinDate: z.coerce.date().optional(),
     idProof: z.string().optional(),
     isTemporary: z.boolean().optional(),
+    isSecurityDepositPaid: z.boolean().optional(),
+    securityDepositAmount: z.coerce.number().min(0).optional(),
+    securityDepositDate: z.coerce.date().optional(),
     preferredSharing: z.preprocess(
       (val) => (val === null || val === undefined ? undefined : val),
       z.coerce.number().int().min(1).max(20).optional()
@@ -71,7 +74,15 @@ export const tenantUpdateSchema = z.object({
   body: z.object({
     name: z.string().min(2).optional(),
     phone: z.string().optional(),
+    email: z.string().email("Invalid email").optional(),
     emergencyContact: z.string().optional(),
+    monthlyRent: z.coerce.number().min(0).optional(),
+    aadhaarNumber: z.string().optional(),
+    idProof: z.string().optional(),
+    offlineBookingForm: z.string().optional(),
+    isSecurityDepositPaid: z.boolean().optional(),
+    securityDepositAmount: z.coerce.number().min(0).optional(),
+    securityDepositDate: z.coerce.date().optional(),
     isActive: z.boolean().optional(),
   }),
 });

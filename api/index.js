@@ -51,12 +51,20 @@ async function ensureDb() {
   }
 }
 
-// Mount a dummy Socket.IO so app.get("io") doesn't crash
+// Mount a dummy Socket.IO so app.get("io") doesn't crash.
+// Real-time features (complaint updates, payment notifications, occupancy changes)
+// require a long-running server process and are NOT available on Vercel serverless.
 const { EventEmitter } = await import("events");
 const dummyIo = new EventEmitter();
 dummyIo.to = () => dummyIo;
 dummyIo.in = () => dummyIo;
-dummyIo.emit = () => dummyIo;
+dummyIo.emit = function warn() {
+  if (process.env.NODE_ENV !== "production" || !this._warned) {
+    console.warn("[Vercel] Real-time socket events not available on serverless — use a long-running server for WebSocket features.");
+    if (process.env.NODE_ENV === "production") this._warned = true;
+  }
+  return dummyIo;
+};
 dummyIo.server = null;
 dummyIo.sockets = { join: () => {}, leave: () => {} };
 app.set("io", dummyIo);

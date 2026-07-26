@@ -22,16 +22,16 @@ import {
   tenantCheckSchema,
 } from "../validators/auth.js";
 import * as authController from "../controllers/authController.js";
-import { authLimiter, otpLimiter } from "../middleware/rateLimiter.js";
+import { authLimiter, otpLimiter, registrationLimiter, mutationLimiter } from "../middleware/rateLimiter.js";
 
 const router = Router();
 
-router.post("/register", authLimiter, validate(registerSchema), authController.register);
-router.post("/register-owner", authLimiter, validate(registerSchema), authController.register); // backward-compat alias
-router.post("/owner/send-otp", authLimiter, validate(ownerSendOtpSchema), authController.sendOwnerOtp);
-router.post("/owner/verify-otp", authLimiter, validate(ownerVerifyOtpSchema), authController.verifyOwnerOtp);
-router.post("/owner/login/send-otp", authLimiter, validate(ownerLoginOtpSchema), authController.sendOwnerLoginOtp);
-router.post("/owner/login/verify-otp", authLimiter, validate(ownerVerifyLoginOtpSchema), authController.verifyOwnerLoginOtp);
+router.post("/register", registrationLimiter, validate(registerSchema), authController.register);
+router.post("/register-owner", registrationLimiter, validate(registerSchema), authController.register); // backward-compat alias
+router.post("/owner/send-otp", otpLimiter, validate(ownerSendOtpSchema), authController.sendOwnerOtp);
+router.post("/owner/verify-otp", otpLimiter, validate(ownerVerifyOtpSchema), authController.verifyOwnerOtp);
+router.post("/owner/login/send-otp", otpLimiter, validate(ownerLoginOtpSchema), authController.sendOwnerLoginOtp);
+router.post("/owner/login/verify-otp", otpLimiter, validate(ownerVerifyLoginOtpSchema), authController.verifyOwnerLoginOtp);
 router.post("/login", authLimiter, validate(loginSchema), authController.login);
 router.post("/send-otp", otpLimiter, validate(sendOtpSchema), authController.sendOtp);
 router.post("/verify-otp", otpLimiter, validate(verifyOtpSchema), authController.verifyOtp);
@@ -46,9 +46,9 @@ router.post("/tenant/reset-password", otpLimiter, validate(resetPasswordSchema),
 router.post("/refresh", authLimiter, authController.refresh);
 router.post("/logout", authController.logout);
 router.get("/me", authenticate, authController.me);
-router.post("/switch-hostel", authenticate, authLimiter, validate(switchHostelSchema), authController.switchHostel);
-router.patch("/profile", authenticate, authLimiter, validate(updateProfileSchema), authController.updateProfile);
-router.patch("/password", authenticate, authLimiter, validate(changePasswordSchema), authController.changePassword);
+router.post("/switch-hostel", authenticate, mutationLimiter, validate(switchHostelSchema), authController.switchHostel);
+router.patch("/profile", authenticate, mutationLimiter, validate(updateProfileSchema), authController.updateProfile);
+router.patch("/password", authenticate, mutationLimiter, validate(changePasswordSchema), authController.changePassword);
 
 // ── Session management ─────────────────────────────────
 router.get("/sessions", authenticate, authController.listSessions);

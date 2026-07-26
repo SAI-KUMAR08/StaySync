@@ -23,3 +23,27 @@ export const otpLimiter = rateLimit({
     message: "Too many OTP requests. Please try again after 5 minutes.",
   },
 });
+
+// Strict rate limiting for account registration (prevent mass account creation)
+export const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 5, // Limit each IP to 5 registration attempts per 15 minutes
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many registration attempts. Please try again after 15 minutes.",
+  },
+});
+
+// Moderate rate limiting for authenticated mutations (password/profile changes)
+export const mutationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 20, // Limit each IP to 20 mutation requests per 15 minutes
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please try again after 15 minutes.",
+  },
+});

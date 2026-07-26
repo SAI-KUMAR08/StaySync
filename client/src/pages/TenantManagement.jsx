@@ -10,7 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { normalizeStructure, getAvailableRooms } from "../utils/normalizeStructure";
-import { normalizePhone } from "../utils/phone";
+import { normalizePhone, COUNTRY_CODES } from "../utils/phone";
 import { mapTenantForDisplay } from "../utils/tenantDisplay";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
@@ -20,15 +20,6 @@ import { useDebounce } from "../hooks/useDebounce";
 
 
 const TenantManagement = () => {
-  const COUNTRY_CODES = [
-    { code: "+91", label: "IN", flag: "🇮🇳" },
-    { code: "+1", label: "US", flag: "🇺🇸" },
-    { code: "+44", label: "UK", flag: "🇬🇧" },
-    { code: "+61", label: "AU", flag: "🇦🇺" },
-    { code: "+971", label: "UAE", flag: "🇦🇪" },
-    { code: "+65", label: "SG", flag: "🇸🇬" },
-  ];
-
   const { user } = useAuth();
   const { socket } = useSocket();
   const navigate = useNavigate();
@@ -51,6 +42,7 @@ const TenantManagement = () => {
 
   const [formData, setFormData] = useState({
     name: "",
+    email: "",
     phone: "",
     joiningDate: new Date().toISOString().split('T')[0],
     floorId: "",
@@ -85,27 +77,6 @@ const TenantManagement = () => {
     setShowModal(true);
   };
 
-  useEffect(() => {
-    fetchTenants();
-    fetchStructure();
-  }, [fetchTenants, fetchStructure, user?.hostelId]);
-
-  useEffect(() => {
-    if (!socket) return;
-    const refresh = () => {
-      fetchTenants();
-      fetchStructure();
-    };
-    socket.on("occupancy_update", refresh);
-    socket.on("tenant_assigned", refresh);
-    socket.on("tenant_removed", refresh);
-    return () => {
-      socket.off("occupancy_update", refresh);
-      socket.off("tenant_assigned", refresh);
-      socket.off("tenant_removed", refresh);
-    };
-  }, [socket, fetchTenants, fetchStructure]);
-
   const fetchTenants = useCallback(async () => {
     setError(null);
     try {
@@ -128,6 +99,27 @@ const TenantManagement = () => {
       console.error(error);
     }
   }, []);
+  useEffect(() => {
+    fetchTenants();
+    fetchStructure();
+  }, [fetchTenants, fetchStructure, user?.hostelId]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const refresh = () => {
+      fetchTenants();
+      fetchStructure();
+    };
+    socket.on("occupancy_update", refresh);
+    socket.on("tenant_assigned", refresh);
+    socket.on("tenant_removed", refresh);
+    return () => {
+      socket.off("occupancy_update", refresh);
+      socket.off("tenant_assigned", refresh);
+      socket.off("tenant_removed", refresh);
+    };
+  }, [socket, fetchTenants, fetchStructure]);
+
 
   const handleSharingSelect = (type) => {
     setSelectedSharing(type);
@@ -162,7 +154,7 @@ const TenantManagement = () => {
         await api.post("/owner/tenants", {
           name: formData.name,
           phone,
-          email: `${phone}@residents.local`,
+          ...(formData.email ? { email: formData.email } : {}),
           floorId: formData.floorId,
           roomId: formData.roomId,
           bedId: formData.bedId,
@@ -272,10 +264,8 @@ const TenantManagement = () => {
   };
 
   // 🆕 Temporary tenants analysis
-  const { tempTenants, regularTenants } = useMemo(() => ({
-    tempTenants: tenants.filter(t => t.isTemporary),
-    regularTenants: tenants.filter(t => !t.isTemporary),
-  }), [tenants]);
+  // Temporary tenants display as active — they are currently living in the hostel
+  const displayTenants = useMemo(() => tenants, [tenants]);
 
   if (loading) return (
     <div className="space-y-5" role="status" aria-label="Loading residents">
@@ -319,7 +309,7 @@ const TenantManagement = () => {
         </div>
         <Button
           onClick={() => {
-            setFormData({ name: "", phone: "", joiningDate: new Date().toISOString().split('T')[0], floorId: "", roomId: "", bedId: "", rentAmount: 0, idProof: "", securityDepositPaid: false, securityDepositAmount: 0 });
+            setFormData({ name: "", email: "", phone: "", joiningDate: new Date().toISOString().split('T')[0], floorId: "", roomId: "", bedId: "", rentAmount: 0, idProof: "", securityDepositPaid: false, securityDepositAmount: 0 });
             setReassigningTenant(null);
             setIsTemporary(false);
             setPreferredSharing(null);
@@ -364,13 +354,13 @@ const TenantManagement = () => {
       </div>
 
       {/* 🆕 Temporary Allotments Section */}
-      {tempTenants.length > 0 && (
+      {tenants.filter(t => t.isTemporary).length > 0 && (
         <div className="card card-lg-accent p-5">
           <div className="flex items-center gap-2 mb-5">
             <MdSwapHoriz className="text-2xl text-primary" />
             <div>
               <h3 className="font-bold font-display text-text-primary text-base tracking-tight">
-                Temporary Allotments ({tempTenants.length})
+                Temporary Allotments ({tenants.filter(t => t.isTemporary).length})
               </h3>
               <p className="text-[9px] text-text-secondary font-medium">
                 These residents are waiting for their preferred room to become available
@@ -378,7 +368,7 @@ const TenantManagement = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tempTenants.map(t => {
+            {tenants.filter(t => t.isTemporary).map(t => {
               const roomReady = hasPreferredRoomAvailable(t);
               return (
                 <div key={t._id} className={`p-4 rounded-2xl bg-surface border border-border/50 hover:shadow-md transition-all`}>
@@ -443,7 +433,7 @@ const TenantManagement = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            {regularTenants?.map((tenant, i) => (
+            {displayTenants.map((tenant, i) => (
               <tr
                 key={tenant._id}
                 className="stagger-enter cursor-pointer"
@@ -459,6 +449,7 @@ const TenantManagement = () => {
                       <div>
                         <p className="font-semibold text-text-primary text-sm group-hover:text-primary transition-colors inline-flex items-center gap-1">
                           {tenant.name}
+                          {tenant.isTemporary && <span className="text-[8px] text-amber-600 font-bold uppercase tracking-wider bg-amber-50 px-1.5 py-0.5 rounded ml-1">Temporary</span>}
                         </p>
                         <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
                       </div>
@@ -477,78 +468,12 @@ const TenantManagement = () => {
                   <p className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">Monthly</p>
                 </td>
                 <td>
-                  <span className={`badge ${tenant.status === "active" ? "badge-emerald" : "badge-slate"}`}>
-                    {tenant.status}
+                  <span className={`badge ${tenant.isActive === false ? "badge-slate" : "badge-emerald"}`}>
+                    {tenant.isActive === false ? "inactive" : "active"}
                   </span>
                 </td>
                 <td className="text-right">
                   <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => handleReassignStart(tenant)}
-                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}
-                    >
-                      <MdHotel size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(tenant._id)}
-                      className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary-light rounded-xl transition-all`}
-                    >
-                      <MdDelete size={18} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {/* 🆕 Show temporary tenants in table */}
-            {tempTenants.length > 0 && tempTenants.map((tenant, i) => (
-              <tr
-                key={tenant._id}
-                className="stagger-enter bg-primary-light cursor-pointer"
-                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}
-                onClick={() => navigate(`/admin/tenants/${tenant._id}`)}
-              >
-                <td>
-                  <div className="flex items-center gap-3.5">
-                    <div className="flex items-center gap-3.5 group">
-                      <div className={`w-9 h-9 rounded-xl bg-primary-light text-primary/80 flex items-center justify-center font-bold text-sm`}>
-                        {(tenant.name?.[0] || "T").toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-text-primary text-sm group-hover:text-primary transition-colors inline-flex items-center gap-1">
-                          {tenant.name}
-                        </p>
-                        <p className="text-[10px] text-text-secondary font-medium">{tenant.phone}</p>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <p className="text-sm font-semibold text-text-primary">{tenant.hostelName || "—"}</p>
-                </td>
-                <td>
-                  <div>
-                    <p className="text-sm font-semibold text-text-primary">Room {tenant.roomDetails?.roomId?.number}</p>
-                    <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Temp • Waiting for {tenant.preferredSharing || '?'}-sharing</p>
-                  </div>
-                </td>
-                <td>
-                  <p className="text-sm font-bold text-text-primary">₹{tenant.rentAmount?.toLocaleString()}</p>
-                  <p className="text-[9px] text-text-secondary font-medium uppercase tracking-tight">Monthly</p>
-                </td>
-                <td>
-                  <span className="badge-amber">Temporary</span>
-                </td>
-                <td className="text-right">
-                  <div className="flex justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    {hasPreferredRoomAvailable(tenant) && (
-                      <button
-                        onClick={() => handleConvertToPermanent(tenant)}
-                        className={`p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all`}
-                        title="Make Permanent"
-                      >
-                        <MdCheckCircle size={18} />
-                      </button>
-                    )}
                     <button
                       onClick={() => handleReassignStart(tenant)}
                       className={`p-2 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}
@@ -572,7 +497,6 @@ const TenantManagement = () => {
                   <p className="text-text-secondary/60 font-medium italic">No residents found matching your criteria.</p>
                 </td>
               </tr>
-            )}
           </tbody>
         </table>
       </div>
@@ -652,6 +576,11 @@ const TenantManagement = () => {
                         <p className="text-[9px] text-danger font-bold mt-1 ml-1">{phoneError}</p>
                       )}
                     </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Email (optional)</label>
+                    <input type="email" className="field" placeholder="resident@email.com"
+                      value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Joining Date</label>
