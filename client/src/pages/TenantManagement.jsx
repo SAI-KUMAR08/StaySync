@@ -497,6 +497,7 @@ const TenantManagement = () => {
                   <p className="text-text-secondary/60 font-medium italic">No residents found matching your criteria.</p>
                 </td>
               </tr>
+            )}
           </tbody>
         </table>
       </div>
