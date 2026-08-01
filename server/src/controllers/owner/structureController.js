@@ -31,6 +31,41 @@ export const createHostel = asyncHandler(async (req, res) => {
   return success(res, hostel, 201);
 });
 
+export const deleteHostel = asyncHandler(async (req, res) => {
+  const { id } = req.validated.params;
+  const ownerId = req.user.id;
+
+  const activeCount = await Hostel.countDocuments({ ownerId, isActive: true });
+  if (activeCount <= 1) {
+    throw new AppError("Cannot delete hostel. You must have at least one active hostel.", 400);
+  }
+
+  const hostel = await Hostel.findOne({ _id: id, ownerId, isActive: true });
+  if (!hostel) {
+    throw new AppError("Hostel not found", 404);
+  }
+
+  hostel.isActive = false;
+  await hostel.save();
+
+  const owner = await mongoose.model("Owner").findById(ownerId);
+  let nextHostelId = null;
+  if (owner && String(owner.hostelId) === String(id)) {
+    const nextHostel = await Hostel.findOne({ ownerId, isActive: true }).sort({ createdAt: -1 });
+    if (nextHostel) {
+      owner.hostelId = nextHostel._id;
+      await owner.save();
+      nextHostelId = nextHostel._id;
+    }
+  }
+
+  return success(res, {
+    message: "Hostel deleted successfully",
+    deletedHostelId: id,
+    nextHostelId,
+  });
+});
+
 export const listFloors = asyncHandler(async (req, res) => {
   const floors = await Floor.find({ ...ownerFilter(req), isActive: true }).sort({ floorNumber: 1 });
   return success(res, floors);

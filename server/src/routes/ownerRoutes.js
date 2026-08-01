@@ -238,6 +238,12 @@ router.post(
   validate(hostelCreateSchema),
   owner.createHostel
 );
+router.delete(
+  "/hostels/:id",
+  requirePermission(PERMISSIONS.MANAGE_HOSTEL),
+  validate(idParamSchema),
+  owner.deleteHostel
+);
 router.patch(
   "/hostel",
   requirePermission(PERMISSIONS.UPDATE_HOSTEL),

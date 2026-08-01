@@ -241,6 +241,17 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const refreshHostels = useCallback(async () => {
+    try {
+      const hostelsRes = await api.get("/owner/hostels");
+      const list = hostelsRes.data.data || [];
+      setHostels(list);
+      return list;
+    } catch (error) {
+      console.error("Failed to refresh hostels:", error);
+    }
+  }, []);
+
   const checkTenantStatus = useCallback(async (phone) => {
     setLoadingStates((prev) => ({ ...prev, checkStatus: true }));
     try {
@@ -403,6 +414,7 @@ export const AuthProvider = ({ children }) => {
       resetTenantPassword,
       registerOwner,
       switchHostel,
+      refreshHostels,
       logout,
     }),
     [
@@ -423,6 +435,7 @@ export const AuthProvider = ({ children }) => {
       resetTenantPassword,
       registerOwner,
       switchHostel,
+      refreshHostels,
       logout,
     ]
   );

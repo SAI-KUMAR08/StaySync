@@ -6,9 +6,13 @@ import {
   MdSearch,
   MdApartment,
   MdClose,
+  MdMoreVert,
+  MdDelete,
+  MdWarning,
 } from "react-icons/md";
 import api from "../api/axios";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
 
 // ── Mini avatar using theme primary color ──
 const HostelAvatar = ({ name, size = "sm", className = "" }) => {
@@ -25,9 +29,19 @@ const HostelAvatar = ({ name, size = "sm", className = "" }) => {
 };
 
 const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
+  const { refreshHostels } = useAuth();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [focusIdx, setFocusIdx] = useState(-1);
+
+  // Hostel options menu state (three dots)
+  const [activeMenuHostelId, setActiveMenuHostelId] = useState(null);
+
+  // Delete confirmation modal state
+  const [deletingHostel, setDeletingHostel] = useState(null);
+  const [confirmInput, setConfirmInput] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const ref = useRef(null);
   const searchRef = useRef(null);
   const listRef = useRef(null);
@@ -39,6 +53,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         setOpen(false);
         setSearch("");
         setFocusIdx(-1);
+        setActiveMenuHostelId(null);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -72,6 +87,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     try {
       const res = await api.post("/owner/hostels", { hostelName: name.trim() });
       toast.success("Hostel created");
+      if (refreshHostels) await refreshHostels();
       await onSwitch(res.data.data._id);
     } catch (e) {
       toast.error(e.response?.data?.message || "Failed to create hostel");
@@ -84,9 +100,52 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
       setOpen(false);
       setSearch("");
       setFocusIdx(-1);
+      setActiveMenuHostelId(null);
     },
     [onSwitch]
   );
+
+  const handleDeleteClick = (e, hostel) => {
+    e.stopPropagation();
+    setActiveMenuHostelId(null);
+    if (hostels.length <= 1) {
+      toast.error("Cannot delete hostel. You must have at least one active hostel.");
+      return;
+    }
+    setDeletingHostel({
+      _id: hostel._id,
+      name: hostel.name || hostel.hostelName || "Hostel",
+    });
+    setConfirmInput("");
+  };
+
+  const executeDeleteHostel = async () => {
+    if (!deletingHostel) return;
+    const expected = `delete hostel ${deletingHostel.name}`;
+    if (confirmInput.trim() !== expected) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await api.delete(`/owner/hostels/${deletingHostel._id}`);
+      toast.success(`Hostel '${deletingHostel.name}' deleted successfully`);
+      const targetId = deletingHostel._id;
+      setDeletingHostel(null);
+      setConfirmInput("");
+      setOpen(false);
+
+      const updatedHostels = refreshHostels ? await refreshHostels() : [];
+      if (targetId === activeHostelId) {
+        const nextId = res.data.data?.nextHostelId || (updatedHostels && updatedHostels[0]?._id);
+        if (nextId) {
+          await onSwitch(nextId);
+        }
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete hostel");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
@@ -98,7 +157,6 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
           e.preventDefault();
           setFocusIdx((prev) => {
             const next = prev < len - 1 ? prev + 1 : 0;
-            // Scroll into view
             const item = listRef.current?.children[next];
             item?.scrollIntoView({ block: "nearest" });
             return next;
@@ -124,13 +182,96 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
           setOpen(false);
           setSearch("");
           setFocusIdx(-1);
+          setActiveMenuHostelId(null);
           break;
       }
     },
     [open, filtered, focusIdx, selectHostel]
   );
 
-  // ── Single hostel — compact pill (still interactive to allow new hostel creation) ──
+  const renderDeleteModal = () => {
+    if (!deletingHostel) return null;
+    const expectedString = `delete hostel ${deletingHostel.name}`;
+    const isValid = confirmInput.trim() === expectedString;
+
+    return (
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+        onClick={() => {
+          if (!isDeleting) {
+            setDeletingHostel(null);
+            setConfirmInput("");
+          }
+        }}
+      >
+        <div
+          className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border/80 origin-center animate-scale-up text-left"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-start gap-3.5 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-danger/10 text-danger flex items-center justify-center shrink-0">
+              <MdWarning size={22} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-text-primary">Delete Hostel</h3>
+              <p className="text-xs text-text-tertiary mt-0.5">This action requires confirmation</p>
+            </div>
+          </div>
+
+          {/* Warning Banner */}
+          <div className="p-3.5 bg-danger/5 border border-danger/20 rounded-xl text-xs text-danger leading-relaxed mb-4">
+            Are you sure you want to delete <strong>{deletingHostel.name}</strong>? This action{" "}
+            <strong>cannot be undone</strong>.
+          </div>
+
+          {/* Prompt */}
+          <div className="space-y-2 mb-6">
+            <label className="block text-xs text-text-secondary font-medium leading-relaxed">
+              To confirm, type{" "}
+              <strong className="font-mono select-all text-text-primary bg-black/5 px-1.5 py-0.5 rounded">
+                {expectedString}
+              </strong>{" "}
+              in the box below:
+            </label>
+            <input
+              type="text"
+              value={confirmInput}
+              onChange={(e) => setConfirmInput(e.target.value)}
+              placeholder={expectedString}
+              autoFocus
+              className="w-full px-3.5 py-2.5 text-xs border border-border rounded-xl font-mono focus:outline-none focus:ring-2 focus:ring-danger/20 focus:border-danger transition-all text-text-primary placeholder:text-text-tertiary/40"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => {
+                setDeletingHostel(null);
+                setConfirmInput("");
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:bg-black/5 transition-all disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!isValid || isDeleting}
+              onClick={executeDeleteHostel}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-danger text-white hover:bg-danger/90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-1.5"
+            >
+              {isDeleting ? "Deleting..." : "Delete this hostel"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ── Single hostel — compact pill ──
   if (hostels.length <= 1) {
     return (
       <div className="relative" ref={ref}>
@@ -150,10 +291,45 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         </button>
         {open && (
           <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-border/80 rounded-2xl shadow-xl z-50 overflow-hidden">
-            <div className="px-4 py-3 border-b border-border/40">
-              <p className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">
-                {active?.name || active?.hostelName}
-              </p>
+            <div className="px-4 py-3 border-b border-border/40 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-text-primary">
+                  {active?.name || active?.hostelName}
+                </p>
+                <p className="text-[10px] text-text-tertiary mt-0.5">Active Hostel</p>
+              </div>
+
+              {/* Options button */}
+              {active && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveMenuHostelId((prev) => (prev === active._id ? null : active._id));
+                    }}
+                    className="p-1 rounded-lg text-text-tertiary hover:text-text-primary hover:bg-black/5 transition-colors"
+                    title="Hostel options"
+                  >
+                    <MdMoreVert size={16} />
+                  </button>
+                  {activeMenuHostelId === active._id && (
+                    <div
+                      className="absolute right-0 top-7 w-36 bg-white border border-border/80 rounded-xl shadow-lg z-50 py-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteClick(e, active)}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-danger font-medium hover:bg-danger/5 transition-colors"
+                      >
+                        <MdDelete size={14} />
+                        Delete Hostel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="px-3 py-2">
               <button
@@ -165,6 +341,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             </div>
           </div>
         )}
+        {renderDeleteModal()}
       </div>
     );
   }
@@ -178,6 +355,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
           if (open) {
             setSearch("");
             setFocusIdx(-1);
+            setActiveMenuHostelId(null);
           }
         }}
         className="group flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white border border-border/60 shadow-sm hover:shadow-md hover:border-border transition-all duration-200 text-sm"
@@ -197,7 +375,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         />
       </button>
 
-      {/* ═══ Dropdown — conditionally rendered so it does NOT intercept events when closed ═══ */}
+      {/* ═══ Dropdown ═══ */}
       {open && (
         <div
           role="listbox"
@@ -263,66 +441,98 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
               filtered.map((h, i) => {
                 const isActive = h._id === activeHostelId;
                 const isFocused = i === focusIdx;
+                const isMenuOpen = activeMenuHostelId === h._id;
                 return (
-                  <button
-                    key={h._id}
-                    ref={(el) => {
-                      if (isFocused && el) el.scrollIntoView({ block: "nearest" });
-                    }}
-                    role="option"
-                    aria-selected={isActive}
-                    onClick={() => selectHostel(h._id)}
-                    onMouseEnter={() => setFocusIdx(i)}
-                    className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all relative ${
-                      isActive
-                        ? "bg-primary/[0.04]"
-                        : isFocused
-                          ? "bg-black/[0.03]"
-                          : "hover:bg-black/[0.02]"
-                    }`}
-                  >
-                    {/* Left accent for active */}
-                    {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-primary" />
-                    )}
+                  <div key={h._id} className="relative">
+                    <button
+                      ref={(el) => {
+                        if (isFocused && el) el.scrollIntoView({ block: "nearest" });
+                      }}
+                      role="option"
+                      aria-selected={isActive}
+                      onClick={() => selectHostel(h._id)}
+                      onMouseEnter={() => setFocusIdx(i)}
+                      className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all relative pr-10 ${
+                        isActive
+                          ? "bg-primary/[0.04]"
+                          : isFocused
+                            ? "bg-black/[0.03]"
+                            : "hover:bg-black/[0.02]"
+                      }`}
+                    >
+                      {/* Left accent for active */}
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full bg-primary" />
+                      )}
 
-                    {/* Avatar */}
-                    <HostelAvatar
-                      name={h.name || h.hostelName}
-                      size="md"
-                      className={
-                        isActive ? "ring-2 ring-primary/20 ring-offset-1 ring-offset-white" : ""
-                      }
-                    />
+                      {/* Avatar */}
+                      <HostelAvatar
+                        name={h.name || h.hostelName}
+                        size="md"
+                        className={
+                          isActive ? "ring-2 ring-primary/20 ring-offset-1 ring-offset-white" : ""
+                        }
+                      />
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-text-primary truncate">
-                          {h.name || h.hostelName}
-                        </p>
-                        {isActive && (
-                          <span className="shrink-0 text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
-                            Active
-                          </span>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-text-primary truncate">
+                            {h.name || h.hostelName}
+                          </p>
+                          {isActive && (
+                            <span className="shrink-0 text-[9px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                              Active
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Address/City */}
+                        {(h.address || h.city) && (
+                          <p className="text-[11px] text-text-tertiary/60 mt-0.5 truncate">
+                            {[h.address, h.city].filter(Boolean).join(", ")}
+                          </p>
                         )}
                       </div>
 
-                      {/* Address/City */}
-                      {(h.address || h.city) && (
-                        <p className="text-[11px] text-text-tertiary/60 mt-0.5 truncate">
-                          {[h.address, h.city].filter(Boolean).join(", ")}
-                        </p>
+                      {/* Active checkmark */}
+                      {isActive && (
+                        <div className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                          <MdCheck className="text-primary" size={14} />
+                        </div>
                       )}
-                    </div>
+                    </button>
 
-                    {/* Active checkmark */}
-                    {isActive && (
-                      <div className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                        <MdCheck className="text-primary" size={14} />
+                    {/* Three Dots Action Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuHostelId((prev) => (prev === h._id ? null : h._id));
+                      }}
+                      className="absolute right-3 top-3.5 p-1 rounded-lg text-text-tertiary/60 hover:text-text-primary hover:bg-black/5 transition-colors z-10"
+                      title="Hostel options"
+                    >
+                      <MdMoreVert size={16} />
+                    </button>
+
+                    {/* Popover options menu */}
+                    {isMenuOpen && (
+                      <div
+                        className="absolute right-3 top-10 w-36 bg-white border border-border/80 rounded-xl shadow-lg z-50 py-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteClick(e, h)}
+                          className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-danger font-medium hover:bg-danger/5 transition-colors"
+                        >
+                          <MdDelete size={14} />
+                          Delete Hostel
+                        </button>
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -339,6 +549,8 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
           </div>
         </div>
       )}
+
+      {renderDeleteModal()}
     </div>
   );
 };
