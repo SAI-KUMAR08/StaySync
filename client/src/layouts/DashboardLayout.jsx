@@ -30,6 +30,7 @@ const ROUTE_PREFETCH = {
   "/admin/meal-timings": () => import("../pages/MealTimings"),
   "/admin/requests": () => import("../pages/AdminRequests"),
   "/admin/notifications": () => import("../pages/Notifications"),
+  "/admin/profile": () => import("../pages/AdminProfile"),
   "/tenant/dashboard": () => import("../pages/TenantDashboard"),
   "/tenant/complaints": () => import("../pages/Complaints"),
   "/tenant/payments": () => import("../pages/Payments"),
@@ -66,6 +67,7 @@ const NAV_GROUPS = {
       items: [
         { to: "/admin/meal-timings", icon: MdRestaurant, label: "Meals" },
         { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
+        { to: "/admin/profile", icon: MdPerson, label: "My Profile" },
       ],
     },
   ],

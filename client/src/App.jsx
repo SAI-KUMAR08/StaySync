@@ -23,6 +23,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminRequests from "./pages/AdminRequests";
 import TenantProfileSettings from "./pages/TenantProfileSettings";
 import TenantRoomShift from "./pages/TenantRoomShift";
+import AdminProfile from "./pages/AdminProfile";
 
 const ThemeAwareToaster = () => {
   return (
@@ -112,6 +113,7 @@ function App() {
                   element={<Navigate to="/admin/requests?type=profile" replace />}
                 />
                 <Route path="notifications" element={<Notifications />} />
+                <Route path="profile" element={<AdminProfile />} />
               </Route>
 
               {/* Tenant Routes */}
