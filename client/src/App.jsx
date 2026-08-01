@@ -1,4 +1,3 @@
-import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
@@ -7,6 +6,23 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import DashboardLayout from "./layouts/DashboardLayout";
 import { PaymentProvider } from "./context/PaymentContext";
+
+// Eagerly imported pages — all bundled upfront, no lazy-loading delays
+import Login from "./pages/Login";
+import AdminDashboard from "./pages/AdminDashboard";
+import TenantDashboard from "./pages/TenantDashboard";
+import TenantManagement from "./pages/TenantManagement";
+import Complaints from "./pages/Complaints";
+import Payments from "./pages/Payments";
+import Notifications from "./pages/Notifications";
+import RoomManagement from "./pages/RoomManagement";
+import Expenses from "./pages/Expenses";
+import MealTimings from "./pages/MealTimings";
+import TenantProfile from "./pages/TenantProfile";
+import AdminLogin from "./pages/AdminLogin";
+import AdminRequests from "./pages/AdminRequests";
+import TenantProfileSettings from "./pages/TenantProfileSettings";
+import TenantRoomShift from "./pages/TenantRoomShift";
 
 const ThemeAwareToaster = () => {
   return (
@@ -49,30 +65,6 @@ const ThemeAwareToaster = () => {
   );
 };
 
-// Lazy-loaded pages — split into separate chunks, loaded on demand
-const Login = lazy(() => import("./pages/Login"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const TenantDashboard = lazy(() => import("./pages/TenantDashboard"));
-const TenantManagement = lazy(() => import("./pages/TenantManagement"));
-const Complaints = lazy(() => import("./pages/Complaints"));
-const Payments = lazy(() => import("./pages/Payments"));
-const Notifications = lazy(() => import("./pages/Notifications"));
-const RoomManagement = lazy(() => import("./pages/RoomManagement"));
-const Expenses = lazy(() => import("./pages/Expenses"));
-const MealTimings = lazy(() => import("./pages/MealTimings"));
-const TenantProfile = lazy(() => import("./pages/TenantProfile"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
-const AdminRequests = lazy(() => import("./pages/AdminRequests"));
-const TenantProfileSettings = lazy(() => import("./pages/TenantProfileSettings"));
-const TenantRoomShift = lazy(() => import("./pages/TenantRoomShift"));
-
-// Minimal page-level skeleton — shown instantly while chunk loads
-const PageSkeleton = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-  </div>
-);
-
 function App() {
   return (
     <BrowserRouter>
@@ -80,73 +72,71 @@ function App() {
         <SocketProvider>
           <ErrorBoundary>
             <ThemeAwareToaster />
-            <Suspense fallback={<PageSkeleton />}>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/admin-login" element={<AdminLogin />} />
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin-login" element={<AdminLogin />} />
 
-                {/* Owner Routes */}
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute role={["owner"]}>
-                      <PaymentProvider>
-                        <DashboardLayout />
-                      </PaymentProvider>
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="inventory" element={<RoomManagement />} />
-                  <Route path="tenants" element={<TenantManagement />} />
-                  <Route path="complaints" element={<Complaints />} />
-                  <Route path="payments" element={<Payments />} />
-                  <Route path="expenses" element={<Expenses />} />
-                  <Route path="meal-timings" element={<MealTimings />} />
-                  <Route path="tenants/:id" element={<TenantProfile />} />
-                  <Route path="requests" element={<AdminRequests />} />
-                  {/* Legacy deep links — redirect to the unified Requests page */}
-                  <Route
-                    path="vacate-requests"
-                    element={<Navigate to="/admin/requests?type=vacate" replace />}
-                  />
-                  <Route
-                    path="bed-shift-requests"
-                    element={<Navigate to="/admin/requests?type=shift" replace />}
-                  />
-                  <Route
-                    path="profile-requests"
-                    element={<Navigate to="/admin/requests?type=profile" replace />}
-                  />
-                  <Route path="notifications" element={<Notifications />} />
-                </Route>
-
-                {/* Tenant Routes */}
-                <Route
-                  path="/tenant"
-                  element={
-                    <ProtectedRoute role="tenant">
+              {/* Owner Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute role={["owner"]}>
+                    <PaymentProvider>
                       <DashboardLayout />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<TenantDashboard />} />
-                  <Route path="complaints" element={<Complaints />} />
-                  <Route path="payments" element={<Payments />} />
-                  <Route path="meal-timings" element={<MealTimings />} />
-                  <Route path="notifications" element={<Notifications />} />
-                  <Route path="profile" element={<TenantProfileSettings />} />
-                  <Route path="room-shift" element={<TenantRoomShift />} />
-                </Route>
+                    </PaymentProvider>
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="inventory" element={<RoomManagement />} />
+                <Route path="tenants" element={<TenantManagement />} />
+                <Route path="complaints" element={<Complaints />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="expenses" element={<Expenses />} />
+                <Route path="meal-timings" element={<MealTimings />} />
+                <Route path="tenants/:id" element={<TenantProfile />} />
+                <Route path="requests" element={<AdminRequests />} />
+                {/* Legacy deep links — redirect to the unified Requests page */}
+                <Route
+                  path="vacate-requests"
+                  element={<Navigate to="/admin/requests?type=vacate" replace />}
+                />
+                <Route
+                  path="bed-shift-requests"
+                  element={<Navigate to="/admin/requests?type=shift" replace />}
+                />
+                <Route
+                  path="profile-requests"
+                  element={<Navigate to="/admin/requests?type=profile" replace />}
+                />
+                <Route path="notifications" element={<Notifications />} />
+              </Route>
 
-                {/* Fallback */}
-                <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route path="*" element={<Navigate to="/login" replace />} />
-              </Routes>
-            </Suspense>
+              {/* Tenant Routes */}
+              <Route
+                path="/tenant"
+                element={
+                  <ProtectedRoute role="tenant">
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<TenantDashboard />} />
+                <Route path="complaints" element={<Complaints />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="meal-timings" element={<MealTimings />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="profile" element={<TenantProfileSettings />} />
+                <Route path="room-shift" element={<TenantRoomShift />} />
+              </Route>
+
+              {/* Fallback */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
           </ErrorBoundary>
         </SocketProvider>
       </AuthProvider>
