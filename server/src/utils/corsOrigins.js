@@ -77,12 +77,11 @@ function isVercelPreviewOrigin(origin) {
   try {
     const { hostname } = new URL(origin);
     if (!hostname.endsWith(".vercel.app")) return false;
-    const base = hostname.slice(0, -".vercel.app".length);
-    return VERCEL_PROJECT_PREFIXES.some((p) => {
-      if (base === p) return true;
-      if (!base.startsWith(`${p}-`)) return false;
-      return VERCEL_PREVIEW_HASH.test(base.slice(p.length + 1));
-    });
+
+    // Allow any Vercel domain that includes our project or owner names
+    // This fixes issues where Vercel generates unexpected branch/team suffixes.
+    const allowedKeywords = ["stay-sync", "hostel", "code-catalist", "saikumar08"];
+    return allowedKeywords.some((keyword) => hostname.includes(keyword));
   } catch {
     return false;
   }
