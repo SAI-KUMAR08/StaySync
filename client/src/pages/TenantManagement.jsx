@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   bedId: "",
   rentAmount: 0,
   idProof: "",
+  offlineBookingForm: "",
   securityDepositPaid: false,
   securityDepositAmount: 0,
 };
@@ -158,6 +159,9 @@ const TenantManagement = () => {
         await api.post(`/owner/tenants/${reassigningTenant._id}/assign-bed`, {
           sharingType: formData.sharingType,
           ...(formData.idProof ? { idProof: formData.idProof } : {}),
+          ...(formData.offlineBookingForm
+            ? { offlineBookingForm: formData.offlineBookingForm }
+            : {}),
           ...(isTemporary ? { isTemporary, preferredSharing } : {}),
         });
         toast.success("Tenant moved to an available room of the selected type successfully!");
@@ -174,6 +178,9 @@ const TenantManagement = () => {
           joinDate: formData.joiningDate,
           isTemporary,
           ...(formData.idProof ? { idProof: formData.idProof } : {}),
+          ...(formData.offlineBookingForm
+            ? { offlineBookingForm: formData.offlineBookingForm }
+            : {}),
           ...(isTemporary && preferredSharing ? { preferredSharing } : {}),
           isSecurityDepositPaid: formData.securityDepositPaid,
           securityDepositDate: formData.securityDepositPaid ? new Date().toISOString() : null,

@@ -16,10 +16,7 @@ import {
   MdBadge,
   MdDelete,
   MdUploadFile,
-  MdClose,
   MdPictureAsPdf,
-  MdDescription,
-  MdImage,
 } from "react-icons/md";
 import ErrorRetry from "../components/ErrorRetry";
 
@@ -39,22 +36,8 @@ const LABELS = {
   aadhaarNumber: "Aadhaar Number",
 };
 
-const MAX_DOCS = 3;
 const MAX_DOC_BYTES = 6 * 1024 * 1024; // 6 MB
-const ACCEPTED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
-];
-
-function fileIcon(mime) {
-  if (mime?.startsWith("image/")) return <MdImage size={22} className="text-blue-500" />;
-  if (mime === "application/pdf") return <MdPictureAsPdf size={22} className="text-red-500" />;
-  return <MdDescription size={22} className="text-indigo-500" />;
-}
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
 function readAsDataURL(file) {
   return new Promise((resolve, reject) => {
@@ -80,11 +63,12 @@ const TenantProfileSettings = () => {
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
 
-  // Document upload state
-  const [docs, setDocs] = useState([]); // [{ name, mime, preview, url }]
+  // Document upload state — two separate single-file fields
+  const [idProofFile, setIdProofFile] = useState(""); // base64 data URL
+  const [offlineFormFile, setOfflineFormFile] = useState(""); // base64 data URL
   const [docError, setDocError] = useState("");
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef(null);
+  const idProofInputRef = useRef(null);
+  const offlineFormInputRef = useRef(null);
 
   const fetchData = useCallback(async (opts) => {
     setError(null);
@@ -153,70 +137,23 @@ const TenantProfileSettings = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // ── Document handlers ────────────────────────────────────────
-  const addFiles = useCallback(
-    async (fileList) => {
-      setDocError("");
-      const incoming = Array.from(fileList);
-      const remaining = MAX_DOCS - docs.length;
-      if (remaining <= 0) {
-        setDocError(`Maximum ${MAX_DOCS} documents allowed.`);
-        return;
-      }
-      const toAdd = incoming.slice(0, remaining);
-      if (incoming.length > remaining) {
-        setDocError(`Only ${remaining} more document(s) can be added (max ${MAX_DOCS}).`);
-      }
-      const invalid = toAdd.filter((f) => !ACCEPTED_TYPES.includes(f.type));
-      if (invalid.length) {
-        setDocError("Only photos (JPG/PNG/WebP), PDFs, and DOCX files are accepted.");
-        return;
-      }
-      const oversized = toAdd.filter((f) => f.size > MAX_DOC_BYTES);
-      if (oversized.length) {
-        setDocError(
-          `Each file must be under 6 MB. Remove: ${oversized.map((f) => f.name).join(", ")}`
-        );
-        return;
-      }
-      try {
-        const converted = await Promise.all(
-          toAdd.map(async (f) => ({
-            name: f.name,
-            mime: f.type,
-            preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null,
-            url: await readAsDataURL(f),
-          }))
-        );
-        setDocs((prev) => [...prev, ...converted]);
-      } catch {
-        setDocError("Failed to read one or more files. Please try again.");
-      }
-    },
-    [docs.length]
-  );
-
-  const removeDoc = (idx) => {
-    setDocs((prev) => {
-      const next = [...prev];
-      if (next[idx]?.preview) URL.revokeObjectURL(next[idx].preview);
-      next.splice(idx, 1);
-      return next;
-    });
+  const handleFileChange = async (file, setter) => {
+    if (!file) return;
     setDocError("");
-  };
-
-  const onDragOver = (e) => {
-    e.preventDefault();
-    setDragging(true);
-  };
-  const onDragLeave = () => {
-    setDragging(false);
-  };
-  const onDrop = (e) => {
-    e.preventDefault();
-    setDragging(false);
-    addFiles(e.dataTransfer.files);
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setDocError("Only photos (JPG/PNG/WebP) and PDFs are accepted.");
+      return;
+    }
+    if (file.size > MAX_DOC_BYTES) {
+      setDocError("File must be under 6 MB.");
+      return;
+    }
+    try {
+      const dataUrl = await readAsDataURL(file);
+      setter(dataUrl);
+    } catch {
+      setDocError("Failed to read file. Please try again.");
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -233,9 +170,8 @@ const TenantProfileSettings = () => {
           : (profile[key] || "").trim();
       if (next !== cur) payload[key] = next;
     }
-    if (docs.length > 0) {
-      payload.documents = docs.map(({ name, url }) => ({ name, url }));
-    }
+    if (idProofFile) payload.idProof = idProofFile;
+    if (offlineFormFile) payload.offlineBookingForm = offlineFormFile;
     if (Object.keys(payload).length === 0) {
       toast.error("No changes to submit — your profile already has these values.");
       return;
@@ -246,7 +182,8 @@ const TenantProfileSettings = () => {
       await api.post("/tenant/profile-request", payload);
       toast.success("Profile update submitted for admin approval!");
       setEditing(false);
-      setDocs([]);
+      setIdProofFile("");
+      setOfflineFormFile("");
       setDocError("");
       fetchData();
     } catch (err) {
@@ -356,58 +293,149 @@ const TenantProfileSettings = () => {
               ))}
             </div>
 
-            {/* Upload Zone */}
-            <div className="space-y-2">
-              <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+            {/* Document Upload — two dedicated single-file fields */}
+            <div className="space-y-4">
+              <p className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
                 Documents (Optional)
-              </label>
-              <div
-                className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${dragging ? "border-primary bg-primary/5" : "border-border"}`}
-                onDragOver={onDragOver}
-                onDragLeave={onDragLeave}
-                onDrop={onDrop}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  id="doc-upload"
-                  accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,image/jpeg,image/png,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onChange={(e) => {
-                    addFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                  className="hidden"
-                />
-                <label htmlFor="doc-upload" className="cursor-pointer">
-                  <MdUploadFile className="mx-auto text-text-tertiary mb-2" size={24} />
-                  <p className="text-xs text-text-primary">Click or drag files here</p>
-                  <p className="text-[9px] text-text-tertiary mt-1">
-                    Max 6MB each. JPG, PNG, PDF, DOCX
-                  </p>
+              </p>
+
+              {/* ID Proof */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  ID Proof (Aadhaar / PAN / Voter ID)
                 </label>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add("border-primary");
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove("border-primary");
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("border-primary");
+                    handleFileChange(e.dataTransfer.files[0], setIdProofFile);
+                  }}
+                  className="border-2 border-dashed border-border/60 rounded-2xl p-5 text-center cursor-pointer hover:border-primary/40 transition-all bg-surface/30"
+                  onClick={() => idProofInputRef.current?.click()}
+                >
+                  {idProofFile ? (
+                    <div className="relative inline-block">
+                      {idProofFile.startsWith("data:image") ? (
+                        <img
+                          src={idProofFile}
+                          alt="ID Proof"
+                          className="max-h-24 mx-auto rounded-lg object-contain"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-xl">
+                          <MdPictureAsPdf size={16} /> File attached
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIdProofFile("");
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full text-xs font-bold hover:scale-110 transition-all"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <MdUploadFile className="mx-auto text-text-tertiary mb-2" size={22} />
+                      <p className="text-xs text-text-secondary/70">
+                        Click or drag to upload ID proof
+                      </p>
+                      <p className="text-[9px] text-text-tertiary mt-1">
+                        JPG, PNG or PDF · Max 6 MB
+                      </p>
+                    </>
+                  )}
+                  <input
+                    ref={idProofInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleFileChange(e.target.files?.[0], setIdProofFile);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
               </div>
+
+              {/* Offline Application Form */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Offline Application Form (Soft Copy)
+                </label>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add("border-primary");
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove("border-primary");
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("border-primary");
+                    handleFileChange(e.dataTransfer.files[0], setOfflineFormFile);
+                  }}
+                  className="border-2 border-dashed border-border/60 rounded-2xl p-5 text-center cursor-pointer hover:border-primary/40 transition-all bg-surface/30"
+                  onClick={() => offlineFormInputRef.current?.click()}
+                >
+                  {offlineFormFile ? (
+                    <div className="relative inline-block">
+                      {offlineFormFile.startsWith("data:image") ? (
+                        <img
+                          src={offlineFormFile}
+                          alt="Application Form"
+                          className="max-h-24 mx-auto rounded-lg object-contain"
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-xl">
+                          <MdPictureAsPdf size={16} /> File attached
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOfflineFormFile("");
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full text-xs font-bold hover:scale-110 transition-all"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <MdUploadFile className="mx-auto text-text-tertiary mb-2" size={22} />
+                      <p className="text-xs text-text-secondary/70">Click or drag to upload form</p>
+                      <p className="text-[9px] text-text-tertiary mt-1">
+                        JPG, PNG or PDF · Max 6 MB
+                      </p>
+                    </>
+                  )}
+                  <input
+                    ref={offlineFormInputRef}
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleFileChange(e.target.files?.[0], setOfflineFormFile);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+              </div>
+
               {docError && <p className="text-[10px] text-red-600 font-medium">{docError}</p>}
-              <div className="flex flex-wrap gap-2">
-                {docs.map((doc, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 bg-surface px-3 py-1 rounded-full border border-border"
-                  >
-                    {doc.preview && (
-                      <img src={doc.preview} className="w-5 h-5 object-cover rounded" alt="" />
-                    )}
-                    <span className="text-[10px] truncate max-w-[100px]">{doc.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeDoc(idx)}
-                      className="text-text-tertiary hover:text-red-500"
-                    >
-                      <MdClose size={12} />
-                    </button>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="flex gap-2 pt-2">
@@ -418,13 +446,14 @@ const TenantProfileSettings = () => {
               >
                 {submitting
                   ? "Submitting…"
-                  : `Submit for Approval${docs.length > 0 ? ` (${docs.length} doc${docs.length > 1 ? "s" : ""})` : ""}`}
+                  : `Submit for Approval${idProofFile || offlineFormFile ? " (with documents)" : ""}`}
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setEditing(false);
-                  setDocs([]);
+                  setIdProofFile("");
+                  setOfflineFormFile("");
                   setDocError("");
                   setFieldErrors({});
                   fetchData();

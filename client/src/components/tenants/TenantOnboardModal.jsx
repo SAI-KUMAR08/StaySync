@@ -332,6 +332,114 @@ const TenantOnboardModal = ({
                 </div>
               </div>
 
+              {/* Offline Booking Form Upload */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Offline Application Form (Soft Copy)
+                </label>
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add("border-primary");
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove("border-primary");
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("border-primary");
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () =>
+                        setFormData({ ...formData, offlineBookingForm: reader.result });
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className={`border-2 border-dashed border-border/60 rounded-2xl p-6 text-center cursor-pointer hover:border-primary/40 transition-all bg-surface/30`}
+                  onClick={() => document.getElementById("offlineBookingFormInput").click()}
+                >
+                  {formData.offlineBookingForm ? (
+                    <div className="relative inline-block">
+                      {formData.offlineBookingForm.startsWith("data:image") ? (
+                        <img
+                          src={formData.offlineBookingForm}
+                          alt="Booking Form"
+                          className={`max-h-28 mx-auto rounded-xl`}
+                        />
+                      ) : (
+                        <span className="inline-flex items-center gap-2 text-xs font-semibold text-primary bg-primary/10 px-4 py-2 rounded-xl">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          File attached
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData({ ...formData, offlineBookingForm: "" });
+                        }}
+                        className={`absolute -top-2 -right-2 w-6 h-6 bg-danger text-white rounded-full text-xs font-bold hover:scale-110 transition-all`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div
+                        className={`w-12 h-12 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center`}
+                      >
+                        <svg
+                          className="w-6 h-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-xs text-text-secondary/60 font-medium">
+                        Drag &amp; drop the form here, or{" "}
+                        <span className="text-primary font-bold">browse</span>
+                      </p>
+                      <p className="text-[8px] text-text-secondary/40">JPG, PNG or PDF</p>
+                    </div>
+                  )}
+                  <input
+                    id="offlineBookingFormInput"
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = () =>
+                          setFormData({ ...formData, offlineBookingForm: reader.result });
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
               {/* ── Security Deposit ── */}
               {!reassigningTenant && (
                 <div className="pt-4 border-t border-border/40 space-y-4">
