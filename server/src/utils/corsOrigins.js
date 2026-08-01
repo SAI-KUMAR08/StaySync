@@ -26,7 +26,12 @@ const DEPLOYED_FRONTENDS = [
 ];
 
 export function getAllowedCorsOrigins() {
+  // VERCEL_URL is auto-injected by Vercel on every deployment (no https:// prefix).
+  // Adding it here means every deployment automatically allows its own origin.
+  const vercelSelf = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+
   const fromEnv = [
+    vercelSelf,
     process.env.CLIENT_URL,
     process.env.FRONTEND_URL,
     ...(process.env.CLIENT_URLS?.split(",").map((s) => s.trim()) ?? []),
