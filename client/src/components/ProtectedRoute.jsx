@@ -4,20 +4,26 @@ import { useAuth } from "../context/AuthContext";
 const ProtectedRoute = ({ children, role }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Redirect to the correct login page based on which route was being accessed
+    const roles = Array.isArray(role) ? role : role ? [role] : [];
+    const loginPath = roles.includes("owner") ? "/admin-login" : "/login";
+    return <Navigate to={loginPath} replace />;
   }
 
   if (role) {
     const roles = Array.isArray(role) ? role : [role];
     if (!roles.includes(user.role)) {
-      return <Navigate to={user.role === "tenant" ? "/tenant/dashboard" : "/admin/dashboard"} replace />;
+      return (
+        <Navigate to={user.role === "tenant" ? "/tenant/dashboard" : "/admin/dashboard"} replace />
+      );
     }
   }
 
