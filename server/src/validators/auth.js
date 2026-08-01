@@ -143,3 +143,17 @@ export const tenantCheckSchema = z.object({
     phone: z.string().min(10, "Phone is required"),
   }),
 });
+
+export const ownerForgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email address"),
+  }),
+});
+
+export const ownerResetPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email("Invalid email address"),
+    otp: z.string().length(6, "OTP must be exactly 6 digits"),
+    newPassword: strongPassword,
+  }),
+});

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 import {
   MdEmail,
   MdLock,
@@ -8,6 +9,7 @@ import {
   MdBusiness,
   MdVisibility,
   MdVisibilityOff,
+  MdArrowBack,
 } from "react-icons/md";
 import toast from "react-hot-toast";
 
@@ -21,6 +23,15 @@ const AdminLogin = () => {
   const [otpCooldown, setOtpCooldown] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Forgot password state
+  const [forgotStep, setForgotStep] = useState(0); // 0=off, 1=enter-email, 2=enter-otp, 3=new-password
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [forgotCooldown, setForgotCooldown] = useState(0);
+
   const { login, sendOwnerLoginOtp, verifyOwnerLoginOtp } = useAuth();
   const navigate = useNavigate();
 
@@ -29,6 +40,12 @@ const AdminLogin = () => {
     const t = setInterval(() => setOtpCooldown((c) => c - 1), 1000);
     return () => clearInterval(t);
   }, [otpCooldown]);
+
+  useEffect(() => {
+    if (forgotCooldown <= 0) return;
+    const t = setInterval(() => setForgotCooldown((c) => c - 1), 1000);
+    return () => clearInterval(t);
+  }, [forgotCooldown]);
 
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
@@ -73,6 +90,60 @@ const AdminLogin = () => {
       navigate("/admin/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Forgot Password handlers ──────────────────────────────────
+  const handleForgotSendOtp = async (e) => {
+    e?.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await api.post("/auth/owner/forgot-password", { email: forgotEmail });
+      setForgotStep(2);
+      setForgotCooldown(30);
+      toast.success("OTP sent to your registered email!");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send OTP");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotVerifyOtp = (e) => {
+    e.preventDefault();
+    if (forgotOtp.length !== 6) {
+      toast.error("Enter 6-digit OTP");
+      return;
+    }
+    setError("");
+    setForgotStep(3);
+  };
+
+  const handleForgotReset = async (e) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      await api.post("/auth/owner/reset-password", {
+        email: forgotEmail,
+        otp: forgotOtp,
+        newPassword,
+      });
+      toast.success("Password reset successfully! Please log in.");
+      setForgotStep(0);
+      setForgotEmail("");
+      setForgotOtp("");
+      setNewPassword("");
+      setMethod("password");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to reset password");
     } finally {
       setLoading(false);
     }
@@ -154,41 +225,197 @@ const AdminLogin = () => {
             <p className="text-sm text-text-secondary">Sign in to manage your hostel</p>
           </div>
 
-          {/* Method toggle */}
-          <div className="flex bg-white p-1 rounded-[16px] gap-1 border border-border/60 shadow-sm mb-8">
-            <button
-              onClick={() => {
-                setMethod("password");
-                setOtpSent(false);
-                setOtp("");
-                setError("");
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
-                method === "password"
-                  ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-text-secondary/50 hover:text-text-secondary"
-              }`}
-            >
-              <MdLock size={15} /> Password
-            </button>
-            <button
-              onClick={() => {
-                setMethod("otp");
-                setOtpSent(false);
-                setOtp("");
-                setError("");
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
-                method === "otp"
-                  ? "bg-primary text-white shadow-md shadow-primary/30"
-                  : "text-text-secondary/50 hover:text-text-secondary"
-              }`}
-            >
-              <MdVpnKey size={15} /> OTP
-            </button>
-          </div>
+          {/* Method toggle — hidden during forgot-password flow */}
+          {forgotStep === 0 && (
+            <div className="flex bg-white p-1 rounded-[16px] gap-1 border border-border/60 shadow-sm mb-8">
+              <button
+                onClick={() => {
+                  setMethod("password");
+                  setOtpSent(false);
+                  setOtp("");
+                  setError("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                  method === "password"
+                    ? "bg-primary text-white shadow-md shadow-primary/30"
+                    : "text-text-secondary/50 hover:text-text-secondary"
+                }`}
+              >
+                <MdLock size={15} /> Password
+              </button>
+              <button
+                onClick={() => {
+                  setMethod("otp");
+                  setOtpSent(false);
+                  setOtp("");
+                  setError("");
+                }}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-[14px] font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
+                  method === "otp"
+                    ? "bg-primary text-white shadow-md shadow-primary/30"
+                    : "text-text-secondary/50 hover:text-text-secondary"
+                }`}
+              >
+                <MdVpnKey size={15} /> OTP
+              </button>
+            </div>
+          )}
 
-          {method === "password" && (
+          {/* ── FORGOT PASSWORD FLOW ── */}
+          {forgotStep > 0 && (
+            <div className="space-y-5 animate-slide-up">
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotStep(0);
+                  setError("");
+                  setForgotOtp("");
+                  setNewPassword("");
+                }}
+                className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors mb-2"
+              >
+                <MdArrowBack size={15} /> Back to login
+              </button>
+              <h3 className="text-base font-bold text-text-primary">
+                {forgotStep === 1 && "Reset Password"}
+                {forgotStep === 2 && "Enter OTP"}
+                {forgotStep === 3 && "Set New Password"}
+              </h3>
+
+              {/* Step 1 — enter email */}
+              {forgotStep === 1 && (
+                <form onSubmit={handleForgotSendOtp} className="space-y-4">
+                  <p className="text-xs text-text-secondary">
+                    Enter your admin email to receive a reset OTP.
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="form-label">Admin Email</label>
+                    <div className="relative">
+                      <MdEmail className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                      <input
+                        required
+                        type="email"
+                        className="field-input pl-11"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="Enter admin email"
+                      />
+                    </div>
+                  </div>
+                  <button disabled={loading} type="submit" className="btn btn-primary w-full py-4">
+                    {loading ? (
+                      <>
+                        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />{" "}
+                        Sending...
+                      </>
+                    ) : (
+                      "Send Reset OTP"
+                    )}
+                  </button>
+                  {error && (
+                    <p className="text-[10px] text-danger font-semibold text-center">{error}</p>
+                  )}
+                </form>
+              )}
+
+              {/* Step 2 — enter OTP */}
+              {forgotStep === 2 && (
+                <form onSubmit={handleForgotVerifyOtp} className="space-y-4">
+                  <p className="text-xs text-text-secondary">
+                    OTP sent to <strong>{forgotEmail}</strong>
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="form-label">Verification Code</label>
+                    <div className="relative">
+                      <MdVpnKey className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                      <input
+                        required
+                        autoFocus
+                        maxLength={6}
+                        inputMode="numeric"
+                        type="text"
+                        className="field-input pl-11 tracking-[0.5em] text-center font-bold text-2xl"
+                        placeholder="000000"
+                        value={forgotOtp}
+                        onChange={(e) =>
+                          setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <button
+                    disabled={forgotOtp.length !== 6}
+                    type="submit"
+                    className="btn btn-primary w-full py-4"
+                  >
+                    Verify OTP
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleForgotSendOtp}
+                    disabled={loading || forgotCooldown > 0}
+                    className="w-full text-[10px] text-primary font-semibold hover:underline"
+                  >
+                    {forgotCooldown > 0 ? `Resend in ${forgotCooldown}s` : "Resend OTP"}
+                  </button>
+                  {error && (
+                    <p className="text-[10px] text-danger font-semibold text-center">{error}</p>
+                  )}
+                </form>
+              )}
+
+              {/* Step 3 — new password */}
+              {forgotStep === 3 && (
+                <form onSubmit={handleForgotReset} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="form-label">New Password</label>
+                    <div className="relative">
+                      <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                      <input
+                        required
+                        type={showNewPassword ? "text" : "password"}
+                        className="field-input pl-11 pr-11"
+                        placeholder="Min 8 chars, upper, lower, number"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                      >
+                        {showNewPassword ? (
+                          <MdVisibilityOff size={18} />
+                        ) : (
+                          <MdVisibility size={18} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    disabled={loading || newPassword.length < 8}
+                    type="submit"
+                    className="btn btn-primary w-full py-4"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />{" "}
+                        Resetting...
+                      </>
+                    ) : (
+                      "Reset Password"
+                    )}
+                  </button>
+                  {error && (
+                    <p className="text-[10px] text-danger font-semibold text-center">{error}</p>
+                  )}
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* ── NORMAL LOGIN ── */}
+          {forgotStep === 0 && method === "password" && (
             <form onSubmit={handlePasswordLogin} className="space-y-5">
               <div className="space-y-1.5">
                 <label className="form-label">Admin Email</label>
@@ -239,13 +466,24 @@ const AdminLogin = () => {
                   "Sign in"
                 )}
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotStep(1);
+                  setForgotEmail(email);
+                  setError("");
+                }}
+                className="w-full text-[11px] text-primary/70 hover:text-primary font-semibold hover:underline transition-colors"
+              >
+                Forgot password?
+              </button>
               {error && (
                 <p className="text-[10px] text-danger font-semibold mt-3 text-center">{error}</p>
               )}
             </form>
           )}
 
-          {method === "otp" && !otpSent && (
+          {forgotStep === 0 && method === "otp" && !otpSent && (
             <form onSubmit={handleSendOtp} className="space-y-5">
               <div className="space-y-1.5">
                 <label className="form-label">Admin Email</label>
@@ -280,7 +518,7 @@ const AdminLogin = () => {
             </form>
           )}
 
-          {method === "otp" && otpSent && (
+          {forgotStep === 0 && method === "otp" && otpSent && (
             <form onSubmit={handleVerifyOtp} className="space-y-5">
               <div className="flex items-center gap-2 mb-2">
                 <button

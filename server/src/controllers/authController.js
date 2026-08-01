@@ -123,6 +123,16 @@ export const resetPassword = asyncHandler(async (req, res) => {
   return success(res, result);
 });
 
+export const sendOwnerForgotOtp = asyncHandler(async (req, res) => {
+  const result = await authService.sendOwnerForgotOtp(req.validated.body);
+  return success(res, result);
+});
+
+export const resetOwnerPassword = asyncHandler(async (req, res) => {
+  const result = await authService.resetOwnerPassword(req.validated.body);
+  return success(res, result);
+});
+
 export const refresh = asyncHandler(async (req, res) => {
   assertAllowedOrigin(req);
   const token = req.body?.refreshToken || req.cookies?.refreshToken;

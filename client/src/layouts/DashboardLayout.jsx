@@ -204,7 +204,7 @@ const DashboardLayout = () => {
           <button
             onClick={() => {
               logout();
-              navigate("/login");
+              navigate(roleKey === "owner" ? "/admin-login" : "/login");
             }}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-tertiary hover:text-danger hover:bg-danger-bg transition-all w-full"
           >

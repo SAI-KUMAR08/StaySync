@@ -437,3 +437,55 @@ export async function switchOwnerHostel({ ownerId, hostelId }) {
     ...tokens,
   };
 }
+
+/**
+ * Step 1 of Owner Forgot Password: send OTP to the owner's registered email.
+ */
+export async function sendOwnerForgotOtp({ email }) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const owner = await Owner.findOne({ email: normalizedEmail, isActive: true });
+  if (!owner) throw new AppError("No active account found with this email", 404);
+
+  await checkOtpCooldown(owner);
+  const { otpVal, expiresAt } = generateOtp();
+
+  await OTP.findOneAndUpdate(
+    { userId: owner._id, mobile: normalizedEmail },
+    { otp: otpVal, expiresAt, verified: false, failedAttempts: 0 },
+    { upsert: true, new: true }
+  );
+
+  await sendOtpEmail({
+    to: normalizedEmail,
+    otp: otpVal,
+    purpose: "Password Reset",
+    name: owner.name,
+  });
+
+  return {
+    message: "OTP sent to your registered email",
+    ...(!env.SEND_REAL_EMAIL ? { otp: otpVal } : {}),
+  };
+}
+
+/**
+ * Step 2 of Owner Forgot Password: verify OTP then set a new password.
+ */
+export async function resetOwnerPassword({ email, otp, newPassword }) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const owner = await Owner.findOne({ email: normalizedEmail, isActive: true }).select("+password");
+  if (!owner) throw new AppError("No active account found with this email", 404);
+
+  await verifyOTP(owner._id, otp);
+
+  owner.password = newPassword;
+  await owner.save();
+
+  // Revoke all existing sessions so the owner must log in again on every device.
+  const { RefreshToken } = await import("../../models/index.js");
+  await RefreshToken.deleteMany({ userId: owner._id });
+
+  return { message: "Password reset successfully. Please log in with your new password." };
+}

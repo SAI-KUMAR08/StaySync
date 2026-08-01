@@ -19,6 +19,8 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
   tenantCheckSchema,
+  ownerForgotPasswordSchema,
+  ownerResetPasswordSchema,
 } from "../validators/auth.js";
 import * as authController from "../controllers/authController.js";
 import {
@@ -60,6 +62,18 @@ router.post(
   otpLimiter,
   validate(ownerVerifyLoginOtpSchema),
   authController.verifyOwnerLoginOtp
+);
+router.post(
+  "/owner/forgot-password",
+  otpLimiter,
+  validate(ownerForgotPasswordSchema),
+  authController.sendOwnerForgotOtp
+);
+router.post(
+  "/owner/reset-password",
+  otpLimiter,
+  validate(ownerResetPasswordSchema),
+  authController.resetOwnerPassword
 );
 router.post("/login", authLimiter, validate(loginSchema), authController.login);
 router.post("/send-otp", otpLimiter, validate(sendOtpSchema), authController.sendOtp);
