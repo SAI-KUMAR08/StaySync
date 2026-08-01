@@ -4,7 +4,7 @@ const statusHistorySchema = new mongoose.Schema(
   {
     status: {
       type: String,
-      enum: ["pending", "assigned", "in_progress", "resolved", "closed"],
+      enum: ["pending", "assigned", "in_progress", "resolved", "closed", "needs_info"],
       required: true,
     },
     note: { type: String, trim: true },
@@ -17,8 +17,8 @@ const statusHistorySchema = new mongoose.Schema(
 
 const complaintSchema = new mongoose.Schema(
   {
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true, index: true },
-    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true, index: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true },
+    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true },
     tenantId: { type: mongoose.Schema.Types.ObjectId, ref: "Tenant", required: true, index: true },
     roomId: { type: mongoose.Schema.Types.ObjectId, ref: "Room", default: null },
     bedId: { type: mongoose.Schema.Types.ObjectId, ref: "Bed", default: null },
@@ -32,7 +32,7 @@ const complaintSchema = new mongoose.Schema(
     priority: { type: String, enum: ["low", "medium", "high", "emergency"], default: "medium" },
     status: {
       type: String,
-      enum: ["pending", "assigned", "in_progress", "resolved", "closed"],
+      enum: ["pending", "assigned", "in_progress", "resolved", "closed", "needs_info"],
       default: "pending",
     },
     assignedTo: { type: String, trim: true },
@@ -44,7 +44,7 @@ const complaintSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-complaintSchema.index({ ownerId: 1, hostelId: 1, status: 1 });
+complaintSchema.index({ ownerId: 1, hostelId: 1, status: 1, createdAt: -1 });
 complaintSchema.index({ ownerId: 1, hostelId: 1, tenantId: 1 });
 
 export const Complaint = mongoose.model("Complaint", complaintSchema);

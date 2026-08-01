@@ -6,7 +6,12 @@ import { ownerFilter } from "../utils/scope.js";
 import { escapeRegex } from "../utils/regex.js";
 import { emitToHostel } from "../utils/socketEvents.js";
 
-const filter = (req) => ownerFilter(req);
+const filter = (req) => {
+  const f = ownerFilter(req);
+  const q = { ownerId: f.ownerId };
+  if (f.hostelId) q.hostelId = f.hostelId;
+  return q;
+};
 
 export const listExpenses = asyncHandler(async (req, res) => {
   const query = { ...filter(req) };
@@ -30,19 +35,22 @@ export const listExpenses = asyncHandler(async (req, res) => {
 });
 
 export const getExpense = asyncHandler(async (req, res) => {
-  const expense = await Expense.findOne({ _id: req.validated.params.id, ...filter(req) })
-    .populate("hostelId", "name");
+  const expense = await Expense.findOne({ _id: req.validated.params.id, ...filter(req) }).populate(
+    "hostelId",
+    "name"
+  );
   if (!expense) throw new AppError("Expense not found", 404);
   return success(res, expense);
 });
 
 export const createExpense = asyncHandler(async (req, res) => {
   const f = filter(req);
-  const { category, amount, description, date, paymentMethod, vendor, isRecurring } = req.validated.body;
+  const { category, amount, description, date, paymentMethod, vendor, isRecurring } =
+    req.validated.body;
 
   const expense = await Expense.create({
     ownerId: f.ownerId,
-    hostelId: f.hostelId,
+    hostelId: f.hostelId || req.user?.hostelId,
     category,
     amount,
     description: description?.trim(),
@@ -60,7 +68,8 @@ export const updateExpense = asyncHandler(async (req, res) => {
   const expense = await Expense.findOne({ _id: req.validated.params.id, ...filter(req) });
   if (!expense) throw new AppError("Expense not found", 404);
 
-  const { category, amount, description, date, paymentMethod, vendor, isRecurring } = req.validated.body;
+  const { category, amount, description, date, paymentMethod, vendor, isRecurring } =
+    req.validated.body;
   if (category !== undefined) expense.category = category;
   if (amount !== undefined) expense.amount = amount;
   if (description !== undefined) expense.description = description?.trim();
@@ -82,10 +91,9 @@ export const deleteExpense = asyncHandler(async (req, res) => {
 });
 
 export const getExpenseSummary = asyncHandler(async (req, res) => {
-  const f = filter(req);
+  const match = { ...filter(req) };
   const { startDate, endDate } = req.query;
 
-  const match = { ownerId: f.ownerId, hostelId: f.hostelId };
   if (startDate || endDate) {
     match.date = {};
     if (startDate) match.date.$gte = new Date(startDate);
@@ -105,16 +113,15 @@ export const getExpenseSummary = asyncHandler(async (req, res) => {
   ]);
 
   const totalExpenses = summary.reduce((acc, s) => acc + s.total, 0);
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const thisMonthMatch = { ...filter(req), date: { $gte: startOfMonth, $lt: endOfMonth } };
+
   const thisMonth = await Expense.aggregate([
-    {
-      $match: {
-        ...match,
-        date: {
-          $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          $lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
-        },
-      },
-    },
+    { $match: thisMonthMatch },
     { $group: { _id: null, total: { $sum: "$amount" } } },
   ]);
 

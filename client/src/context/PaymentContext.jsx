@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import api from "../api/axios";
 import { useAuth } from "./AuthContext";
 
@@ -21,7 +21,7 @@ export const PaymentProvider = ({ children }) => {
     if (!user?.hostelId) return;
     setLoading(true);
     try {
-      const res = await api.get("/owner/payments/totals");
+      const res = await api.get("/owner/payments/totals", { _skipCache: true });
       if (res.data?.data) {
         setTotals(res.data.data);
       }
@@ -49,7 +49,15 @@ export const usePaymentTotals = () => {
   const ctx = useContext(PaymentContext);
   if (!ctx) {
     return {
-      totals: { totalCollected: 0, totalPending: 0, totalOverdue: 0, paidCount: 0, unpaidCount: 0, overdueCount: 0, collectionRate: 0 },
+      totals: {
+        totalCollected: 0,
+        totalPending: 0,
+        totalOverdue: 0,
+        paidCount: 0,
+        unpaidCount: 0,
+        overdueCount: 0,
+        collectionRate: 0,
+      },
       loading: false,
       refreshTotals: () => {},
     };

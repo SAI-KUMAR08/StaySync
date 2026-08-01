@@ -1,11 +1,22 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
-  MdDashboard, MdPeople, MdReportProblem,
-  MdPayment, MdNotifications, MdLogout, MdMenu, MdClose,
-  MdLayers, MdAnnouncement, MdHome, MdAttachMoney, MdRestaurant,
-  MdChevronRight, MdSearch, MdMoreVert,
+  MdDashboard,
+  MdPeople,
+  MdReportProblem,
+  MdPayment,
+  MdLogout,
+  MdMenu,
+  MdClose,
+  MdLayers,
+  MdAnnouncement,
+  MdHome,
+  MdAttachMoney,
+  MdRestaurant,
+  MdChevronRight,
+  MdSwapHoriz,
+  MdPerson,
 } from "react-icons/md";
 import HostelSwitcher from "../components/HostelSwitcher";
 
@@ -17,58 +28,68 @@ const ROUTE_PREFETCH = {
   "/admin/payments": () => import("../pages/Payments"),
   "/admin/expenses": () => import("../pages/Expenses"),
   "/admin/meal-timings": () => import("../pages/MealTimings"),
+  "/admin/requests": () => import("../pages/AdminRequests"),
   "/admin/notifications": () => import("../pages/Notifications"),
   "/tenant/dashboard": () => import("../pages/TenantDashboard"),
   "/tenant/complaints": () => import("../pages/Complaints"),
   "/tenant/payments": () => import("../pages/Payments"),
   "/tenant/meal-timings": () => import("../pages/MealTimings"),
   "/tenant/notifications": () => import("../pages/Notifications"),
+  "/tenant/profile": () => import("../pages/TenantProfileSettings"),
+  "/tenant/room-shift": () => import("../pages/TenantRoomShift"),
 };
 
 const NAV_GROUPS = {
   owner: [
-    { group: "Overview", items: [
-      { to: "/admin/dashboard", icon: MdDashboard, label: "Dashboard" },
-    ]},
-    { group: "Management", items: [
-      { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
-      { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
-      { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
-    ]},
-    { group: "Finance", items: [
-      { to: "/admin/payments", icon: MdPayment, label: "Payments" },
-      { to: "/admin/expenses", icon: MdAttachMoney, label: "Expenses" },
-    ]},
-    { group: "Settings", items: [
-      { to: "/admin/meal-timings", icon: MdRestaurant, label: "Meals" },
-      { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
-    ]},
-  ],
-  manager: [
-    { group: "Overview", items: [
-      { to: "/admin/dashboard", icon: MdDashboard, label: "Dashboard" },
-    ]},
-    { group: "Management", items: [
-      { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
-      { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
-      { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
-    ]},
-    { group: "Settings", items: [
-      { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
-    ]},
+    {
+      group: "Overview",
+      items: [{ to: "/admin/dashboard", icon: MdDashboard, label: "Dashboard" }],
+    },
+    {
+      group: "Management",
+      items: [
+        { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
+        { to: "/admin/tenants", icon: MdPeople, label: "Tenants" },
+        { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
+        { to: "/admin/requests", icon: MdSwapHoriz, label: "Requests" },
+      ],
+    },
+    {
+      group: "Finance",
+      items: [
+        { to: "/admin/payments", icon: MdPayment, label: "Payments" },
+        { to: "/admin/expenses", icon: MdAttachMoney, label: "Expenses" },
+      ],
+    },
+    {
+      group: "Settings",
+      items: [
+        { to: "/admin/meal-timings", icon: MdRestaurant, label: "Meals" },
+        { to: "/admin/notifications", icon: MdAnnouncement, label: "Notices" },
+      ],
+    },
   ],
   tenant: [
-    { group: "Overview", items: [
-      { to: "/tenant/dashboard", icon: MdDashboard, label: "My Space" },
-    ]},
-    { group: "Support", items: [
-      { to: "/tenant/complaints", icon: MdReportProblem, label: "Support" },
-      { to: "/tenant/payments", icon: MdPayment, label: "Payments" },
-    ]},
-    { group: "Settings", items: [
-      { to: "/tenant/meal-timings", icon: MdRestaurant, label: "Meals" },
-      { to: "/tenant/notifications", icon: MdAnnouncement, label: "Notices" },
-    ]},
+    {
+      group: "Overview",
+      items: [{ to: "/tenant/dashboard", icon: MdDashboard, label: "My Space" }],
+    },
+    {
+      group: "Support",
+      items: [
+        { to: "/tenant/complaints", icon: MdReportProblem, label: "Support" },
+        { to: "/tenant/room-shift", icon: MdSwapHoriz, label: "Room Shift" },
+        { to: "/tenant/payments", icon: MdPayment, label: "Payments" },
+      ],
+    },
+    {
+      group: "Settings",
+      items: [
+        { to: "/tenant/meal-timings", icon: MdRestaurant, label: "Meals" },
+        { to: "/tenant/notifications", icon: MdAnnouncement, label: "Notices" },
+        { to: "/tenant/profile", icon: MdPerson, label: "My Profile" },
+      ],
+    },
   ],
 };
 
@@ -78,9 +99,11 @@ const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  useEffect(() => { setSidebarOpen(false); }, [location]);
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location]);
 
-  const roleKey = user?.role === "owner" ? "owner" : user?.role === "manager" ? "manager" : "tenant";
+  const roleKey = user?.role === "owner" ? "owner" : "tenant";
   const navGroups = NAV_GROUPS[roleKey] || [];
 
   const getPageLabel = () => {
@@ -96,21 +119,25 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-background">
-
       {/* Mobile backdrop */}
       {sidebarOpen && (
-        <div onClick={() => setSidebarOpen(false)} className="fixed inset-0 bg-black/30 z-40 lg:hidden" />
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/30 z-40 lg:hidden"
+        />
       )}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside className={`
+      <aside
+        className={`
         fixed top-0 left-0 h-full z-50
         bg-white border-r border-border
         flex flex-col
         transition-all duration-300 ease-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0 lg:w-60
-      `}>
+      `}
+      >
         {/* Brand */}
         <div className="px-5 h-14 flex items-center gap-3 border-b border-border flex-shrink-0">
           <Link
@@ -122,10 +149,15 @@ const DashboardLayout = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-text-primary leading-tight">Sri Rama</p>
-              <p className="text-[9px] text-text-tertiary font-medium uppercase tracking-wider">Hostel Manager</p>
+              <p className="text-[9px] text-text-tertiary font-medium uppercase tracking-wider">
+                Hostel Manager
+              </p>
             </div>
           </Link>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-text-tertiary hover:text-text-primary">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 text-text-tertiary hover:text-text-primary"
+          >
             <MdClose size={18} />
           </button>
         </div>
@@ -151,7 +183,10 @@ const DashboardLayout = () => {
                           : "text-text-secondary hover:text-text-primary hover:bg-neutral-50"
                       }`}
                     >
-                      <item.icon size={18} className={active ? "text-primary" : "text-text-tertiary"} />
+                      <item.icon
+                        size={18}
+                        className={active ? "text-primary" : "text-text-tertiary"}
+                      />
                       <span>{item.label}</span>
                       {active && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-primary" />
@@ -167,7 +202,10 @@ const DashboardLayout = () => {
         {/* Logout */}
         <div className="px-3 py-3 border-t border-border flex-shrink-0">
           <button
-            onClick={() => { logout(); navigate("/login"); }}
+            onClick={() => {
+              logout();
+              navigate("/login");
+            }}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-text-tertiary hover:text-danger hover:bg-danger-bg transition-all w-full"
           >
             <MdLogout size={18} />
@@ -178,11 +216,9 @@ const DashboardLayout = () => {
 
       {/* ═══ MAIN CONTENT ═══ */}
       <div className="lg:ml-60 min-h-screen flex flex-col">
-
         {/* ═══ TOP NAVBAR ═══ */}
         <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-lg border-b border-border">
           <div className="flex items-center justify-between px-4 lg:px-6 h-14 max-w-[1440px] mx-auto w-full">
-
             {/* Left */}
             <div className="flex items-center gap-3">
               <button
@@ -192,7 +228,7 @@ const DashboardLayout = () => {
                 <MdMenu size={20} />
               </button>
               <div className="flex items-center gap-2 text-xs text-text-tertiary">
-                <span className="font-medium">{user?.role === "owner" ? "Owner" : user?.role === "manager" ? "Manager" : "Resident"}</span>
+                <span className="font-medium">{user?.role === "owner" ? "Owner" : "Tenant"}</span>
                 <MdChevronRight size={12} />
                 <span className="font-semibold text-text-secondary">{getPageLabel()}</span>
               </div>
@@ -202,7 +238,11 @@ const DashboardLayout = () => {
             <div className="flex items-center gap-2">
               {user?.role === "owner" && hostels?.length > 0 && (
                 <div className="hidden md:flex">
-                  <HostelSwitcher hostels={hostels} activeHostelId={user?.hostelId} onSwitch={switchHostel} />
+                  <HostelSwitcher
+                    hostels={hostels}
+                    activeHostelId={user?.hostelId}
+                    onSwitch={switchHostel}
+                  />
                 </div>
               )}
             </div>
@@ -219,7 +259,7 @@ const DashboardLayout = () => {
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-border px-2 pb-safe">
         <div className="flex items-center justify-around h-14">
           {(() => {
-            const allItems = navGroups.flatMap(g => g.items);
+            const allItems = navGroups.flatMap((g) => g.items);
             const visible = allItems.slice(0, 5);
             return visible.map((item) => {
               const active = isActive(item.to);
@@ -232,7 +272,9 @@ const DashboardLayout = () => {
                   }`}
                 >
                   <item.icon size={20} />
-                  <span className="text-[9px] font-semibold uppercase tracking-wider">{item.label}</span>
+                  <span className="text-[9px] font-semibold uppercase tracking-wider">
+                    {item.label}
+                  </span>
                 </Link>
               );
             });

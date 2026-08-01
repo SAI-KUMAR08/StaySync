@@ -12,8 +12,6 @@ const hostelSchema = new mongoose.Schema(
     settings: { type: mongoose.Schema.Types.Mixed, default: {} },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
     statistics: { type: mongoose.Schema.Types.Mixed, default: {} },
-    lateFeeGracePeriodDays: { type: Number, default: 5, min: 0 },
-    lateFeeDailyRate: { type: Number, default: 50, min: 0 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
@@ -25,4 +23,3 @@ hostelSchema.set("toJSON", { virtuals: true });
 hostelSchema.set("toObject", { virtuals: true });
 
 export const Hostel = mongoose.model("Hostel", hostelSchema);
-

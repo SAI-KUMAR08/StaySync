@@ -1,321 +1,224 @@
 import cron from "node-cron";
-import { Tenant, Payment, PaymentRequest, Hostel, Complaint, BedShiftRequest, RoomAssignmentHistory, Notice } from "../models/index.js";
-import { logActivity } from "./activityService.js";
+import {
+  Tenant,
+  Hostel,
+  Payment,
+  PaymentRequest,
+  Complaint,
+  BedShiftRequest,
+  RoomAssignmentHistory,
+  Notice,
+  VacateRequest,
+  ActivityLog,
+  Notification,
+  ProfileUpdateRequest,
+  TemporaryAllotmentRequest,
+} from "../models/index.js";
+import { withCronLock } from "./cronLock.js";
+import { logCron, recordCronRun } from "../utils/cronLogger.js";
+import { getEnglishMonthName } from "../utils/date.js";
+import { getMissingProfileFields } from "../utils/profileCompleteness.js";
+
+/** Per-job lock TTL. Jobs are short, so 30 minutes is generous headroom. */
+const LOCK_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Run a cron job guarded by a distributed lock and tracked via structured logs.
+ * `jobName` identifies the job across log lines / lock documents.
+ */
+async function runScheduledJob(jobName, fn) {
+  logCron(jobName, "info", "Starting cron job");
+  try {
+    const result = await withCronLock(`cron:${jobName}`, LOCK_TTL_MS, fn);
+    if (result === null) {
+      recordCronRun(jobName, "skipped");
+      return;
+    }
+    recordCronRun(jobName, "success", { ...(result || {}) });
+    logCron(jobName, "info", "Cron job completed", result || {});
+  } catch (error) {
+    recordCronRun(jobName, "error", { error: error?.message || String(error) });
+    logCron(jobName, "error", "Cron job failed", { error: error?.message || String(error) });
+  }
+}
 
 export const initCronJobs = () => {
-  // Run daily at 00:00 to check for billing anniversaries & apply late fees
-  cron.schedule("0 0 * * *", async () => {
-    console.log("🕒 Running daily rent generation & late fee engine...");
-    try {
+  // Run on the 2nd of every month at 00:00 to generate monthly fees
+  cron.schedule("0 0 2 * *", async () => {
+    await runScheduledJob("monthly-fee-generation", async () => {
       const now = new Date();
-      const currentDay = now.getDate();
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const monthStr = now.toLocaleString("default", { month: "long" });
+      const monthStr = getEnglishMonthName(now);
       const year = now.getFullYear();
-
-      // 1. Rent Generation — batch-find all tenants whose billing anniversary is today
       const hostels = await Hostel.find({ isActive: true }).lean();
-      let rentCount = 0;
+      let createdCount = 0;
 
       for (const hostel of hostels) {
         try {
-        const tenants = await Tenant.find({
-          isActive: true,
-          ownerId: hostel.ownerId,
-          hostelId: hostel._id,
-          monthlyRent: { $gt: 0 },
-        }).select("_id ownerId hostelId bedId monthlyRent moveInDate createdAt").lean();
-
-        const tenantIds = tenants.map(t => t._id);
-        const existingPayments = await Payment.find({
-          tenantId: { $in: tenantIds },
-          paymentMonth: monthStr,
-          year,
-        }).select("tenantId").lean();
-        const existingSet = new Set(existingPayments.map(p => p.tenantId.toString()));
-
-        const toCreate = [];
-        for (const tenant of tenants) {
-          const joinDate = new Date(tenant.moveInDate || tenant.createdAt);
-          const anniversaryDay = joinDate.getDate();
-          const isAnniversary =
-            currentDay === anniversaryDay ||
-            (anniversaryDay > lastDayOfMonth && currentDay === lastDayOfMonth);
-
-          if (!isAnniversary) continue;
-          if (existingSet.has(tenant._id.toString())) continue;
-
-          const dueDate = new Date(now);
-          dueDate.setDate(dueDate.getDate() + 5);
-          toCreate.push({
+          const tenants = await Tenant.find({
+            isActive: true,
             ownerId: hostel.ownerId,
             hostelId: hostel._id,
-            tenantId: tenant._id,
-            bedId: tenant.bedId,
-            amount: tenant.monthlyRent,
-            fineAmount: 0,
-            totalAmount: tenant.monthlyRent,
+            monthlyRent: { $gt: 0 },
+          })
+            .select("_id ownerId hostelId monthlyRent")
+            .lean();
+
+          const tenantIds = tenants.map((t) => t._id);
+          // Check for existing payments this month
+          const existingPayments = await Payment.find({
+            tenantId: { $in: tenantIds },
             paymentMonth: monthStr,
             year,
-            dueDate,
-            paymentStatus: "unpaid",
-            notes: `Monthly rent for cycle starting ${now.toDateString()}`,
+          })
+            .select("tenantId")
+            .lean();
+          const existingSet = new Set(existingPayments.map((p) => p.tenantId.toString()));
+
+          const toCreate = tenants
+            .filter((t) => !existingSet.has(t._id.toString()))
+            .map((t) => ({
+              ownerId: hostel.ownerId,
+              hostelId: hostel._id,
+              tenantId: t._id,
+              amount: t.monthlyRent,
+              fineAmount: 0,
+              totalAmount: t.monthlyRent,
+              paymentMonth: monthStr,
+              year,
+              dueDate: new Date(now.getFullYear(), now.getMonth(), 7), // 2nd + 5 day grace = 7th
+              paymentStatus: "unpaid",
+              paymentType: "rent",
+              notes: `Monthly rent for ${monthStr} ${year}`,
+            }));
+
+          if (toCreate.length > 0) {
+            const created = await Payment.insertMany(toCreate);
+            createdCount += created.length;
+
+            // Batch the activity log writes instead of fanning out one create per payment.
+            await ActivityLog.insertMany(
+              created.map((payment) => ({
+                ownerId: hostel.ownerId,
+                hostelId: hostel._id,
+                actorId: hostel.ownerId,
+                actorRole: "system",
+                action: "rent_generated",
+                entityType: "payment",
+                entityId: payment._id,
+              }))
+            );
+          }
+        } catch (err) {
+          logCron("monthly-fee-generation", "error", "Monthly fee error for hostel", {
+            hostelId: hostel._id?.toString(),
+            error: err?.message || String(err),
           });
         }
-
-        if (toCreate.length > 0) {
-          const createdPayments = await Payment.insertMany(toCreate);
-          rentCount += createdPayments.length;
-
-          await Promise.all(
-            createdPayments.map((payment) =>
-              logActivity({
-                ownerId: hostel.ownerId,
-                hostelId: hostel._id,
-                actorId: hostel.ownerId,
-                actorRole: "system",
-                action: "rent_generated",
-                entityType: "payment",
-                entityId: payment._id,
-              })
-            )
-          );
-        }
-        } catch (err) {
-          console.error("[cron] Rent generation error for hostel", hostel._id, err);
-        }
       }
 
-      console.log(`✅ Created ${rentCount} new rent invoices today.`);
-
-      // 2. Late Fee Application — batch update per hostel
-      let lateCount = 0;
-      const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-      for (const hostel of hostels) {
-        try {
-        const unpaidPayments = await Payment.find({
-          ownerId: hostel.ownerId,
-          hostelId: hostel._id,
-          paymentStatus: { $in: ["unpaid", "overdue"] },
-        }).select("_id dueDate amount fineAmount totalAmount paymentStatus").lean();
-
-        const bulkOps = [];
-        for (const payment of unpaidPayments) {
-          const dueDate = new Date(payment.dueDate);
-          const dueMidnight = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-          const diffTime = todayMidnight - dueMidnight;
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-          if (diffDays > 0) {
-            const graceDays = hostel.lateFeeGracePeriodDays ?? 5;
-            const dailyRate = hostel.lateFeeDailyRate ?? 50;
-
-            if (diffDays > graceDays) {
-              const rawFine = diffDays * dailyRate;
-              const capFine = payment.amount * 0.5;
-              const fineAmount = Math.min(rawFine, capFine);
-
-              if (payment.fineAmount !== fineAmount || payment.paymentStatus !== "overdue") {
-                bulkOps.push({
-                  updateOne: {
-                    filter: { _id: payment._id },
-                    update: {
-                      $set: {
-                        fineAmount,
-                        totalAmount: payment.amount + fineAmount,
-                        paymentStatus: "overdue",
-                      },
-                    },
-                  },
-                });
-                lateCount++;
-              }
-            }
-          }
-        }
-
-        if (bulkOps.length > 0) {
-          await Payment.bulkWrite(bulkOps);
-        }
-        } catch (err) {
-          console.error("[cron] Late fee error for hostel", hostel._id, err);
-        }
-      }
-
-      console.log(`✅ Updated ${lateCount} overdue invoices with late fees today.`);
-    } catch (error) {
-      console.error("❌ Error in cron engine:", error);
-    }
+      return { generated: createdCount };
+    });
   });
 
-  // Run on the 1st of every month at 00:30 to generate unpaid payments for ALL active tenants
-  cron.schedule("30 0 1 * *", async () => {
-    console.log("📆 Running monthly 1st-of-month payment generation...");
-    try {
-      const now = new Date();
-      const monthStr = now.toLocaleString("default", { month: "long" });
-      const year = now.getFullYear();
-
-      const hostels = await Hostel.find({ isActive: true }).lean();
-      let createdCount = 0;
-
-      for (const hostel of hostels) {
-        try {
-        const tenants = await Tenant.find({
-          isActive: true,
-          ownerId: hostel.ownerId,
-          hostelId: hostel._id,
-          monthlyRent: { $gt: 0 },
-        }).select("_id ownerId hostelId bedId monthlyRent").lean();
-
-        const tenantIds = tenants.map(t => t._id);
-        // Check which tenants already have a payment for this month
-        const existing = await Payment.find({
-          tenantId: { $in: tenantIds },
-          paymentMonth: monthStr,
-          year,
-        }).select("tenantId").lean();
-        const existingSet = new Set(existing.map(p => p.tenantId.toString()));
-
-        const toCreate = tenants
-          .filter(t => !existingSet.has(t._id.toString()))
-          .map(t => ({
-            ownerId: hostel.ownerId,
-            hostelId: hostel._id,
-            tenantId: t._id,
-            bedId: t.bedId,
-            amount: t.monthlyRent,
-            fineAmount: 0,
-            totalAmount: t.monthlyRent,
-            paymentMonth: monthStr,
-            year,
-            dueDate: new Date(now.getFullYear(), now.getMonth(), 5), // Due on 5th of the month
-            paymentStatus: "unpaid",
-            notes: `Monthly rent for ${monthStr} ${year}`,
-          }));
-
-        if (toCreate.length > 0) {
-          const created = await Payment.insertMany(toCreate);
-          createdCount += created.length;
-
-          await Promise.all(
-            created.map(payment =>
-              logActivity({
-                ownerId: hostel.ownerId,
-                hostelId: hostel._id,
-                actorId: hostel.ownerId,
-                actorRole: "system",
-                action: "rent_generated",
-                entityType: "payment",
-                entityId: payment._id,
-              })
-            )
-          );
-        }
-        } catch (err) {
-          console.error("[cron] Monthly payment error for hostel", hostel._id, err);
-        }
-      }
-
-      console.log(`✅ Created ${createdCount} monthly rent payments for all active residents.`);
-    } catch (error) {
-      console.error("❌ Error in monthly payment generation:", error);
-    }
-  });
-
-  // Run daily at 03:00 to check for incomplete resident profiles and create/resolve notices
+  // Run daily at 03:00 to check for incomplete tenant profiles — creates ONE consolidated notice
   cron.schedule("0 3 * * *", async () => {
-    console.log("🔍 Running incomplete profile check...");
-    try {
+    await runScheduledJob("incomplete-profile-check", async () => {
       const hostels = await Hostel.find({ isActive: true }).lean();
-      let createdCount = 0;
       let resolvedCount = 0;
 
       for (const hostel of hostels) {
         try {
-        const f = { ownerId: hostel.ownerId, hostelId: hostel._id };
-        const tenants = await Tenant.find({ ...f, isActive: true }).lean();
+          const f = { ownerId: hostel.ownerId, hostelId: hostel._id };
+          const tenants = await Tenant.find({ ...f, isActive: true }).lean();
 
-        const incompleteTenants = tenants.filter((t) => {
-          const name = t.name || t.personalInfo?.name;
-          return !(
-            name && name.trim() !== "" &&
-            t.roomId &&
-            (t.personalInfo?.phone || t.phone) &&
-            t.emergencyContact &&
-            t.aadhaarNumber &&
-            t.idProof &&
-            t.offlineBookingForm
-          );
-        });
+          const incompleteTenants = tenants.filter((t) => getMissingProfileFields(t).length > 0);
 
-        const completeTenantIds = tenants
-          .filter((t) => !incompleteTenants.includes(t))
-          .map((t) => t._id.toString());
+          const completeTenantIds = tenants
+            .filter((t) => !incompleteTenants.includes(t))
+            .map((t) => t._id.toString());
 
-        // Close notices for tenants whose profiles are now complete
-        if (completeTenantIds.length > 0) {
-          const closeResult = await Notice.updateMany(
-            {
-              ...f,
-              type: "system_incomplete_profile",
-              isActive: true,
-              title: "Immediate Action Required",
-            },
-            { $set: { isActive: false } }
-          );
-          resolvedCount += closeResult.modifiedCount;
-        }
-
-        // Create notices for incomplete profiles
-        for (const tenant of incompleteTenants) {
-          const name = tenant.name || tenant.personalInfo?.name || "Unknown";
-          const missing = [];
-          if (!name || name.trim() === "") missing.push("Full Name");
-          if (!tenant.roomId) missing.push("Room Number");
-          if (!(tenant.personalInfo?.phone || tenant.phone)) missing.push("Mobile Number");
-          if (!tenant.emergencyContact) missing.push("Emergency Contact");
-          if (!tenant.aadhaarNumber) missing.push("Aadhaar Number");
-          if (!tenant.idProof) missing.push("ID Proof Document");
-          if (!tenant.offlineBookingForm) missing.push("Registration Form Document");
-
-          // Check if notice already exists for this tenant's incomplete profile
-          const existingNotice = await Notice.findOne({
-            ...f,
-            type: "system_incomplete_profile",
-            isActive: true,
-            title: "Immediate Action Required",
-            message: { $regex: name, $options: "i" },
-          });
-
-          if (!existingNotice) {
-            await Notice.create({
-              ...f,
-              title: "Immediate Action Required",
-              message: `Resident ${name}'s profile is incomplete. Missing: ${missing.join(", ")}. Immediate action required.`,
-              type: "system_incomplete_profile",
-              priority: "high",
-              isActive: true,
-            });
-            createdCount++;
+          // Per-tenant durable alert so each incomplete tenant sees their own
+          // missing fields in their inbox on login. Upserts while unread (re-alerts
+          // if they read it and still haven't fixed the profile); once complete,
+          // any lingering unread completeness alert is marked read.
+          for (const t of incompleteTenants) {
+            const missing = getMissingProfileFields(t, { tenantFacing: true }).map((m) => m.label);
+            await Notification.updateOne(
+              { ...f, tenantId: t._id, type: "system", read: false },
+              {
+                $set: {
+                  title: "Complete your profile",
+                  message: `Your profile is missing: ${missing.join(", ")}. Please update it via My Profile.`,
+                },
+              },
+              { upsert: true }
+            );
           }
-        }
+          if (completeTenantIds.length > 0) {
+            await Notification.updateMany(
+              { ...f, type: "system", read: false, tenantId: { $in: completeTenantIds } },
+              { $set: { read: true } }
+            );
+          }
+
+          // Close consolidated notice when ALL profiles become complete
+          if (completeTenantIds.length === tenants.length) {
+            const closeResult = await Notice.updateMany(
+              {
+                ...f,
+                type: "system_incomplete_profile",
+                isActive: true,
+                title: "Incomplete Tenant Profiles",
+              },
+              { $set: { isActive: false } }
+            );
+            resolvedCount += closeResult.modifiedCount;
+          }
+
+          // Create ONE consolidated notice listing all incomplete tenants
+          if (incompleteTenants.length > 0) {
+            const details = incompleteTenants
+              .map((t) => {
+                const name = t.name || t.personalInfo?.name || "Unknown";
+                const missing = getMissingProfileFields(t).map((m) => m.label);
+                return `  • ${name} — Missing: ${missing.join(", ")}`;
+              })
+              .join("\n");
+
+            // Upsert the active consolidated notice with the fresh details so an
+            // already-existing notice doesn't go stale as profiles change.
+            await Notice.findOneAndUpdate(
+              {
+                ...f,
+                type: "system_incomplete_profile",
+                isActive: true,
+                title: "Incomplete Tenant Profiles",
+              },
+              {
+                $set: {
+                  message: `The following tenants have incomplete profiles:\n${details}\n\nPlease update their records as soon as possible.`,
+                  priority: "high",
+                  isActive: true,
+                },
+              },
+              { upsert: true, new: true }
+            );
+          }
         } catch (err) {
-          console.error("[cron] Incomplete profile error for hostel", hostel._id, err);
+          logCron("incomplete-profile-check", "error", "Incomplete profile error for hostel", {
+            hostelId: hostel._id?.toString(),
+            error: err?.message || String(err),
+          });
         }
       }
 
-      console.log(`✅ Incomplete profile check: ${createdCount} notices created, ${resolvedCount} resolved.`);
-    } catch (error) {
-      console.error("❌ Error in incomplete profile check:", error);
-    }
+      return { noticesResolved: resolvedCount };
+    });
   });
 
   // Run daily at 01:00 to clean up inactive tenants past their retention period
   cron.schedule("0 1 * * *", async () => {
-    console.log("🧹 Running inactive tenant cleanup...");
-    try {
+    await runScheduledJob("tenant-cleanup", async () => {
       const now = new Date();
       const expiredTenants = await Tenant.find({
         isActive: false,
@@ -323,8 +226,7 @@ export const initCronJobs = () => {
       }).lean();
 
       if (expiredTenants.length === 0) {
-        console.log("✅ No tenants to clean up.");
-        return;
+        return { deleted: 0 };
       }
 
       const ids = expiredTenants.map((t) => t._id);
@@ -334,16 +236,90 @@ export const initCronJobs = () => {
       await Complaint.deleteMany({ tenantId: { $in: ids } });
       await RoomAssignmentHistory.deleteMany({ tenantId: { $in: ids } });
       await BedShiftRequest.deleteMany({ tenantId: { $in: ids } });
-      await Notice.updateMany(
-        { readBy: { $in: ids } },
-        { $pull: { readBy: { $in: ids } } }
-      );
+      await VacateRequest.deleteMany({ tenantId: { $in: ids } });
+      // Newer collections added after the original cascade — purge so a
+      // hard-deleted tenant never leaves orphaned docs behind.
+      await ProfileUpdateRequest.deleteMany({ tenantId: { $in: ids } });
+      await TemporaryAllotmentRequest.deleteMany({ tenantId: { $in: ids } });
+      await Notification.deleteMany({ tenantId: { $in: ids } });
+      await Notice.updateMany({ readBy: { $in: ids } }, { $pull: { readBy: { $in: ids } } });
       await Tenant.deleteMany({ _id: { $in: ids } });
 
-      console.log(`✅ Permanently deleted ${expiredTenants.length} inactive tenants and related records.`);
-    } catch (error) {
-      console.error("❌ Error in tenant cleanup cron:", error);
-    }
+      return { deleted: expiredTenants.length };
+    });
+  });
+
+  // Run daily at 07:00 to remind tenants with an overdue rent bill. A tenant
+  // with an unpaid rent whose due date has passed gets a "Rent overdue" inbox
+  // notification every morning until the bill is settled (upsert-while-unread).
+  cron.schedule("0 7 * * *", async () => {
+    await runScheduledJob("rent-overdue-reminder", async () => {
+      const hostels = await Hostel.find({ isActive: true }).lean();
+      let reminded = 0;
+      const today = new Date();
+      const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      for (const hostel of hostels) {
+        try {
+          const f = { ownerId: hostel.ownerId, hostelId: hostel._id };
+          const tenants = await Tenant.find({ ...f, isActive: true })
+            .select("_id name personalInfo.name")
+            .lean();
+          if (tenants.length === 0) continue;
+          const tenantIds = tenants.map((t) => t._id);
+
+          // Rent invoices past their due date and not fully paid.
+          const overdue = await Payment.find({
+            ...f,
+            tenantId: { $in: tenantIds },
+            paymentType: "rent",
+            paymentStatus: { $in: ["unpaid", "overdue", "partial"] },
+            dueDate: { $lt: startToday },
+          }).lean();
+
+          const byTenant = new Map();
+          for (const p of overdue) {
+            const amount = p.totalAmount ?? p.amount ?? 0;
+            const prev = byTenant.get(String(p.tenantId)) || { total: 0, months: new Set() };
+            prev.total += amount;
+            prev.months.add(`${p.paymentMonth} ${p.year}`);
+            byTenant.set(String(p.tenantId), prev);
+          }
+
+          for (const t of tenants) {
+            const due = byTenant.get(String(t._id));
+            if (due) {
+              const name = t.name || t.personalInfo?.name || "Tenant";
+              const monthLabel = [...due.months].slice(0, 3).join(", ");
+              await Notification.updateOne(
+                { ...f, tenantId: t._id, type: "rent_due", read: false },
+                {
+                  $set: {
+                    title: "Rent overdue",
+                    message: `Dear ${name}, your rent of ₹${due.total.toLocaleString("en-IN")} (${monthLabel}) is overdue. Please pay at the earliest.`,
+                  },
+                },
+                { upsert: true }
+              );
+              reminded += 1;
+            } else {
+              // No overdue rent — clear any lingering unread reminder.
+              await Notification.updateMany(
+                { ...f, tenantId: t._id, type: "rent_due", read: false },
+                { $set: { read: true } }
+              );
+            }
+          }
+        } catch (err) {
+          logCron("rent-overdue-reminder", "error", "Overdue reminder error for hostel", {
+            hostelId: hostel._id?.toString(),
+            error: err?.message || String(err),
+          });
+        }
+      }
+
+      return { reminded };
+    });
   });
 
   console.log("🕒 Cron jobs initialized");

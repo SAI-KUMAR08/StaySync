@@ -16,5 +16,27 @@ services:
         sync: false
       - key: MONGO_URI
         sync: false
+      - key: MONGO_DB_NAME
+        sync: false
       - key: JWT_SECRET
         generateValue: true
+      # REQUIRED — startup fails without these (see server/src/config/env.js).
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: SEND_REAL_EMAIL
+        value: "true"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      # ⚠️ REQUIRED — override these; the defaults are publicly known.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

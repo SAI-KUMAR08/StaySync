@@ -50,11 +50,6 @@ export const PERMISSIONS = {
   CREATE_NOTICES: "create:notices",
   DELETE_NOTICES: "delete:notices",
 
-  // ─── Managers ────────────────────────────────────────
-  READ_MANAGERS: "read:managers",
-  CREATE_MANAGERS: "create:managers",
-  DELETE_MANAGERS: "delete:managers",
-
   // ─── Dashboard ───────────────────────────────────────
   READ_DASHBOARD: "read:dashboard",
   READ_OCCUPANCY: "read:occupancy",
@@ -71,33 +66,10 @@ export const PERMISSIONS = {
 /**
  * Role → Permission mapping.
  * owner  — full access to everything
- * manager — operational access; no financial write, no manager management, no structure delete
  * tenant — read-only self-service access
  */
 const ROLE_PERMISSIONS = {
   owner: Object.values(PERMISSIONS),
-
-  manager: [
-    PERMISSIONS.READ_TENANTS,
-    PERMISSIONS.CREATE_TENANTS, // managers can onboard residents
-    PERMISSIONS.UPDATE_TENANTS,
-    PERMISSIONS.READ_PAYMENTS, // read-only payments (masked financial data at controller level)
-    PERMISSIONS.READ_COMPLAINTS,
-    PERMISSIONS.UPDATE_COMPLAINTS,
-    PERMISSIONS.READ_ROOMS,
-    PERMISSIONS.READ_BEDS,
-    PERMISSIONS.READ_HOSTEL,
-    PERMISSIONS.UPDATE_HOSTEL,
-    PERMISSIONS.READ_NOTICES,
-    PERMISSIONS.CREATE_NOTICES,
-    PERMISSIONS.DELETE_NOTICES,
-    PERMISSIONS.READ_DASHBOARD,
-    PERMISSIONS.READ_OCCUPANCY,
-    PERMISSIONS.READ_BED_SHIFT_REQUESTS,
-    PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS,
-    PERMISSIONS.READ_SESSIONS,
-    PERMISSIONS.DELETE_SESSIONS,
-  ],
 
   tenant: [
     PERMISSIONS.READ_NOTICES,

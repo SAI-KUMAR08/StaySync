@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { authenticate, ownerScope, requirePermission } from "../middleware/auth.js";
+import { authenticate, authorize, ownerScope, requirePermission } from "../middleware/auth.js";
 import { PERMISSIONS } from "../config/permissions.js";
 import { validate } from "../middleware/validate.js";
+import { financeLimiter } from "../middleware/rateLimiter.js";
 import * as owner from "../controllers/ownerController.js";
 import * as expenseCtrl from "../controllers/expenseController.js";
 import * as mealTimingCtrl from "../controllers/mealTimingController.js";
@@ -20,102 +21,367 @@ import {
   idParamSchema,
   hostelCreateSchema,
   hostelUpdateSchema,
-  createManagerSchema,
   bedShiftUpdateSchema,
   createExpenseSchema,
   updateExpenseSchema,
   mealTimingSchema,
   mealTimingUpdateSchema,
   paymentRequestReviewSchema,
+  reviewVacateRequestSchema,
+  profileRequestReviewSchema,
+  setupHostelSchema,
 } from "../validators/resources.js";
 
 const router = Router();
 
-// Shared Owner & Manager routes
-router.use(authenticate, ownerScope);
+// Shared Owner routes — router-level role gate (defense-in-depth so a future
+// route that forgets requirePermission can never let a tenant token through).
+router.use(authenticate, authorize("owner"), ownerScope);
 
 // ── Dashboard & Overview ─────────────────────────────────
 router.get("/dashboard", requirePermission(PERMISSIONS.READ_DASHBOARD), owner.getDashboard);
-router.get("/hostels-summary", requirePermission(PERMISSIONS.READ_DASHBOARD), owner.getHostelsSummary);
-router.get("/financial-overview", requirePermission(PERMISSIONS.READ_DASHBOARD), owner.getFinancialOverview);
+router.get(
+  "/hostels-summary",
+  requirePermission(PERMISSIONS.READ_DASHBOARD),
+  owner.getHostelsSummary
+);
+router.get(
+  "/financial-overview",
+  requirePermission(PERMISSIONS.READ_DASHBOARD),
+  owner.getFinancialOverview
+);
 router.get("/occupancy", requirePermission(PERMISSIONS.READ_OCCUPANCY), owner.getOccupancy);
 router.get("/hostel", requirePermission(PERMISSIONS.READ_HOSTEL), owner.getHostel);
 router.get("/structure", requirePermission(PERMISSIONS.READ_HOSTEL), owner.getHostelStructure);
 
 // ── Floors ───────────────────────────────────────────────
 router.get("/floors", requirePermission(PERMISSIONS.READ_ROOMS), owner.listFloors);
-router.post("/floors", requirePermission(PERMISSIONS.CREATE_ROOMS), validate(floorSchema), owner.createFloor);
+router.post(
+  "/floors",
+  requirePermission(PERMISSIONS.CREATE_ROOMS),
+  validate(floorSchema),
+  owner.createFloor
+);
+router.delete(
+  "/floors/:id",
+  requirePermission(PERMISSIONS.DELETE_ROOMS),
+  validate(idParamSchema),
+  owner.deleteFloor
+);
 
 // ── Rooms & Beds ─────────────────────────────────────────
 router.get("/rooms", requirePermission(PERMISSIONS.READ_ROOMS), owner.listRooms);
-router.post("/rooms", requirePermission(PERMISSIONS.CREATE_ROOMS), validate(roomSchema), owner.createRoom);
+router.post(
+  "/rooms",
+  requirePermission(PERMISSIONS.CREATE_ROOMS),
+  validate(roomSchema),
+  owner.createRoom
+);
 router.get("/beds", requirePermission(PERMISSIONS.READ_BEDS), owner.listBeds);
-router.patch("/rooms/:id", requirePermission(PERMISSIONS.UPDATE_ROOMS), validate(roomUpdateSchema), owner.updateRoom);
-router.delete("/rooms/:id", requirePermission(PERMISSIONS.DELETE_ROOMS), validate(idParamSchema), owner.deleteRoom);
-router.patch("/beds/:id", requirePermission(PERMISSIONS.UPDATE_BEDS), validate(bedUpdateSchema), owner.updateBed);
+router.patch(
+  "/rooms/:id",
+  requirePermission(PERMISSIONS.UPDATE_ROOMS),
+  validate(roomUpdateSchema),
+  owner.updateRoom
+);
+router.delete(
+  "/rooms/:id",
+  requirePermission(PERMISSIONS.DELETE_ROOMS),
+  validate(idParamSchema),
+  owner.deleteRoom
+);
+router.patch(
+  "/beds/:id",
+  requirePermission(PERMISSIONS.UPDATE_BEDS),
+  validate(bedUpdateSchema),
+  owner.updateBed
+);
 
 // ── Tenants ──────────────────────────────────────────────
 router.get("/tenants", requirePermission(PERMISSIONS.READ_TENANTS), owner.listTenants);
-router.get("/tenants/incomplete-profiles", requirePermission(PERMISSIONS.READ_TENANTS), owner.getIncompleteProfiles);
-router.get("/tenants/:id", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenant);
-router.get("/tenants/:id/history", requirePermission(PERMISSIONS.READ_TENANTS), validate(idParamSchema), owner.getTenantHistory);
-router.get("/tenants/:id/payments", requirePermission(PERMISSIONS.READ_PAYMENTS), validate(idParamSchema), owner.getTenantPayments);
-router.post("/tenants", requirePermission(PERMISSIONS.CREATE_TENANTS), validate(tenantCreateSchema), owner.createTenant);
-router.patch("/tenants/:id", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(tenantUpdateSchema), owner.updateTenant);
-router.post("/tenants/:id/assign-bed", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(assignBedSchema), owner.assignBed);
-router.delete("/tenants/:id", requirePermission(PERMISSIONS.DELETE_TENANTS), validate(idParamSchema), owner.removeTenant);
+router.get(
+  "/tenants/incomplete-profiles",
+  requirePermission(PERMISSIONS.READ_TENANTS),
+  owner.getIncompleteProfiles
+);
+router.get(
+  "/tenants/:id",
+  requirePermission(PERMISSIONS.READ_TENANTS),
+  validate(idParamSchema),
+  owner.getTenant
+);
+router.get(
+  "/tenants/:id/history",
+  requirePermission(PERMISSIONS.READ_TENANTS),
+  validate(idParamSchema),
+  owner.getTenantHistory
+);
+router.get(
+  "/tenants/:id/payments",
+  requirePermission(PERMISSIONS.READ_PAYMENTS),
+  validate(idParamSchema),
+  owner.getTenantPayments
+);
+router.post(
+  "/tenants",
+  requirePermission(PERMISSIONS.CREATE_TENANTS),
+  validate(tenantCreateSchema),
+  owner.createTenant
+);
+router.patch(
+  "/tenants/:id",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(tenantUpdateSchema),
+  owner.updateTenant
+);
+router.post(
+  "/tenants/:id/assign-bed",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(assignBedSchema),
+  owner.assignBed
+);
+router.post(
+  "/tenants/:id/undo-vacate",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(idParamSchema),
+  owner.undoVacate
+);
+router.delete(
+  "/tenants/:id",
+  requirePermission(PERMISSIONS.DELETE_TENANTS),
+  validate(idParamSchema),
+  owner.removeTenant
+);
 
 // ── Complaints ───────────────────────────────────────────
 router.get("/complaints", requirePermission(PERMISSIONS.READ_COMPLAINTS), owner.listComplaints);
-router.patch("/complaints/:id", requirePermission(PERMISSIONS.UPDATE_COMPLAINTS), validate(complaintUpdateSchema), owner.updateComplaint);
+router.patch(
+  "/complaints/:id",
+  requirePermission(PERMISSIONS.UPDATE_COMPLAINTS),
+  validate(complaintUpdateSchema),
+  owner.updateComplaint
+);
 
 // ── Payments ─────────────────────────────────────────────
 router.get("/payments", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.listPayments);
-router.post("/payments", requirePermission(PERMISSIONS.CREATE_PAYMENTS), validate(paymentCreateSchema), owner.createPayment);
-router.get("/payments/totals", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.getPaymentTotals);
-router.patch("/payments/:id", requirePermission(PERMISSIONS.UPDATE_PAYMENTS), validate(paymentUpdateSchema), owner.updatePayment);
+router.post(
+  "/payments",
+  requirePermission(PERMISSIONS.CREATE_PAYMENTS),
+  financeLimiter,
+  validate(paymentCreateSchema),
+  owner.createPayment
+);
+router.get(
+  "/payments/totals",
+  requirePermission(PERMISSIONS.READ_PAYMENTS),
+  owner.getPaymentTotals
+);
+router.patch(
+  "/payments/:id",
+  requirePermission(PERMISSIONS.UPDATE_PAYMENTS),
+  financeLimiter,
+  validate(paymentUpdateSchema),
+  owner.updatePayment
+);
 
 // ── Notices ──────────────────────────────────────────────
 router.get("/notices", requirePermission(PERMISSIONS.READ_NOTICES), owner.listNotices);
-router.post("/notices", requirePermission(PERMISSIONS.CREATE_NOTICES), validate(noticeSchema), owner.createNotice);
-router.delete("/notices/:id", requirePermission(PERMISSIONS.DELETE_NOTICES), validate(idParamSchema), owner.deleteNotice);
+router.post(
+  "/notices",
+  requirePermission(PERMISSIONS.CREATE_NOTICES),
+  validate(noticeSchema),
+  owner.createNotice
+);
+router.delete(
+  "/notices/:id",
+  requirePermission(PERMISSIONS.DELETE_NOTICES),
+  validate(idParamSchema),
+  owner.deleteNotice
+);
 
 // ── Bed Shift Requests ───────────────────────────────────
-router.get("/bed-shift-requests", requirePermission(PERMISSIONS.READ_BED_SHIFT_REQUESTS), owner.listBedShiftRequests);
-router.patch("/bed-shift-requests/:id", requirePermission(PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS), validate(bedShiftUpdateSchema), owner.updateBedShiftRequest);
+router.get(
+  "/bed-shift-requests",
+  requirePermission(PERMISSIONS.READ_BED_SHIFT_REQUESTS),
+  owner.listBedShiftRequests
+);
+router.patch(
+  "/bed-shift-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS),
+  validate(bedShiftUpdateSchema),
+  owner.updateBedShiftRequest
+);
+router.patch(
+  "/bed-shift-requests/:id/undo",
+  requirePermission(PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS),
+  validate(idParamSchema),
+  owner.undoBedShiftRequest
+);
+router.delete(
+  "/bed-shift-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_BED_SHIFT_REQUESTS),
+  validate(idParamSchema),
+  owner.deleteBedShiftRequest
+);
 
 // ── STRICTLY OWNER-ONLY ROUTES ──────────────────────────
 // Hostel setup & structure
 router.get("/hostels", requirePermission(PERMISSIONS.MANAGE_HOSTEL), owner.listHostels);
-router.post("/hostels", requirePermission(PERMISSIONS.MANAGE_HOSTEL), validate(hostelCreateSchema), owner.createHostel);
-router.patch("/hostel", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(hostelUpdateSchema), owner.updateHostel);
-router.post("/setup", requirePermission(PERMISSIONS.MANAGE_HOSTEL), owner.setupHostel);
+router.post(
+  "/hostels",
+  requirePermission(PERMISSIONS.MANAGE_HOSTEL),
+  validate(hostelCreateSchema),
+  owner.createHostel
+);
+router.patch(
+  "/hostel",
+  requirePermission(PERMISSIONS.UPDATE_HOSTEL),
+  validate(hostelUpdateSchema),
+  owner.updateHostel
+);
+router.post(
+  "/setup",
+  requirePermission(PERMISSIONS.MANAGE_HOSTEL),
+  validate(setupHostelSchema),
+  owner.setupHostel
+);
 
 // Expenses (owner-only financial tracking)
 router.get("/expenses", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtrl.listExpenses);
-router.get("/expenses/summary", requirePermission(PERMISSIONS.READ_EXPENSES), expenseCtrl.getExpenseSummary);
-router.get("/expenses/:id", requirePermission(PERMISSIONS.READ_EXPENSES), validate(idParamSchema), expenseCtrl.getExpense);
-router.post("/expenses", requirePermission(PERMISSIONS.CREATE_EXPENSES), validate(createExpenseSchema), expenseCtrl.createExpense);
-router.patch("/expenses/:id", requirePermission(PERMISSIONS.UPDATE_EXPENSES), validate(idParamSchema), validate(updateExpenseSchema), expenseCtrl.updateExpense);
-router.delete("/expenses/:id", requirePermission(PERMISSIONS.DELETE_EXPENSES), validate(idParamSchema), expenseCtrl.deleteExpense);
+router.get(
+  "/expenses/summary",
+  requirePermission(PERMISSIONS.READ_EXPENSES),
+  expenseCtrl.getExpenseSummary
+);
+router.get(
+  "/expenses/:id",
+  requirePermission(PERMISSIONS.READ_EXPENSES),
+  validate(idParamSchema),
+  expenseCtrl.getExpense
+);
+router.post(
+  "/expenses",
+  requirePermission(PERMISSIONS.CREATE_EXPENSES),
+  financeLimiter,
+  validate(createExpenseSchema),
+  expenseCtrl.createExpense
+);
+router.patch(
+  "/expenses/:id",
+  requirePermission(PERMISSIONS.UPDATE_EXPENSES),
+  financeLimiter,
+  validate(idParamSchema),
+  validate(updateExpenseSchema),
+  expenseCtrl.updateExpense
+);
+router.delete(
+  "/expenses/:id",
+  requirePermission(PERMISSIONS.DELETE_EXPENSES),
+  financeLimiter,
+  validate(idParamSchema),
+  expenseCtrl.deleteExpense
+);
 
-// Managers Management (owner-only)
-router.get("/managers", requirePermission(PERMISSIONS.READ_MANAGERS), owner.listManagers);
-router.post("/managers", requirePermission(PERMISSIONS.CREATE_MANAGERS), validate(createManagerSchema), owner.createManager);
-router.delete("/managers/:id", requirePermission(PERMISSIONS.DELETE_MANAGERS), validate(idParamSchema), owner.deleteManager);
-
-// ── Meal Timings (owner/manager) ────────────────────────────
-router.get("/meal-timings", requirePermission(PERMISSIONS.READ_HOSTEL), mealTimingCtrl.listMealTimings);
-router.get("/meal-timings/:id", requirePermission(PERMISSIONS.READ_HOSTEL), validate(idParamSchema), mealTimingCtrl.getMealTiming);
-router.post("/meal-timings", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(mealTimingSchema), mealTimingCtrl.createMealTiming);
-router.patch("/meal-timings/:id", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(mealTimingUpdateSchema), mealTimingCtrl.updateMealTiming);
-router.delete("/meal-timings/:id", requirePermission(PERMISSIONS.UPDATE_HOSTEL), validate(idParamSchema), mealTimingCtrl.deleteMealTiming);
+// ── Meal Timings ───────────────────────────────────────────
+router.get(
+  "/meal-timings",
+  requirePermission(PERMISSIONS.READ_HOSTEL),
+  mealTimingCtrl.listMealTimings
+);
+router.get(
+  "/meal-timings/:id",
+  requirePermission(PERMISSIONS.READ_HOSTEL),
+  validate(idParamSchema),
+  mealTimingCtrl.getMealTiming
+);
+router.post(
+  "/meal-timings",
+  requirePermission(PERMISSIONS.UPDATE_HOSTEL),
+  validate(mealTimingSchema),
+  mealTimingCtrl.createMealTiming
+);
+router.patch(
+  "/meal-timings/:id",
+  requirePermission(PERMISSIONS.UPDATE_HOSTEL),
+  validate(mealTimingUpdateSchema),
+  mealTimingCtrl.updateMealTiming
+);
+router.delete(
+  "/meal-timings/:id",
+  requirePermission(PERMISSIONS.UPDATE_HOSTEL),
+  validate(idParamSchema),
+  mealTimingCtrl.deleteMealTiming
+);
 
 // ── Payment Requests (owner review) ─────────────────────────
-router.get("/payment-requests", requirePermission(PERMISSIONS.READ_PAYMENTS), owner.listPaymentRequests);
-router.patch("/payment-requests/:id", requirePermission(PERMISSIONS.UPDATE_PAYMENTS), validate(paymentRequestReviewSchema), owner.reviewPaymentRequest);
+router.get(
+  "/payment-requests",
+  requirePermission(PERMISSIONS.READ_PAYMENTS),
+  owner.listPaymentRequests
+);
+router.patch(
+  "/payment-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_PAYMENTS),
+  validate(paymentRequestReviewSchema),
+  owner.reviewPaymentRequest
+);
 
 // ── Convert Temporary Tenant to Permanent ───────────────────
-router.post("/tenants/:id/convert-permanent", requirePermission(PERMISSIONS.UPDATE_TENANTS), validate(idParamSchema), owner.convertToPermanent);
+router.post(
+  "/tenants/:id/convert-permanent",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(idParamSchema),
+  owner.convertToPermanent
+);
+
+// ── Vacate Requests (admin review) ─────────────────────────
+router.get(
+  "/vacate-requests",
+  requirePermission(PERMISSIONS.READ_TENANTS),
+  owner.listVacateRequests
+);
+router.patch(
+  "/vacate-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(reviewVacateRequestSchema),
+  owner.reviewVacateRequest
+);
+router.patch(
+  "/vacate-requests/:id/undo",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(idParamSchema),
+  owner.undoVacateRequest
+);
+router.delete(
+  "/vacate-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(idParamSchema),
+  owner.deleteVacateRequest
+);
+
+// ── Profile Update Requests (admin review) ─────────────────
+router.get(
+  "/profile-requests",
+  requirePermission(PERMISSIONS.READ_TENANTS),
+  owner.listProfileRequests
+);
+router.patch(
+  "/profile-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(profileRequestReviewSchema),
+  owner.reviewProfileRequest
+);
+router.patch(
+  "/profile-requests/:id/undo",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(idParamSchema),
+  owner.undoProfileRequest
+);
+router.delete(
+  "/profile-requests/:id",
+  requirePermission(PERMISSIONS.UPDATE_TENANTS),
+  validate(idParamSchema),
+  owner.deleteProfileRequest
+);
 
 export default router;

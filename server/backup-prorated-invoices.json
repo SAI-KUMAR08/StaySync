@@ -1,0 +1,38 @@
+[
+  {
+    "_id": "6a6ca5a6b852ba8211254a17",
+    "tenantId": "6a6ca5a6b852ba8211254a08",
+    "paymentMonth": "July",
+    "year": 2026,
+    "amount": 161,
+    "fineAmount": 0,
+    "totalAmount": 161,
+    "paymentStatus": "unpaid",
+    "notes": "First month rent (incl. security deposit ₹0) for yaswanth (Prorated checkout: 1/31 days active)",
+    "tenant": "yaswanth"
+  },
+  {
+    "_id": "6a6ca5e7b852ba8211254a53",
+    "tenantId": "6a6ca5e7b852ba8211254a44",
+    "paymentMonth": "July",
+    "year": 2026,
+    "amount": 161,
+    "fineAmount": 0,
+    "totalAmount": 161,
+    "paymentStatus": "unpaid",
+    "notes": "First month rent (incl. security deposit ₹0) for chakradhar reddy (Prorated checkout: 1/31 days active) (Prorated checkout: 1/31 days active)",
+    "tenant": "chakradhar reddy"
+  },
+  {
+    "_id": "6a6ca644b852ba8211254a7f",
+    "tenantId": "6a6ca643b852ba8211254a70",
+    "paymentMonth": "July",
+    "year": 2026,
+    "amount": 161,
+    "fineAmount": 0,
+    "totalAmount": 161,
+    "paymentStatus": "unpaid",
+    "notes": "First month rent (incl. security deposit ₹2000) for Sai Kumar (Prorated checkout: 1/31 days active)",
+    "tenant": "Sai Kumar"
+  }
+]

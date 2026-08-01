@@ -2,6 +2,8 @@ import { verifyAccessToken } from "../utils/tokens.js";
 import { AppError } from "./error.middleware.js";
 import { hasPermission } from "../config/permissions.js";
 
+const ALLOWED_ROLES = ["owner", "tenant"];
+
 export function authenticate(req, res, next) {
   const header = req.headers.authorization;
   const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
@@ -12,8 +14,16 @@ export function authenticate(req, res, next) {
 
   try {
     const decoded = verifyAccessToken(token);
+    const userId = decoded.userId || decoded.sub;
+
+    // Validate the token actually carries the identity + scoping claims the
+    // rest of the app relies on (a signed-but-malformed token is rejected).
+    if (!userId || !decoded.role || !ALLOWED_ROLES.includes(decoded.role) || !decoded.ownerId) {
+      return next(new AppError("Invalid or expired token", 401));
+    }
+
     req.user = {
-      id: decoded.userId || decoded.sub,
+      id: userId,
       role: decoded.role,
       email: decoded.email,
       ownerId: decoded.ownerId,
@@ -66,9 +76,9 @@ export function tenantScope(req, res, next) {
 }
 
 export function ownerScope(req, res, next) {
-  if (req.user.role !== "owner" && req.user.role !== "manager") return next();
+  if (req.user.role !== "owner") return next();
   req.ownerFilter = {
-    ownerId: req.user.role === "manager" ? req.user.ownerId : req.user.id,
+    ownerId: req.user.id,
     hostelId: req.user.hostelId,
   };
   next();

@@ -1,58 +1,33 @@
 import mongoose from "mongoose";
 import { Payment, Tenant } from "../models/index.js";
+import { PAYMENT } from "../utils/constants.js";
 
 const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 export function monthIndex(monthName) {
   const idx = MONTHS.indexOf(monthName);
-  return idx >= 0 ? idx : 0; // Invalid months sort to January (safe default)
-}
-
-/** Rent due on the same calendar day each month after join (capped at last day of shorter months) */
-export function getBillingPeriodsFromJoin(joinDate, until = new Date()) {
-  const periods = [];
-  const join = new Date(joinDate);
-  const dueDay = join.getDate();
-
-  let year = join.getFullYear();
-  let month = join.getMonth() + 1;
-
-  // Limit lookback to prevent runaway loops
-  const maxMonths = 36;
-  let count = 0;
-
-  const end = new Date(until.getFullYear(), until.getMonth(), until.getDate());
-
-  while (count < maxMonths) {
-    const maxDays = new Date(year, month + 1, 0).getDate();
-    const currentDueDay = Math.min(dueDay, maxDays);
-    const cursor = new Date(year, month - 1, currentDueDay);
-
-    if (cursor > end) break;
-
-    periods.push({
-      month: MONTHS[cursor.getMonth()],
-      year: cursor.getFullYear(),
-      dueDate: new Date(cursor),
-    });
-
-    month++;
-    if (month > 12) {
-      month = 1;
-      year++;
-    }
-    count++;
-  }
-  return periods;
+  return idx >= 0 ? idx : 0;
 }
 
 /** pending until due date; overdue after due date passes */
 export function derivePaymentStatus(payment, now = new Date()) {
   const currentStatus = payment?.paymentStatus ?? payment?.status;
-  if (currentStatus === "paid") return "paid";
+  // Paid and partial are terminal for the auto-sync — re-deriving a partial
+  // payment from its due date would silently destroy the partial progress.
+  if (currentStatus === "paid" || currentStatus === "partial") return currentStatus;
 
   const due = payment?.dueDate ? new Date(payment.dueDate) : null;
   if (!due) return "unpaid";
@@ -60,85 +35,31 @@ export function derivePaymentStatus(payment, now = new Date()) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
 
-  if (dueDay < today) return "overdue";
+  if (dueDay < today) {
+    // A payment must never be Overdue at the moment it is created: keep it
+    // Unpaid for 5 full days after creation, then flip to Overdue. This guards
+    // against a fresh invoice whose due date is already in the past.
+    const created = payment?.createdAt ? new Date(payment.createdAt) : null;
+    if (created) {
+      const graceEnds = new Date(created.getTime() + PAYMENT.OVERDUE_GRACE_MS);
+      if (now >= graceEnds) return "overdue";
+      return "unpaid";
+    }
+    return "overdue"; // no createdAt (legacy record) — keep due-date semantics
+  }
   return "unpaid";
 }
 
 /**
- * Batch-ensure rent invoices for a single tenant.
- * Uses a single aggregate query + bulkWrite instead of per-period loops + saves.
+ * Lightweight status sync — only refreshes payment statuses.
+ * Use this for dashboard loads where you just need fresh statuses.
+ * Pass `tenantId` to scope the scan to a single tenant (the tenant payment
+ * page must not scan + bulk-write the whole hostel on every request).
  */
-export async function ensureTenantRentInvoices(tenant, session = null) {
-  if (!tenant?.monthlyRent || tenant.monthlyRent <= 0) return [];
-
-  const joinDate = new Date(tenant.moveInDate || tenant.joinDate || tenant.createdAt);
-  const periods = getBillingPeriodsFromJoin(joinDate);
-  const opts = session ? { session } : {};
-
-  // Single query: find all existing payments for this tenant
-  const existingRows = await Payment.find(
-    { tenantId: tenant._id },
-    { paymentMonth: 1, year: 1, _id: 0 }
-  ).session(session || null).lean();
-  const existingDocs = new Set(existingRows.map(r => `${r.paymentMonth}|${r.year}`));
-
-  // Gather missing draft payments
-  const drafts = periods
-    .filter(p => !existingDocs.has(`${p.month}|${p.year}`))
-    .map(p => ({
-      ownerId: tenant.ownerId,
-      hostelId: tenant.hostelId,
-      tenantId: tenant._id,
-      amount: tenant.monthlyRent,
-      fineAmount: 0,
-      totalAmount: tenant.monthlyRent,
-      paymentMonth: p.month,
-      year: p.year,
-      dueDate: p.dueDate,
-      paymentStatus: derivePaymentStatus({ dueDate: p.dueDate, paymentStatus: "unpaid" }),
-      notes: `Rent for ${p.month} ${p.year}`,
-    }));
-
-  if (drafts.length > 0) {
-    await Payment.insertMany(drafts, opts);
-  }
-
-  // Bulk-update overdue/unpaid statuses
-  const openPayments = await Payment.find({
-    tenantId: tenant._id,
-    paymentStatus: { $ne: "paid" },
-  }).session(session || null).lean();
-
-  const bulkOps = [];
-  for (const payment of openPayments) {
-    const next = derivePaymentStatus(payment);
-    if (payment.paymentStatus !== next) {
-      bulkOps.push({
-        updateOne: {
-          filter: { _id: payment._id },
-          update: { $set: { paymentStatus: next } },
-        },
-      });
-    }
-  }
-
-  if (bulkOps.length > 0) {
-    await Payment.bulkWrite(bulkOps, opts);
-  }
-
-  return drafts;
-}
-
-/**
- * Lightweight status sync — only refreshes payment statuses, skips invoice creation.
- * Use this for dashboard loads where you just need fresh statuses, not new invoices.
- */
-export async function syncPaymentStatusesOnly(ownerId, hostelId) {
-  const payments = await Payment.find({
-    ownerId,
-    hostelId,
-    paymentStatus: { $ne: "paid" },
-  }).lean();
+export async function syncPaymentStatusesOnly(ownerId, hostelId, tenantId) {
+  const filter = { ownerId, hostelId, paymentStatus: { $ne: "paid" } };
+  if (tenantId) filter.tenantId = tenantId;
+  const payments = await Payment.find(filter).lean();
 
   const bulkOps = [];
   for (const payment of payments) {
@@ -156,62 +77,51 @@ export async function syncPaymentStatusesOnly(ownerId, hostelId) {
   if (bulkOps.length > 0) {
     await Payment.bulkWrite(bulkOps);
   }
+
+  // Ensure active tenants with isSecurityDepositPaid: true have a paid deposit Payment record
+  try {
+    const tenantFilter = { ownerId, isSecurityDepositPaid: true };
+    if (hostelId) tenantFilter.hostelId = hostelId;
+    if (tenantId) tenantFilter._id = tenantId;
+    const tenantsWithPaidDeposit = await Tenant.find(tenantFilter)
+      .select(
+        "_id ownerId hostelId personalInfo name securityDepositAmount securityDepositDate createdAt"
+      )
+      .lean();
+
+    for (const t of tenantsWithPaidDeposit) {
+      const depositExists = await Payment.exists({ tenantId: t._id, paymentType: "deposit" });
+      if (!depositExists) {
+        const date = t.securityDepositDate || t.createdAt || new Date();
+        const monthName = date.toLocaleString("en-US", { month: "long" });
+        const year = date.getFullYear();
+        const amount = t.securityDepositAmount || 1000;
+        await Payment.create({
+          ownerId: t.ownerId,
+          hostelId: t.hostelId,
+          tenantId: t._id,
+          amount,
+          fineAmount: 0,
+          totalAmount: amount,
+          paymentMonth: monthName,
+          year,
+          dueDate: date,
+          paidDate: date,
+          paymentStatus: "paid",
+          paymentMethod: "cash",
+          paymentType: "deposit",
+          notes: `Security deposit for ${t.name || t.personalInfo?.name || "tenant"}`,
+        });
+      }
+    }
+  } catch {
+    /* non-blocking */
+  }
+
   return bulkOps.length;
 }
 
-/**
- * Full sync: creates missing invoices + refreshes payment statuses.
- * Only call this from the payments page or cron, not from the dashboard.
- */
-/**
- * Run async tasks with a concurrency limit to avoid overwhelming the DB.
- */
-async function runWithConcurrency(tasks, limit = 10) {
-  const results = [];
-  const executing = new Set();
-  for (const [index, task] of tasks.entries()) {
-    const p = Promise.resolve().then(() => task(index));
-    results.push(p);
-    executing.add(p);
-    const cleanup = () => executing.delete(p);
-    p.then(cleanup, cleanup);
-    if (executing.size >= limit) {
-      await Promise.race(executing);
-    }
-  }
-  return Promise.all(results);
-}
-
-export async function syncHostelPaymentStatuses(ownerId, hostelId) {
-  // Batch-create invoices per hostel using aggregation
-  const activeTenants = await Tenant.find(
-    { ownerId, hostelId, isActive: true, monthlyRent: { $gt: 0 } },
-    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, moveInDate: 1, createdAt: 1 }
-  ).lean();
-
-  await runWithConcurrency(
-    activeTenants.map((t) => () => ensureTenantRentInvoices(t)),
-    10
-  );
-
-  // Bulk-update statuses
-  return syncPaymentStatusesOnly(ownerId, hostelId);
-}
-
-export async function ensureHostelRentInvoices(ownerId, hostelId) {
-  const tenants = await Tenant.find(
-    { ownerId, hostelId, isActive: true, monthlyRent: { $gt: 0 } },
-    { _id: 1, ownerId: 1, hostelId: 1, monthlyRent: 1, moveInDate: 1, createdAt: 1 }
-  ).lean();
-
-  await runWithConcurrency(
-    tenants.map((t) => () => ensureTenantRentInvoices(t)),
-    10
-  );
-}
-
 export async function countOverdueTenants(ownerId, hostelId) {
-  // Only count overdue payments from active tenants
   const activeTenants = await Tenant.find({ ownerId, hostelId, isActive: true }).select("_id");
   const activeIds = activeTenants.map((t) => t._id);
   if (activeIds.length === 0) return 0;
@@ -226,8 +136,10 @@ export async function countOverdueTenants(ownerId, hostelId) {
 }
 
 export async function sumOutstandingByStatus(ownerId, hostelId) {
-  const oId = ownerId && mongoose.isValidObjectId(ownerId) ? new mongoose.Types.ObjectId(ownerId) : null;
-  const hId = hostelId && mongoose.isValidObjectId(hostelId) ? new mongoose.Types.ObjectId(hostelId) : null;
+  const oId =
+    ownerId && mongoose.isValidObjectId(ownerId) ? new mongoose.Types.ObjectId(ownerId) : null;
+  const hId =
+    hostelId && mongoose.isValidObjectId(hostelId) ? new mongoose.Types.ObjectId(hostelId) : null;
   const rows = await Payment.aggregate([
     {
       $match: {
@@ -237,7 +149,6 @@ export async function sumOutstandingByStatus(ownerId, hostelId) {
         paymentType: { $ne: "deposit" },
       },
     },
-    // Only count payments from active tenants
     {
       $lookup: {
         from: "tenants",
@@ -266,15 +177,38 @@ export async function sumOutstandingByStatus(ownerId, hostelId) {
   };
 }
 
+/**
+ * Validate a tenant's payment-request amount against their outstanding rent
+ * invoice for the period. Returns `{ ok: true }` or `{ ok: false, message }`.
+ */
+export function checkPaymentRequestAmount(amount, invoice) {
+  if (!invoice) {
+    return {
+      ok: false,
+      message: "No rent invoice found for this month. Please contact the hostel admin.",
+    };
+  }
+  const expected = invoice.totalAmount ?? invoice.amount ?? 0;
+  if (amount !== expected) {
+    return {
+      ok: false,
+      message: `Requested amount ₹${amount.toLocaleString("en-IN")} does not match the outstanding rent of ₹${expected.toLocaleString("en-IN")} for ${invoice.paymentMonth} ${invoice.year}.`,
+    };
+  }
+  return { ok: true, expected };
+}
+
 export function groupPaymentsByStatus(payments) {
   const overdue = [];
   const unpaid = [];
   const paid = [];
+  const partial = [];
 
   for (const p of payments) {
     const s = p?.paymentStatus ?? p?.status;
     if (s === "paid") paid.push(p);
     else if (s === "overdue") overdue.push(p);
+    else if (s === "partial") partial.push(p);
     else unpaid.push(p);
   }
 
@@ -286,8 +220,9 @@ export function groupPaymentsByStatus(payments) {
   overdue.sort(byMonth);
   unpaid.sort(byMonth);
   paid.sort(byMonth);
+  partial.sort(byMonth);
 
-  return { overdue, unpaid, paid };
+  return { overdue, unpaid, paid, partial };
 }
 
 export function getCurrentMonthYear() {

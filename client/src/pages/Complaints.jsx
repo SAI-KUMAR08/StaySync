@@ -1,11 +1,20 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 
 import {
-  MdReportProblem, MdCheckCircle, MdHourglassEmpty, MdAdd,
-  MdSearch, MdChevronRight, MdClose, MdFlag
+  MdReportProblem,
+  MdCheckCircle,
+  MdHourglassEmpty,
+  MdAdd,
+  MdSearch,
+  MdClose,
+  MdFlag,
+  MdExpandMore,
+  MdExpandLess,
+  MdAccessTime,
+  MdHistory,
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import ErrorRetry from "../components/ErrorRetry";
@@ -21,7 +30,9 @@ const PriorityBadge = ({ priority }) => {
   };
   const key = (priority || "medium").toLowerCase();
   return (
-    <span className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider border ${colors[key] || colors.medium}`}>
+    <span
+      className={`px-2 py-0.5 rounded-lg text-[8px] font-bold uppercase tracking-wider border ${colors[key] || colors.medium}`}
+    >
       {priority}
     </span>
   );
@@ -30,7 +41,7 @@ const PriorityBadge = ({ priority }) => {
 const Complaints = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  
+
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -41,12 +52,24 @@ const Complaints = () => {
   const [formData, setFormData] = useState({
     category: "maintenance",
     description: "",
-    priority: "medium"
+    priority: "medium",
   });
+  // Expanded ticket → status timeline / SLA / notes visibility.
+  const [expandedId, setExpandedId] = useState(null);
+  // Per-ticket admin reply notes.
+  const [notes, setNotes] = useState({});
+
+  // Latest complaints for the socket handlers, so ownership checks + toasts can
+  // be gated without stale-closure state.
+  const complaintsRef = useRef([]);
+  useEffect(() => {
+    complaintsRef.current = complaints;
+  }, [complaints]);
 
   useEffect(() => {
     if (!user) return;
     fetchComplaints();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchComplaints is recreated each render; its inputs are all below
   }, [statusFilter, debouncedSearch, user?.id, user?.role, user?.hostelId]);
 
   useEffect(() => {
@@ -55,7 +78,8 @@ const Complaints = () => {
       if (!newComplaint) return;
       const tId = newComplaint.tenantId?._id || newComplaint.tenantId;
       if (user.role === "owner" || tId === user.id) {
-        setComplaints((prev) => [newComplaint, ...prev]);
+        // Dedup by _id so a socket card and the next refetch can't double up.
+        setComplaints((prev) => [newComplaint, ...prev.filter((c) => c._id !== newComplaint._id)]);
         if (user.role === "owner") {
           toast.success("New Support Ticket Received");
         }
@@ -63,9 +87,16 @@ const Complaints = () => {
     });
 
     socket.on("complaint_updated", (updatedComplaint) => {
-      setComplaints((prev) => prev.map((c) => c._id === updatedComplaint._id ? { ...c, ...updatedComplaint } : c));
+      setComplaints((prev) =>
+        prev.map((c) => (c._id === updatedComplaint._id ? { ...c, ...updatedComplaint } : c))
+      );
+      // A tenant should only be notified about THEIR OWN ticket — the payload is
+      // slim (no tenantId), so gate on membership in the loaded list.
       if (user.role === "tenant") {
-        toast.success(`Ticket Status Updated: ${updatedComplaint.status}`);
+        const isMine = complaintsRef.current.some(
+          (c) => String(c._id) === String(updatedComplaint._id)
+        );
+        if (isMine) toast.success(`Ticket Status Updated: ${updatedComplaint.status}`);
       }
     });
 
@@ -73,6 +104,7 @@ const Complaints = () => {
       socket.off("complaint_created");
       socket.off("complaint_updated");
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- user.id/role already listed; whole user object adds nothing
   }, [socket, user?.id, user?.role]);
 
   const fetchComplaints = async () => {
@@ -97,12 +129,28 @@ const Complaints = () => {
   };
 
   const handleStatusUpdate = async (id, status) => {
+    const note = notes[id]?.trim();
     try {
-      await api.patch(`/owner/complaints/${id}`, { status });
+      await api.patch(`/owner/complaints/${id}`, { status, note: note || undefined });
       toast.success(`Ticket marked as ${status}`);
+      setNotes((prev) => ({ ...prev, [id]: "" }));
       fetchComplaints();
-    } catch (error) {
+    } catch {
       toast.error("Update failed");
+    }
+  };
+
+  // Admin reply without a status change — visible to the ticket owner in the timeline.
+  const handleReply = async (id) => {
+    const note = notes[id]?.trim();
+    if (!note) return;
+    try {
+      await api.patch(`/owner/complaints/${id}`, { note });
+      toast.success("Reply sent to tenant");
+      setNotes((prev) => ({ ...prev, [id]: "" }));
+      fetchComplaints();
+    } catch {
+      toast.error("Reply failed");
     }
   };
 
@@ -141,31 +189,33 @@ const Complaints = () => {
     }
   };
 
-  if (error && complaints.length === 0) return <ErrorRetry message={error} onRetry={fetchComplaints} />;
-  if (loading && complaints.length === 0) return (
-    <div role="status" aria-label="Loading tickets">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="arch-card p-6 space-y-4">
-            <div className="flex justify-between items-start">
-              <div className="skeleton h-5 w-18 rounded-lg" />
-              <div className="skeleton h-4 w-12 rounded-lg" />
-            </div>
-            <div className="space-y-2">
-              <div className="skeleton h-3 w-28" />
-              <div className="skeleton h-4 w-full" />
-            </div>
-            <div className="flex justify-between items-center pt-4 border-t border-border/40">
-              <div className="flex items-center gap-3">
-                <div className={`skeleton w-9 h-9 rounded-xl`} />
-                <div className="skeleton h-3 w-14" />
+  if (error && complaints.length === 0)
+    return <ErrorRetry message={error} onRetry={fetchComplaints} />;
+  if (loading && complaints.length === 0)
+    return (
+      <div role="status" aria-label="Loading tickets">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="arch-card p-6 space-y-4">
+              <div className="flex justify-between items-start">
+                <div className="skeleton h-5 w-18 rounded-lg" />
+                <div className="skeleton h-4 w-12 rounded-lg" />
+              </div>
+              <div className="space-y-2">
+                <div className="skeleton h-3 w-28" />
+                <div className="skeleton h-4 w-full" />
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t border-border/40">
+                <div className="flex items-center gap-3">
+                  <div className={`skeleton w-9 h-9 rounded-xl`} />
+                  <div className="skeleton h-3 w-14" />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="space-y-6 pb-12">
@@ -175,8 +225,10 @@ const Complaints = () => {
           <div className="section-ornament-diamond mb-3">
             <MdReportProblem /> Support
           </div>
-          <h2 className="section-title">Support <span className="highlight">Desk</span></h2>
-          <p className="section-sub">Monitor and resolve resident issues</p>
+          <h2 className="section-title">
+            Support <span className="highlight">Desk</span>
+          </h2>
+          <p className="section-sub">Monitor and resolve tenant issues</p>
         </div>
         {user?.role === "tenant" && (
           <Button onClick={() => setShowModal(true)} icon={MdAdd}>
@@ -189,9 +241,13 @@ const Complaints = () => {
       <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
           <MdSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 text-lg" />
-          <input type="text" placeholder="Search by ticket ID or description..."
+          <input
+            type="text"
+            placeholder="Search by ticket ID or description..."
             className="field pl-11"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <div className="flex gap-2" role="group" aria-label="Filter by status">
           {[
@@ -200,15 +256,20 @@ const Complaints = () => {
             { id: "in_progress", label: "In Progress" },
             { id: "resolved", label: "Resolved" },
           ].map(({ id, label }) => (
-            <button key={id || "all"} onClick={() => setStatusFilter(id)}
+            <button
+              key={id || "all"}
+              onClick={() => setStatusFilter(id)}
               className={`relative px-5 py-3 rounded-2xl font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed ${
-                (statusFilter === id)
-                  ? 'text-primary border border-primary/30 scale-105 shadow-sm shadow-primary/5'
-                  : 'bg-card text-text-secondary/60 border border-border/60 hover:border-primary/30 hover:text-text-primary/80'
-              }`}>
+                statusFilter === id
+                  ? "text-primary border border-primary/30 scale-105 shadow-sm shadow-primary/5"
+                  : "bg-card text-text-secondary/60 border border-border/60 hover:border-primary/30 hover:text-text-primary/80"
+              }`}
+            >
               {label}
               {statusFilter === id && (
-                <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] h-[3px] bg-primary/30 rounded-full`} />
+                <span
+                  className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] h-[3px] bg-primary/30 rounded-full`}
+                />
               )}
             </button>
           ))}
@@ -218,16 +279,30 @@ const Complaints = () => {
       {/* Tickets Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {complaints?.map((c, i) => (
-          <div key={c._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}>
-            <div className={`arch-card p-6 flex flex-col group h-full relative overflow-hidden border-l-[3px] ${
-              c.priority === 'high' || c.priority === 'emergency' ? 'border-l-primary' :
-              c.priority === 'low' ? 'border-l-primary/60' : 'border-l-primary'
-            }`}>
+          <div
+            key={c._id}
+            className="stagger-enter"
+            style={{ animationDelay: `${Math.min(i * 0.05, 0.3)}s` }}
+          >
+            <div
+              className={`arch-card p-6 flex flex-col group h-full relative overflow-hidden border-l-[3px] ${
+                c.priority === "high" || c.priority === "emergency"
+                  ? "border-l-primary"
+                  : c.priority === "low"
+                    ? "border-l-primary/60"
+                    : "border-l-primary"
+              }`}
+            >
               <div className="flex justify-between items-start mb-5">
-                <span className={`badge ${
-                  c.status === 'pending' ? 'badge-amber' :
-                  ['assigned', 'in_progress'].includes(c.status) ? 'badge-primary' : 'badge-emerald'
-                }`}>
+                <span
+                  className={`badge ${
+                    c.status === "pending"
+                      ? "badge-amber"
+                      : ["assigned", "in_progress"].includes(c.status)
+                        ? "badge-primary"
+                        : "badge-emerald"
+                  }`}
+                >
                   {c.status?.replace("_", " ")}
                 </span>
                 <PriorityBadge priority={c.priority} />
@@ -235,35 +310,172 @@ const Complaints = () => {
 
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[9px] font-bold text-text-secondary/60 uppercase tracking-[0.15em]">{c.category}</span>
+                  <span className="text-[9px] font-bold text-text-secondary/60 uppercase tracking-[0.15em]">
+                    {c.category}
+                  </span>
                   <span className="text-border">•</span>
-                  <span className="text-[9px] font-semibold text-primary tracking-wider">#{c._id.slice(-6).toUpperCase()}</span>
+                  <span className="text-[9px] font-semibold text-primary tracking-wider">
+                    #{c._id.slice(-6).toUpperCase()}
+                  </span>
                 </div>
-                <p className="text-text-primary font-medium leading-relaxed mb-4">{c.description}</p>
+                <p className="text-text-primary font-medium leading-relaxed mb-4">
+                  {c.description}
+                </p>
+                {c.status === "needs_info" && (
+                  <span className="inline-flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wider text-warning bg-warning-bg border border-warning-border rounded-lg px-2 py-1">
+                    <MdAccessTime size={12} /> More information requested
+                  </span>
+                )}
               </div>
 
               <div className="mt-5 pt-4 border-t border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl bg-surface flex items-center justify-center font-bold text-text-secondary/50 border border-border/50`}>
-                    {c.tenantId?.name?.[0]?.toUpperCase() || c.tenantId?.personalInfo?.name?.[0]?.toUpperCase() || 'T'}
+                  <div
+                    className={`w-9 h-9 rounded-xl bg-surface flex items-center justify-center font-bold text-text-secondary/50 border border-border/50`}
+                  >
+                    {c.tenantId?.name?.[0]?.toUpperCase() ||
+                      c.tenantId?.personalInfo?.name?.[0]?.toUpperCase() ||
+                      "T"}
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-text-primary leading-none mb-0.5">{c.tenantId?.name || c.tenantId?.personalInfo?.name || 'Resident'}</p>
-                    <p className="text-[8px] text-text-secondary font-medium uppercase tracking-wider">Room {c.roomId?.roomNumber || c.tenantId?.roomId?.roomNumber || 'N/A'}</p>
+                    <p className="text-xs font-semibold text-text-primary leading-none mb-0.5">
+                      {c.tenantId?.name || c.tenantId?.personalInfo?.name || "Tenant"}
+                    </p>
+                    <p className="text-[8px] text-text-secondary font-medium uppercase tracking-wider">
+                      Room {c.roomId?.roomNumber || c.tenantId?.roomId?.roomNumber || "N/A"}
+                    </p>
                   </div>
                 </div>
 
-                {user.role === "owner" && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {c.status === 'pending' && (
-                      <button onClick={() => handleStatusUpdate(c._id, "in_progress")} className={`p-2 bg-primary-light text-primary rounded-xl hover:bg-secondary hover:text-white transition-all`}><MdHourglassEmpty size={16} /></button>
-                    )}
-                    {c.status !== 'resolved' && (
-                      <button onClick={() => handleStatusUpdate(c._id, "resolved")} className={`p-2 bg-green-500/10 text-green-700 rounded-xl hover:bg-emerald-500 hover:text-white transition-all`}><MdCheckCircle size={16} /></button>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {user.role === "owner" && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {c.status === "pending" && (
+                        <button
+                          onClick={() => handleStatusUpdate(c._id, "in_progress")}
+                          className={`p-2 bg-primary-light text-primary rounded-xl hover:bg-secondary hover:text-white transition-all`}
+                          title="Mark in progress"
+                        >
+                          <MdHourglassEmpty size={16} />
+                        </button>
+                      )}
+                      {c.status !== "resolved" && c.status !== "closed" && (
+                        <button
+                          onClick={() => handleStatusUpdate(c._id, "needs_info")}
+                          className={`p-2 bg-warning-bg text-warning rounded-xl hover:bg-amber-500 hover:text-white transition-all`}
+                          title="Request more information"
+                        >
+                          <MdFlag size={16} />
+                        </button>
+                      )}
+                      {c.status !== "resolved" && (
+                        <button
+                          onClick={() => handleStatusUpdate(c._id, "resolved")}
+                          className={`p-2 bg-green-500/10 text-green-700 rounded-xl hover:bg-emerald-500 hover:text-white transition-all`}
+                          title="Resolve"
+                        >
+                          <MdCheckCircle size={16} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setExpandedId(expandedId === c._id ? null : c._id)}
+                    className="p-2 text-text-secondary/50 hover:text-primary rounded-xl transition-all"
+                    aria-expanded={expandedId === c._id}
+                    aria-label="Ticket details"
+                  >
+                    {expandedId === c._id ? <MdExpandLess size={16} /> : <MdExpandMore size={16} />}
+                  </button>
+                </div>
               </div>
+
+              {/* Admin reply note — visible to the ticket owner in the timeline below */}
+              {user.role === "owner" && (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    className="field flex-1 !py-2 text-xs"
+                    placeholder="Reply / note for the tenant…"
+                    value={notes[c._id] || ""}
+                    onChange={(e) => setNotes((prev) => ({ ...prev, [c._id]: e.target.value }))}
+                  />
+                  {notes[c._id]?.trim() && (
+                    <button
+                      onClick={() => handleReply(c._id)}
+                      className="px-3 py-2 rounded-lg bg-primary-light text-primary hover:bg-primary hover:text-white text-[10px] font-bold transition-all"
+                    >
+                      Reply
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Status timeline + SLA */}
+              {expandedId === c._id && (
+                <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+                  {c.slaDueAt && (
+                    <div
+                      className={`flex items-center gap-2 text-[10px] font-medium ${
+                        new Date(c.slaDueAt) < new Date() &&
+                        c.status !== "resolved" &&
+                        c.status !== "closed"
+                          ? "text-red-600"
+                          : "text-text-secondary"
+                      }`}
+                    >
+                      <MdAccessTime size={13} />
+                      {new Date(c.slaDueAt) < new Date() &&
+                      c.status !== "resolved" &&
+                      c.status !== "closed"
+                        ? `SLA breached — was due ${new Date(c.slaDueAt).toLocaleString()}`
+                        : `SLA due ${new Date(c.slaDueAt).toLocaleString()}`}
+                    </div>
+                  )}
+                  {c.resolvedAt && (
+                    <p className="text-[10px] text-emerald-600 font-medium">
+                      Resolved {new Date(c.resolvedAt).toLocaleString()}
+                    </p>
+                  )}
+                  {(c.statusHistory || []).length > 0 && (
+                    <div className="space-y-2.5">
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-text-secondary/60 flex items-center gap-1.5">
+                        <MdHistory size={12} /> Status History
+                      </p>
+                      {(c.statusHistory || []).map((h, idx) => (
+                        <div key={idx} className="flex gap-2.5">
+                          <div className="flex flex-col items-center">
+                            <span
+                              className={`mt-1 w-2 h-2 rounded-full ${
+                                h.status === "resolved"
+                                  ? "bg-emerald-500"
+                                  : h.status === "needs_info"
+                                    ? "bg-amber-500"
+                                    : "bg-primary/60"
+                              }`}
+                            />
+                            {idx < (c.statusHistory || []).length - 1 && (
+                              <span className="w-px flex-1 bg-border/60" />
+                            )}
+                          </div>
+                          <div className="pb-2 min-w-0">
+                            <p className="text-[10px] font-bold text-text-primary capitalize">
+                              {h.status?.replace("_", " ")}
+                              <span className="font-medium text-text-tertiary normal-case">
+                                {" "}
+                                · {h.changedByRole === "owner" ? "Admin" : "You"} ·{" "}
+                                {new Date(h.changedAt).toLocaleString()}
+                              </span>
+                            </p>
+                            {h.note && (
+                              <p className="text-[10px] text-text-secondary mt-0.5">{h.note}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -280,25 +492,39 @@ const Complaints = () => {
               </div>
 
               {/* Floating satellite icons */}
-              <div className={`absolute -top-5 -left-9 w-11 h-11 rounded-xl bg-primary-light flex items-center justify-center border border-accent/10`} style={{ animationDuration: '4s' }}>
+              <div
+                className={`absolute -top-5 -left-9 w-11 h-11 rounded-xl bg-primary-light flex items-center justify-center border border-accent/10`}
+                style={{ animationDuration: "4s" }}
+              >
                 <MdFlag className="text-lg text-accent/40" />
               </div>
-              <div className={`absolute -bottom-5 -right-7 w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center border border-secondary/10`} style={{ animationDuration: '5s', animationDelay: '0.6s' }}>
+              <div
+                className={`absolute -bottom-5 -right-7 w-10 h-10 rounded-xl bg-primary-light flex items-center justify-center border border-secondary/10`}
+                style={{ animationDuration: "5s", animationDelay: "0.6s" }}
+              >
                 <MdCheckCircle className="text-base text-secondary/40" />
               </div>
-              <div className={`absolute top-1 -right-14 w-9 h-9 rounded-xl bg-primary-light flex items-center justify-center border border-primary/10`} style={{ animationDuration: '3.5s', animationDelay: '1.2s' }}>
+              <div
+                className={`absolute top-1 -right-14 w-9 h-9 rounded-xl bg-primary-light flex items-center justify-center border border-primary/10`}
+                style={{ animationDuration: "3.5s", animationDelay: "1.2s" }}
+              >
                 <MdHourglassEmpty className="text-base text-primary/40" />
               </div>
-              <div className={`absolute -bottom-3 -left-11 w-8 h-8 rounded-xl bg-card flex items-center justify-center border border-border/50`} style={{ animationDuration: '4.5s', animationDelay: '0.3s' }}>
+              <div
+                className={`absolute -bottom-3 -left-11 w-8 h-8 rounded-xl bg-card flex items-center justify-center border border-border/50`}
+                style={{ animationDuration: "4.5s", animationDelay: "0.3s" }}
+              >
                 <MdAdd className="text-sm text-text-tertiary/40" />
               </div>
             </div>
 
             <p className="text-xl font-bold font-display text-text-primary/45 tracking-tight mb-2">
-              {statusFilter || search ? 'No matching tickets' : 'No tickets yet'}
+              {statusFilter || search ? "No matching tickets" : "No tickets yet"}
             </p>
             <p className="text-[10px] font-medium text-text-secondary/40 uppercase tracking-[0.2em]">
-              {statusFilter || search ? 'Try adjusting your filters or search terms' : 'All issues have been resolved'}
+              {statusFilter || search
+                ? "Try adjusting your filters or search terms"
+                : "All issues have been resolved"}
             </p>
 
             {/* Decorative bottom gradient line */}
@@ -313,17 +539,30 @@ const Complaints = () => {
           <div className="modal-card max-w-md">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
               <div>
-                <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">Report Issue</h4>
-                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Support Ticket</p>
+                <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">
+                  Report Issue
+                </h4>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">
+                  Support Ticket
+                </p>
               </div>
-              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}>
+              <button
+                onClick={() => setShowModal(false)}
+                className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-primary hover:bg-primary-light transition-all`}
+              >
                 <MdClose size={20} />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Category</label>
-                <select className="field-select" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})}>
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Category
+                </label>
+                <select
+                  className="field-select"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
                   <option value="maintenance">Maintenance</option>
                   <option value="electrical">Electrical</option>
                   <option value="water">Water</option>
@@ -334,27 +573,41 @@ const Complaints = () => {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Priority Level</label>
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Priority Level
+                </label>
                 <div className="grid grid-cols-3 gap-3">
                   {[
                     { id: "low", label: "Low" },
                     { id: "medium", label: "Medium" },
                     { id: "high", label: "High" },
                   ].map(({ id, label }) => (
-                    <button key={id} type="button" onClick={() => setFormData({...formData, priority: id})}
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, priority: id })}
                       className={`py-3 rounded-xl text-[9px] font-bold uppercase tracking-wider border-2 transition-all ${
-                        formData.priority === id ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' : 'bg-card text-text-secondary/50 border-border/60 hover:border-border'
-                      }`}>
+                        formData.priority === id
+                          ? "bg-primary text-white border-primary shadow-lg shadow-primary/20"
+                          : "bg-card text-text-secondary/50 border-border/60 hover:border-border"
+                      }`}
+                    >
                       {label}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Issue Description</label>
-                <textarea required className="field h-28"
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Issue Description
+                </label>
+                <textarea
+                  required
+                  className="field h-28"
                   placeholder="Provide details about the problem..."
-                  value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                ></textarea>
               </div>
               <Button type="submit" fullWidth size="lg">
                 Submit Support Ticket

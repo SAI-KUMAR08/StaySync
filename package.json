@@ -9,7 +9,10 @@
     "dev:web": "npm run dev --prefix client",
     "install:all": "npm install --prefix server && npm install --prefix client",
     "build": "cd client && npx vite build",
-    "start": "node src/index.js"
+    "start": "npm run start --prefix server",
+    "prepare": "husky",
+    "lint": "npm run lint --prefix server && npm run lint --prefix client",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -25,11 +28,19 @@
     "mongoose": "^8.14.0",
     "morgan": "^1.10.0",
     "node-cron": "^4.2.1",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^9.0.3",
     "socket.io": "^4.8.3",
     "zod": "^3.24.4"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.9.6"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write"
+    ]
   }
 }

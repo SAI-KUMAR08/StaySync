@@ -1,17 +1,22 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/axios";
 import { useAuth } from "../context/AuthContext";
 import {
-  MdAdd, MdDelete, MdEdit, MdClose, MdSearch,
-  MdAttachMoney, MdTrendingDown, MdReceipt,
-  MdCalendarToday, MdCategory
+  MdAdd,
+  MdDelete,
+  MdEdit,
+  MdClose,
+  MdSearch,
+  MdAttachMoney,
+  MdTrendingDown,
+  MdReceipt,
+  MdCalendarToday,
 } from "react-icons/md";
 import toast from "react-hot-toast";
 import { getApiError } from "../utils/getApiError";
 import ErrorRetry from "../components/ErrorRetry";
 import Button from "../components/Button";
 import { useDebounce } from "../hooks/useDebounce";
-
 
 const CATEGORIES = [
   { id: "electricity", label: "Electricity", color: "bg-primary-light text-primary" },
@@ -29,9 +34,18 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_ICONS = {
-  electricity: "⚡", water: "💧", maintenance: "🔧", cleaning: "🧹",
-  food: "🍽️", salary: "💰", repairs: "🛠️", internet: "📡",
-  security: "🛡️", supplies: "📦", furniture: "🪑", other: "📋",
+  electricity: "⚡",
+  water: "💧",
+  maintenance: "🔧",
+  cleaning: "🧹",
+  food: "🍽️",
+  salary: "💰",
+  repairs: "🛠️",
+  internet: "📡",
+  security: "🛡️",
+  supplies: "📦",
+  furniture: "🪑",
+  other: "📋",
 };
 
 const PAYMENT_METHODS = ["cash", "upi", "bank_transfer", "card", "other"];
@@ -54,7 +68,7 @@ const Expenses = () => {
     category: "electricity",
     amount: "",
     description: "",
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     paymentMethod: "cash",
     vendor: "",
   });
@@ -81,7 +95,10 @@ const Expenses = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, [categoryFilter, debouncedSearch, user?.hostelId]);
+  useEffect(() => {
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchData is recreated each render; its inputs are all below
+  }, [categoryFilter, debouncedSearch, user?.hostelId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -106,7 +123,14 @@ const Expenses = () => {
       }
       setShowModal(false);
       setEditing(null);
-      setForm({ category: "electricity", amount: "", description: "", date: new Date().toISOString().split('T')[0], paymentMethod: "cash", vendor: "" });
+      setForm({
+        category: "electricity",
+        amount: "",
+        description: "",
+        date: new Date().toISOString().split("T")[0],
+        paymentMethod: "cash",
+        vendor: "",
+      });
       fetchData();
     } catch (error) {
       toast.error(getApiError(error));
@@ -130,7 +154,7 @@ const Expenses = () => {
       category: expense.category,
       amount: String(expense.amount),
       description: expense.description || "",
-      date: new Date(expense.date).toISOString().split('T')[0],
+      date: new Date(expense.date).toISOString().split("T")[0],
       paymentMethod: expense.paymentMethod || "cash",
       vendor: expense.vendor || "",
     });
@@ -138,30 +162,48 @@ const Expenses = () => {
   };
 
   if (error && expenses.length === 0) return <ErrorRetry message={error} onRetry={fetchData} />;
-  if (loading && expenses.length === 0) return (
-    <div className="space-y-5" role="status" aria-label="Loading expenses">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="card card-md space-y-4">
-            <div className={`skeleton h-10 w-10 rounded-2xl`} />
-            <div className="skeleton h-3 w-24" />
-            <div className="skeleton h-7 w-20" />
-          </div>
-        ))}
+  if (loading && expenses.length === 0)
+    return (
+      <div className="space-y-5" role="status" aria-label="Loading expenses">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="card card-md space-y-4">
+              <div className={`skeleton h-10 w-10 rounded-2xl`} />
+              <div className="skeleton h-3 w-24" />
+              <div className="skeleton h-7 w-20" />
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="space-y-8 pb-16">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 animate-slide-up-big">
         <div>
-          <div className="section-ornament-diamond mb-3"><MdTrendingDown size={12} /> Expenses</div>
-          <h2 className="section-title">Expense <span className="highlight">Tracker</span></h2>
+          <div className="section-ornament-diamond mb-3">
+            <MdTrendingDown size={12} /> Expenses
+          </div>
+          <h2 className="section-title">
+            Expense <span className="highlight">Tracker</span>
+          </h2>
           <p className="section-sub">Track and manage all hostel operational expenses</p>
         </div>
-        <Button onClick={() => { setEditing(null); setForm({ category: "electricity", amount: "", description: "", date: new Date().toISOString().split('T')[0], paymentMethod: "cash", vendor: "" }); setShowModal(true); }}
-          icon={MdAdd}>
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setForm({
+              category: "electricity",
+              amount: "",
+              description: "",
+              date: new Date().toISOString().split("T")[0],
+              paymentMethod: "cash",
+              vendor: "",
+            });
+            setShowModal(true);
+          }}
+          icon={MdAdd}
+        >
           Add Expense
         </Button>
       </header>
@@ -170,23 +212,39 @@ const Expenses = () => {
       {summary && (
         <div className="stagger-container grid grid-cols-1 md:grid-cols-3 gap-5">
           <div className="arch-card p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-[16px] bg-red-500/10 text-[#C62828] flex items-center justify-center"><MdTrendingDown size={22} /></div>
+            <div className="w-11 h-11 rounded-[16px] bg-red-500/10 text-[#C62828] flex items-center justify-center">
+              <MdTrendingDown size={22} />
+            </div>
             <div>
-              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Total Expenses</p>
-              <p className="text-xl font-black text-text-primary">₹{summary.totalExpenses?.toLocaleString()}</p>
+              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                Total Expenses
+              </p>
+              <p className="text-xl font-black text-text-primary">
+                ₹{summary.totalExpenses?.toLocaleString()}
+              </p>
             </div>
           </div>
           <div className="arch-card p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-[16px] bg-primary-light text-primary flex items-center justify-center"><MdCalendarToday size={22} /></div>
+            <div className="w-11 h-11 rounded-[16px] bg-primary-light text-primary flex items-center justify-center">
+              <MdCalendarToday size={22} />
+            </div>
             <div>
-              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">This Month</p>
-              <p className="text-xl font-black text-text-primary">₹{summary.thisMonthTotal?.toLocaleString()}</p>
+              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                This Month
+              </p>
+              <p className="text-xl font-black text-text-primary">
+                ₹{summary.thisMonthTotal?.toLocaleString()}
+              </p>
             </div>
           </div>
           <div className="arch-card p-5 flex items-center gap-4">
-            <div className="w-11 h-11 rounded-[16px] bg-green-500/10 text-[#2E7D32] flex items-center justify-center"><MdReceipt size={22} /></div>
+            <div className="w-11 h-11 rounded-[16px] bg-green-500/10 text-[#2E7D32] flex items-center justify-center">
+              <MdReceipt size={22} />
+            </div>
             <div>
-              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">Total Entries</p>
+              <p className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                Total Entries
+              </p>
               <p className="text-xl font-black text-text-primary">{summary.count}</p>
             </div>
           </div>
@@ -197,13 +255,25 @@ const Expenses = () => {
       <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
           <MdSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/40 text-lg" />
-          <input type="text" placeholder="Search expenses..." className="field pl-11"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Search expenses..."
+            className="field pl-11"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-        <select className="field-select px-5" value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}>
+        <select
+          className="field-select px-5"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
           <option value="">All Categories</option>
-          {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+          {CATEGORIES.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -217,24 +287,48 @@ const Expenses = () => {
         ) : (
           <div className="divide-y divide-border/40">
             {expenses.map((e, i) => (
-              <div key={e._id} className="stagger-enter p-5 hover:bg-surface transition-all flex items-center gap-5"
-                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}>
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg ${CATEGORIES.find(c => c.id === e.category)?.color || 'bg-white/5 text-text-secondary/60'}`}>
+              <div
+                key={e._id}
+                className="stagger-enter p-5 hover:bg-surface transition-all flex items-center gap-5"
+                style={{ animationDelay: `${Math.min(i * 0.04, 0.3)}s` }}
+              >
+                <div
+                  className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg ${CATEGORIES.find((c) => c.id === e.category)?.color || "bg-white/5 text-text-secondary/60"}`}
+                >
                   {CATEGORY_ICONS[e.category] || "📋"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-text-primary text-sm capitalize">{e.category}</p>
-                  <p className="text-[10px] text-text-secondary/60 line-clamp-1">{e.description || e.vendor ? `${e.description}${e.vendor ? ` — ${e.vendor}` : ''}` : "No details"}</p>
+                  <p className="text-[10px] text-text-secondary/60 line-clamp-1">
+                    {e.description || e.vendor
+                      ? `${e.description}${e.vendor ? ` — ${e.vendor}` : ""}`
+                      : "No details"}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-black text-text-primary text-base">₹{e.amount?.toLocaleString()}</p>
-                  <p className="text-[9px] text-text-secondary font-medium capitalize">{new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                  <p className="font-black text-text-primary text-base">
+                    ₹{e.amount?.toLocaleString()}
+                  </p>
+                  <p className="text-[9px] text-text-secondary font-medium capitalize">
+                    {new Date(e.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => handleEdit(e)} aria-label={`Edit ${e.description || "expense"}`} className={`p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}>
+                  <button
+                    onClick={() => handleEdit(e)}
+                    aria-label={`Edit ${e.description || "expense"}`}
+                    className={`p-2 text-text-secondary/40 hover:text-primary hover:bg-primary/5 rounded-xl transition-all`}
+                  >
                     <MdEdit size={16} />
                   </button>
-                  <button onClick={() => handleDelete(e._id)} aria-label={`Delete ${e.description || "expense"}`} className={`p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft rounded-xl transition-all`}>
+                  <button
+                    onClick={() => handleDelete(e._id)}
+                    aria-label={`Delete ${e.description || "expense"}`}
+                    className={`p-2 text-text-secondary/40 hover:text-accent hover:bg-accent-soft rounded-xl transition-all`}
+                  >
                     <MdDelete size={16} />
                   </button>
                 </div>
@@ -250,47 +344,105 @@ const Expenses = () => {
           <div className="modal-card max-w-md">
             <div className="p-6 border-b border-border/60 flex justify-between items-center">
               <div>
-                <h4 className="text-lg font-bold font-display text-text-primary">{editing ? "Edit Expense" : "Add Expense"}</h4>
-                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">Record a hostel expense</p>
+                <h4 className="text-lg font-bold font-display text-text-primary">
+                  {editing ? "Edit Expense" : "Add Expense"}
+                </h4>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">
+                  Record a hostel expense
+                </p>
               </div>
-              <button onClick={() => setShowModal(false)} aria-label="Close expense form" className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}>
+              <button
+                onClick={() => setShowModal(false)}
+                aria-label="Close expense form"
+                className={`w-9 h-9 flex items-center justify-center rounded-xl text-text-secondary/40 hover:text-accent hover:bg-accent-soft transition-all`}
+              >
                 <MdClose size={20} />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Category</label>
-                <select className="field-select" value={form.category} onChange={(e) => setForm({...form, category: e.target.value})}>
-                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Category
+                </label>
+                <select
+                  className="field-select"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Amount (₹)</label>
-                  <input required type="number" min="1" step="0.01" className="field" placeholder="500"
-                    value={form.amount} onChange={(e) => setForm({...form, amount: e.target.value})} />
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                    Amount (₹)
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    className="field"
+                    placeholder="500"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Payment Method</label>
-                  <select className="field-select" value={form.paymentMethod} onChange={(e) => setForm({...form, paymentMethod: e.target.value})}>
-                    {PAYMENT_METHODS.map(m => <option key={m} value={m} className="capitalize">{m.replace("_", " ")}</option>)}
+                  <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                    Payment Method
+                  </label>
+                  <select
+                    className="field-select"
+                    value={form.paymentMethod}
+                    onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}
+                  >
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m} value={m} className="capitalize">
+                        {m.replace("_", " ")}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Date</label>
-                <input type="date" className="field" value={form.date}
-                  onChange={(e) => setForm({...form, date: e.target.value})} />
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  className="field"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Description</label>
-                <input type="text" className="field" placeholder="What was this expense for?"
-                  value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} />
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  className="field"
+                  placeholder="What was this expense for?"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">Vendor (optional)</label>
-                <input type="text" className="field" placeholder="Who was paid?"
-                  value={form.vendor} onChange={(e) => setForm({...form, vendor: e.target.value})} />
+                <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                  Vendor (optional)
+                </label>
+                <input
+                  type="text"
+                  className="field"
+                  placeholder="Who was paid?"
+                  value={form.vendor}
+                  onChange={(e) => setForm({ ...form, vendor: e.target.value })}
+                />
               </div>
               <Button type="submit" fullWidth size="xl">
                 {editing ? "Update Expense" : "Add Expense"}

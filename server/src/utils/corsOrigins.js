@@ -47,11 +47,35 @@ export function isLocalDevOrigin(origin) {
   }
 }
 
-/** Accept any *.vercel.app subdomain (preview deploys change every push) */
+/**
+ * Vercel preview deploys get a new subdomain on every push, so they can't be
+ * enumerated. We only accept preview subdomains of THIS app's own Vercel
+ * projects (project name is the prefix of the preview URL) — arbitrary
+ * *.vercel.app origins are blocked.
+ */
+const VERCEL_PROJECT_PREFIXES = [
+  "my-hostel-client",
+  "hostel-frontend",
+  "hostel-frountend",
+  "stay-sync-git-main-code-catalist",
+];
+
+// Vercel preview URLs always end in a deployment hash: `<branch>-<7+ char
+// lowercase-alphanumeric hash>`. Requiring that final segment blocks squatted
+// names like `my-hostel-client-evil.vercel.app` while allowing genuine previews
+// such as `my-hostel-client-git-main-abc12345`.
+const VERCEL_PREVIEW_HASH = /^([a-z0-9-]*)-([a-z0-9]{7,})$/;
+
 function isVercelPreviewOrigin(origin) {
   try {
     const { hostname } = new URL(origin);
-    return hostname.endsWith(".vercel.app");
+    if (!hostname.endsWith(".vercel.app")) return false;
+    const base = hostname.slice(0, -".vercel.app".length);
+    return VERCEL_PROJECT_PREFIXES.some((p) => {
+      if (base === p) return true;
+      if (!base.startsWith(`${p}-`)) return false;
+      return VERCEL_PREVIEW_HASH.test(base.slice(p.length + 1));
+    });
   } catch {
     return false;
   }
@@ -85,7 +109,6 @@ export function applyCorsHeaders(req, res) {
   if (origin && isOriginAllowed(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Expose-Headers", "X-Access-Token, X-Refresh-Token, Set-Cookie");
     res.setHeader("Vary", "Origin");
   }
 }
@@ -96,7 +119,7 @@ export function applyCorsHeaders(req, res) {
   const vercelPreviews = origins.some((o) => o.includes(".vercel.app"));
   console.log(
     `[CORS] ${origins.length} origin(s) configured` +
-      (vercelPreviews ? ` + wildcard *.vercel.app previews` : "") +
+      (vercelPreviews ? ` + own-project vercel previews (deployment-hash only)` : "") +
       ` | ${origins.slice(0, 3).join(", ")}${origins.length > 3 ? `…` : ""}`
   );
 })();

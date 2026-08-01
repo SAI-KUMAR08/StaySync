@@ -11,8 +11,6 @@
  *   Set VITE_API_URL=https://your-api.com to override.
  */
 
-const PRODUCTION_API_FALLBACK = ""; // empty = same-domain /api
-
 function trimEnv(value) {
   return (value ?? "").trim();
 }

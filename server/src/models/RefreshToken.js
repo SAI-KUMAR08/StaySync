@@ -4,12 +4,12 @@ import crypto from "crypto";
 const refreshTokenSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-    role: { type: String, enum: ["owner", "manager", "tenant"], required: true },
+    role: { type: String, enum: ["owner", "tenant"], required: true },
     token: { type: String, required: true, unique: true },
     // ── Token family for rotation & reuse detection ──────
-    family: { type: String, required: true, index: true },
+    family: { type: String, required: true },
     // Is this token the current (valid) token in its family?
-    isCurrent: { type: Boolean, default: true, index: true },
+    isCurrent: { type: Boolean, default: true },
     // Previous token hash — links to the token this one replaced
     previousTokenHash: { type: String, default: null },
     expiresAt: { type: Date, required: true },
@@ -18,8 +18,8 @@ const refreshTokenSchema = new mongoose.Schema(
     ipAddress: { type: String, default: null },
     userAgent: { type: String, default: null },
     lastUsedAt: { type: Date, default: null },
-    ownerId: { type: mongoose.Schema.Types.ObjectId, index: true },
-    hostelId: { type: mongoose.Schema.Types.ObjectId, index: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId },
+    hostelId: { type: mongoose.Schema.Types.ObjectId },
   },
   { timestamps: true }
 );

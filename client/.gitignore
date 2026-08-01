@@ -11,3 +11,4 @@ dist
 coveragenode_modules 
 .env 
 .vercel
+bundle-visualizer.html

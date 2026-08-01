@@ -12,11 +12,9 @@ const floorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-floorSchema.index({ ownerId: 1, hostelId: 1 });
 floorSchema.index({ ownerId: 1, hostelId: 1, floorNumber: 1 }, { unique: true });
 
 floorSchema.set("toJSON", { virtuals: true });
 floorSchema.set("toObject", { virtuals: true });
 
 export const Floor = mongoose.model("Floor", floorSchema);
-

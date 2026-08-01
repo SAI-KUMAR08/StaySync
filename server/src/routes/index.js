@@ -1,12 +1,23 @@
 import { Router } from "express";
+import mongoose from "mongoose";
 import authRoutes from "./authRoutes.js";
 import ownerRoutes from "./ownerRoutes.js";
 import tenantRoutes from "./tenantRoutes.js";
 
 const router = Router();
 
+const DB_STATES = ["disconnected", "connected", "connecting", "disconnecting"];
+
 router.get("/health", (req, res) => {
-  res.json({ success: true, message: "MyHostel API is running" });
+  const dbOk = mongoose.connection.readyState === 1;
+  // Return 503 when the DB is unreachable so Render's healthCheckPath restarts
+  // a DB-dead service instead of reporting it healthy. Response body is unchanged.
+  res.status(dbOk ? 200 : 503).json({
+    success: dbOk,
+    message: dbOk ? "MyHostel API is running" : "Database unavailable",
+    db: DB_STATES[mongoose.connection.readyState] ?? "unknown",
+    uptime: process.uptime(),
+  });
 });
 
 router.use("/auth", authRoutes);

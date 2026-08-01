@@ -8,52 +8,65 @@ export async function getDashboardStats(ownerId, hostelId) {
   const currentMonth = now.toLocaleString("en-US", { month: "long" });
   const currentYear = now.getFullYear();
 
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
   // End of previous month for trend comparison
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  const [occupancy, activeComplaints, totalTenants, previousTotalTenants, overdueTenants, dues, monthlyRevenue, totalDeposits] =
-    await Promise.all([
-      getOccupancySummary(ownerId, hostelId),
-      Complaint.countDocuments({
-        ownerId,
-        hostelId,
-        status: { $in: ["pending", "assigned", "in_progress"] },
-      }),
-      Tenant.countDocuments({ ownerId, hostelId, isActive: true }),
-      // Active tenants 1 month ago — approximate by subtracting tenants created after last month
-      Tenant.countDocuments({
-        ownerId,
-        hostelId,
-        isActive: true,
-        createdAt: { $lte: prevMonthEnd },
-      }),
-      countOverdueTenants(ownerId, hostelId),
-      sumOutstandingByStatus(ownerId, hostelId),
-      Payment.aggregate([
-        {
-          $match: {
-            ownerId: toObjectId(ownerId),
-            hostelId: toObjectId(hostelId),
-            paymentStatus: "paid",
-            paymentType: { $ne: "deposit" },
-            year: currentYear,
-            paymentMonth: currentMonth,
-          },
+  const oId = toObjectId(ownerId);
+  const hId = hostelId ? toObjectId(hostelId) : null;
+
+  const baseMatch = { ownerId: oId };
+  if (hId) baseMatch.hostelId = hId;
+
+  const [
+    occupancy,
+    activeComplaints,
+    totalTenants,
+    previousTotalTenants,
+    overdueTenants,
+    dues,
+    monthlyRevenue,
+    totalDeposits,
+  ] = await Promise.all([
+    getOccupancySummary(ownerId, hostelId),
+    Complaint.countDocuments({
+      ...baseMatch,
+      status: { $in: ["pending", "assigned", "in_progress"] },
+    }),
+    Tenant.countDocuments({ ...baseMatch, isActive: true }),
+    Tenant.countDocuments({
+      ...baseMatch,
+      isActive: true,
+      createdAt: { $lte: prevMonthEnd },
+    }),
+    countOverdueTenants(ownerId, hostelId),
+    sumOutstandingByStatus(ownerId, hostelId),
+    Payment.aggregate([
+      {
+        $match: {
+          ...baseMatch,
+          paymentStatus: "paid",
+          $or: [
+            { year: currentYear, paymentMonth: currentMonth },
+            { paidDate: { $gte: startOfMonth, $lt: endOfMonth } },
+          ],
         },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-      ]),
-      Payment.aggregate([
-        {
-          $match: {
-            ownerId: toObjectId(ownerId),
-            hostelId: toObjectId(hostelId),
-            paymentType: "deposit",
-            paymentStatus: "paid",
-          },
+      },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]),
+    Payment.aggregate([
+      {
+        $match: {
+          ...baseMatch,
+          paymentType: "deposit",
+          paymentStatus: "paid",
         },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-      ]),
-    ]);
+      },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]),
+  ]);
 
   return {
     ...occupancy,
@@ -85,12 +98,22 @@ export async function getOccupancyAnalytics(ownerId, hostelId) {
 export async function getPaymentAnalytics(ownerId, hostelId) {
   const year = new Date().getFullYear();
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   const data = await Payment.aggregate([
-    { $match: { ownerId: toObjectId(ownerId), hostelId: toObjectId(hostelId), paymentType: { $ne: "deposit" }, year } },
+    { $match: { ownerId: toObjectId(ownerId), hostelId: toObjectId(hostelId), year } },
     {
       $group: {
         _id: "$paymentMonth",
@@ -102,7 +125,7 @@ export async function getPaymentAnalytics(ownerId, hostelId) {
         },
       },
     },
-  ]);
+  ]).option({ hint: { ownerId: 1, hostelId: 1, year: 1, paymentMonth: 1 } });
 
   const map = Object.fromEntries(data.map((d) => [d._id, d]));
   return months.map((month) => ({
@@ -117,7 +140,13 @@ export async function getComplaintTrends(ownerId, hostelId) {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   return Complaint.aggregate([
-    { $match: { ownerId: toObjectId(ownerId), hostelId: toObjectId(hostelId), createdAt: { $gte: thirtyDaysAgo } } },
+    {
+      $match: {
+        ownerId: toObjectId(ownerId),
+        hostelId: toObjectId(hostelId),
+        createdAt: { $gte: thirtyDaysAgo },
+      },
+    },
     {
       $group: {
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -133,8 +162,12 @@ export async function getHostelsSummary(ownerId) {
   const hostels = await Hostel.find({ ownerId, isActive: true }).select("_id name").lean();
   if (!hostels.length) return [];
 
-  const currentMonth = new Date().toLocaleString("en-US", { month: "long" });
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentMonth = now.toLocaleString("en-US", { month: "long" });
+  const currentYear = now.getFullYear();
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
   const rows = await Promise.all(
     hostels.map(async (h) => {
@@ -147,9 +180,10 @@ export async function getHostelsSummary(ownerId) {
               ownerId: toObjectId(ownerId),
               hostelId: toObjectId(h._id),
               paymentStatus: "paid",
-              paymentType: { $ne: "deposit" },
-              year: currentYear,
-              paymentMonth: currentMonth,
+              $or: [
+                { year: currentYear, paymentMonth: currentMonth },
+                { paidDate: { $gte: startOfMonth, $lt: endOfMonth } },
+              ],
             },
           },
           { $group: { _id: null, total: { $sum: "$totalAmount" } } },
@@ -173,7 +207,7 @@ export async function getHostelsSummary(ownerId) {
       return {
         _id: h._id,
         name: h.name,
-        activeResidents: tenantCount,
+        activeTenants: tenantCount,
         totalBeds: occupancy.totalBeds,
         occupiedBeds: occupancy.occupiedBeds,
         availableBeds: occupancy.availableBeds,

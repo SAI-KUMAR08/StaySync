@@ -1,10 +1,23 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { success } from "../utils/apiResponse.js";
 import * as authService from "../services/authService.js";
-import { Owner, Tenant } from "../models/index.js";
+import { Owner, Tenant, RefreshToken } from "../models/index.js";
 import { AppError } from "../middleware/error.middleware.js";
+import { TOKEN } from "../utils/constants.js";
+import { isOriginAllowed } from "../utils/corsOrigins.js";
 
 const isProduction = process.env.NODE_ENV === "production";
+
+/**
+ * SameSite=None cookies are sent cross-site, so a state-changing cookie-based
+ * endpoint must reject requests carrying an Origin that isn't on the CORS
+ * allowlist (closes a token-rotation/logout CSRF window). Requests with no
+ * Origin (curl, mobile, same-origin navigation) are unaffected.
+ */
+function assertAllowedOrigin(req) {
+  const origin = req.headers.origin;
+  if (origin && !isOriginAllowed(origin)) throw new AppError("Forbidden", 403);
+}
 
 /**
  * Extract device/client metadata from the request.
@@ -23,7 +36,7 @@ function setRefreshCookie(res, token) {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "None" : "Lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: TOKEN.REFRESH_LIFETIME_MS, // must match the refresh token's own 30d expiry
   });
 }
 
@@ -111,6 +124,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
 });
 
 export const refresh = asyncHandler(async (req, res) => {
+  assertAllowedOrigin(req);
   const token = req.body?.refreshToken || req.cookies?.refreshToken;
   if (!token) throw new AppError("Refresh token required", 401);
   const meta = getClientMeta(req);
@@ -120,6 +134,7 @@ export const refresh = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
+  assertAllowedOrigin(req);
   const token = req.body?.refreshToken || req.cookies?.refreshToken;
   await authService.logoutUser(token);
   res.clearCookie("refreshToken", {
@@ -146,9 +161,16 @@ export const switchHostel = asyncHandler(async (req, res) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
+  // Tenant profile changes MUST go through the admin-reviewed profile-request
+  // workflow (POST /tenant/profile-request). A tenant can no longer write their
+  // own name/phone/email directly to the database.
+  if (req.user.role === "tenant") {
+    throw new AppError("Profile changes must be submitted for admin approval.", 403);
+  }
+
   const { name, phone, email } = req.validated.body;
-  const isTenant = req.user.role === "tenant";
-  const Model = isTenant ? Tenant : Owner;
+  const isTenant = false;
+  const Model = Owner;
   const query = isTenant
     ? { _id: req.user.id, ownerId: req.user.ownerId, hostelId: req.user.hostelId }
     : { _id: req.user.id };
@@ -165,7 +187,12 @@ export const updateProfile = asyncHandler(async (req, res) => {
     if (ownerClash) throw new AppError("Email already in use", 409);
 
     const clashQuery = isTenant
-      ? { "personalInfo.email": normalized, ownerId: req.user.ownerId, hostelId: req.user.hostelId, _id: { $ne: user._id } }
+      ? {
+          "personalInfo.email": normalized,
+          ownerId: req.user.ownerId,
+          hostelId: req.user.hostelId,
+          _id: { $ne: user._id },
+        }
       : { "personalInfo.email": normalized };
     const tenantClash = await Tenant.findOne(clashQuery);
     if (tenantClash) throw new AppError("Email already in use", 409);
@@ -199,15 +226,28 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
 export const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.validated.body;
-  const Model = req.user.role === "owner" ? Owner : Tenant;
-  const user = await Model.findById(req.user.id).select("+password");
+  const isTenant = req.user.role === "tenant";
+  const Model = isTenant ? Tenant : Owner;
+  // Tenant stores the password at personalInfo.password (select:false) — selecting
+  // only the top-level `password` path made comparePassword always fail for tenants.
+  const user = await Model.findById(req.user.id).select(
+    isTenant ? "+personalInfo.password" : "+password"
+  );
   if (!user) throw new AppError("User not found", 404);
 
   const valid = await user.comparePassword(currentPassword);
   if (!valid) throw new AppError("Current password is incorrect", 400);
 
-  user.password = newPassword;
+  if (isTenant) {
+    user.personalInfo.password = newPassword;
+  } else {
+    user.password = newPassword;
+  }
   await user.save();
+
+  // Revoke all existing sessions — the user must log in again on every device.
+  await RefreshToken.deleteMany({ userId: user._id });
+
   return success(res, { message: "Password updated successfully" });
 });
 

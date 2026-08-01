@@ -17,6 +17,13 @@ export const errorHandler = (err, req, res, next) => {
   let message = err.message || "Internal Server Error";
   let errors = err.errors || undefined;
 
+  // Don't leak internal details of unhandled server errors to production clients.
+  // Intentional AppErrors (even with 500) keep their curated message.
+  if (statusCode >= 500 && !(err instanceof AppError) && process.env.NODE_ENV === "production") {
+    message = "Internal Server Error";
+    errors = undefined;
+  }
+
   if (err.code === 11000) {
     statusCode = 409;
     const field = Object.keys(err.keyPattern || {})[0] || "field";
@@ -40,7 +47,7 @@ export const errorHandler = (err, req, res, next) => {
   }
 
   if (statusCode >= 500) {
-    console.error(`[Error] ${statusCode} - ${message}`);
+    console.error(`[Error] ${req.id || "-"} ${statusCode} - ${message}`);
     if (err.stack) console.error(err.stack);
   }
 

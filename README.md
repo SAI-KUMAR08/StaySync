@@ -1,15 +1,14 @@
 # 🏢 MyHostel Management Pro
 
-MyHostel is a premium, full-stack, multi-tenant **Hostel Management System** designed for modern hostel owners, property managers, and residents. It provides a complete digital operating system for housing facilities, featuring a secure multi-step partner onboarding wizard, automated monthly invoice generation with custom late fees, real-time announcements, resident support tickets, and integrated payment checkout.
+MyHostel is a premium, full-stack, multi-tenant **Hostel Management System** designed for modern hostel owners and residents. It provides a complete digital operating system for housing facilities, featuring automated monthly invoice generation, real-time announcements, resident support tickets, and admin-approved payment requests.
 
 ---
 
 ## ⚡ Key Features
 
 ### 👤 User Roles & Dashboards
-*   **Hostel Owner Dashboard**: Complete financial analytics, occupancy rates, complaint ticket lists, and property manager delegation tools.
-*   **Property Manager Dashboard**: Mid-level access to list tenants, manage rooms/beds, view complaints, and coordinate bed-shift requests.
-*   **Resident (Tenant) Portal**: Passwordless login, view/download monthly invoices, pay rent online, submit and track support complaints, and read notices.
+*   **Admin Dashboard**: Complete financial analytics, occupancy rates, complaint ticket lists, tenant management, and real-time notices.
+*   **Resident (Tenant) Portal**: Passwordless OTP login, view monthly invoices, submit payment requests, file and track support complaints, and read notices.
 
 ### 🛠 Property Management
 *   **Dynamic Floor Planner**: Visual mapping tool to manage floors, rooms, and individual bed allocations.
@@ -17,9 +16,8 @@ MyHostel is a premium, full-stack, multi-tenant **Hostel Management System** des
 *   **Bed Shift Manager**: Streamlined tenant requests to swap beds/rooms with admin-side approval workflows.
 
 ### 💰 Billing, Invoices & Payments
-*   **Automated Rent Engine**: Cron job running daily at midnight to generate invoices based on tenant join anniversary cycles.
-*   **Dynamic Late Fee Calculation**: Automated grace-period calculations that apply customized daily interest rates on unpaid overdue invoices.
-*   **Razorpay Test Integration**: Built-in mock payment processing for Card, Netbanking, UPI, and Wallet checkout flows.
+*   **Automated Rent Engine**: Monthly cron (2nd of the month) generates a rent invoice for every active tenant, due on the 7th.
+*   **Admin-Approved Payment Requests**: Tenants submit a payment request for an invoice; the owner approves or rejects it to record the payment.
 
 ### 💬 Real-Time Communication
 *   **Announcement Noticeboard**: Publish important notices to the entire hostel or specific cohorts.
@@ -37,7 +35,7 @@ MyHostel is a premium, full-stack, multi-tenant **Hostel Management System** des
 | **Backend** | Node.js + Express.js | Structured REST API |
 | **Database** | MongoDB + Mongoose | Highly relational schemas built on Document structures |
 | **Validation** | Zod | Runtime request body schema validation |
-| **Cron Scheduling** | `node-cron` | Asynchronous system jobs for invoice runs |
+| **Cron Scheduling** | `node-cron` | Monthly invoice runs, profile checks, tenant cleanup |
 | **Realtime Push** | Socket.io | Bidirectional WebSocket communication |
 
 ---
@@ -54,7 +52,7 @@ Hostel-Manager/
 │   │   ├── config/             # Client-side env mappings & socket endpoints
 │   │   ├── context/            # AuthContext & SocketContext providers
 │   │   ├── layouts/            # DashboardLayout (Sidebar, Topbar navigation)
-│   │   ├── pages/              # Login, Onboarding wizard, and Admin/Tenant views
+│   │   ├── pages/              # Login, Admin login, and Admin/Tenant views
 │   │   ├── store/              # Frontend store hooks
 │   │   └── utils/              # Helper utilities (error parsing, formatting)
 │   └── vite.config.js          # Vite config with Dev proxy settings
@@ -105,7 +103,7 @@ All endpoints are prefixed with `/api`.
 | Method | Endpoint | Description | Auth Required | Payload / Parameters |
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/register` | Register a new Owner | None | `name, email, password, phone` |
-| `POST` | `/auth/login` | Login user (Owner/Manager) | None | `email, password` |
+| `POST` | `/auth/login` | Login user (Owner/Admin) | None | `email, password` |
 | `POST` | `/auth/tenant/send-otp` | Request OTP for Tenant passwordless login | None | `phone` |
 | `POST` | `/auth/tenant/verify-otp` | Verify OTP & Login Tenant | None | `phone, otp` |
 | `POST` | `/auth/refresh` | Exchange refresh token for new access token | None | Cookie: `refreshToken` |
@@ -115,32 +113,32 @@ All endpoints are prefixed with `/api`.
 | `PATCH` | `/auth/profile` | Update profile information | JWT | `name, phone` |
 | `PATCH` | `/auth/password` | Update account password | JWT | `oldPassword, newPassword` |
 
-### 🛠 Owner / Manager Routes (`/owner`)
+### 🛠 Owner Routes (`/owner`)
 
 | Method | Endpoint | Description | Role Required | Payload / Parameters |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/owner/dashboard` | Fetch dashboard metric summary cards | Owner / Manager | None |
-| `GET` | `/owner/occupancy` | Fetch live room occupancy details | Owner / Manager | None |
-| `GET` | `/owner/hostel` | Fetch active hostel metadata | Owner / Manager | None |
-| `GET` | `/owner/structure` | Fetch nested floor-room-bed layout | Owner / Manager | None |
-| `GET` | `/owner/floors` | List all floors | Owner / Manager | None |
-| `POST` | `/owner/floors` | Create a floor | Owner / Manager | `number, name` |
-| `GET` | `/owner/rooms` | List all rooms | Owner / Manager | None |
-| `GET` | `/owner/beds` | List all beds | Owner / Manager | None |
-| `GET` | `/owner/tenants` | List all current tenants | Owner / Manager | None |
-| `POST` | `/owner/tenants` | Add new tenant profile | Owner / Manager | `name, email, phone, monthlyRent, joinDate` |
-| `PATCH` | `/owner/tenants/:id` | Update tenant details | Owner / Manager | `name, email, phone, monthlyRent` |
-| `POST` | `/owner/tenants/:id/assign-bed` | Assign a tenant to a specific room & bed | Owner / Manager | `bedId` |
-| `DELETE` | `/owner/tenants/:id` | Evict or remove tenant | Owner / Manager | None |
-| `GET` | `/owner/complaints` | View all support complaints | Owner / Manager | None |
-| `PATCH` | `/owner/complaints/:id` | Update ticket status & comments | Owner / Manager | `status, remarks` |
-| `GET` | `/owner/payments` | List all payment receipts & bills | Owner / Manager | None |
+| `GET` | `/owner/dashboard` | Fetch dashboard metric summary cards | Owner | None |
+| `GET` | `/owner/occupancy` | Fetch live room occupancy details | Owner | None |
+| `GET` | `/owner/hostel` | Fetch active hostel metadata | Owner | None |
+| `GET` | `/owner/structure` | Fetch nested floor-room-bed layout | Owner | None |
+| `GET` | `/owner/floors` | List all floors | Owner | None |
+| `POST` | `/owner/floors` | Create a floor | Owner | `number, name` |
+| `GET` | `/owner/rooms` | List all rooms | Owner | None |
+| `GET` | `/owner/beds` | List all beds | Owner | None |
+| `GET` | `/owner/tenants` | List all current tenants | Owner | None |
+| `POST` | `/owner/tenants` | Add new tenant profile | Owner | `name, email, phone, monthlyRent, joinDate` |
+| `PATCH` | `/owner/tenants/:id` | Update tenant details | Owner | `name, email, phone, monthlyRent` |
+| `POST` | `/owner/tenants/:id/assign-bed` | Assign a tenant to a specific room & bed | Owner | `bedId` |
+| `DELETE` | `/owner/tenants/:id` | Evict or remove tenant | Owner | None |
+| `GET` | `/owner/complaints` | View all support complaints | Owner | None |
+| `PATCH` | `/owner/complaints/:id` | Update ticket status & comments | Owner | `status, remarks` |
+| `GET` | `/owner/payments` | List all payment receipts & bills | Owner | None |
 | `POST` | `/owner/payments` | Manually record or create a bill | Owner | `tenantId, bedId, amount, paymentMonth, year, dueDate` |
-| `GET` | `/owner/notices` | List all broadcasted notice board items | Owner / Manager | None |
-| `POST` | `/owner/notices` | Broadcast a new notice announcement | Owner / Manager | `title, content, targetAudience` |
-| `DELETE` | `/owner/notices/:id` | Delete an announcement | Owner / Manager | None |
-| `GET` | `/owner/managers` | List all delegated managers | Owner | None |
-| `POST` | `/owner/managers` | Delegate property manager role | Owner | `name, email, password, phone` |
+| `GET` | `/owner/notices` | List all broadcasted notice board items | Owner | None |
+| `POST` | `/owner/notices` | Broadcast a new notice announcement | Owner | `title, content, targetAudience` |
+| `DELETE` | `/owner/notices/:id` | Delete an announcement | Owner | None |
+| `GET` | `/owner/payment-requests` | List tenant-submitted payment requests | Owner | None |
+| `PATCH` | `/owner/payment-requests/:id` | Approve or reject a payment request | Owner | `status` |
 
 ### 🛌 Tenant Routes (`/tenant`)
 
@@ -149,8 +147,8 @@ All endpoints are prefixed with `/api`.
 | `GET` | `/tenant/dashboard` | Fetch resident info dashboard | None |
 | `GET` | `/tenant/room` | Fetch resident's assigned room and roommate list | None |
 | `GET` | `/tenant/payments` | List all bills & historical receipts | None |
-| `POST` | `/tenant/payments/create-order` | Initialize a Razorpay payment order for rent | `paymentId` (system bill record ID) |
-| `POST` | `/tenant/payments/verify` | Verify Razorpay transaction signature | `razorpay_order_id, razorpay_payment_id, razorpay_signature` |
+| `POST` | `/tenant/payment-requests` | Submit a payment request for owner approval | `paymentMonth, year, amount, paymentProof, notes` |
+| `GET` | `/tenant/payment-requests` | List own payment requests | None |
 | `GET` | `/tenant/complaints` | List resident filed complaints | None |
 | `POST` | `/tenant/complaints` | File a new maintenance/service ticket | `title, description, category, priority` |
 | `GET` | `/tenant/notices` | Fetch announcements and notifications | None |
@@ -173,9 +171,12 @@ The real-time sync mechanism uses Socket.io rooms grouped by `hostelId` to preve
 
 ## 🕒 Cron & Billing Engine
 
-The system contains an automated daily billing and ledger maintenance engine:
-1.  **Anniversary Billing**: Runs every day at `00:00` (midnight). It streams active tenants using Mongoose Cursor. If the current date matches the tenant's join cycle anniversary (or end of month adjustments), it creates a pending `Payment` document for the cycle.
-2.  **Grace Period & Late Fees**: Identifies all unpaid or overdue payments. If the current time exceeds the `dueDate` beyond the hostel's customized grace period (`lateFeeGracePeriodDays`), it automatically applies the daily compounding late rate (`lateFeeDailyRate`) to update `fineAmount` and marks the status as `overdue`.
+The system runs the following scheduled jobs (`server/src/services/cronService.js`):
+1.  **Monthly Rent Generation** (`0 0 2 * *`): On the 2nd of each month, creates an unpaid rent invoice for every active tenant (due on the 7th). Skips tenants who already have an invoice for the month/year.
+2.  **Incomplete Profile Check** (`0 3 * * *`): Scans all hostels for tenants with incomplete profiles and raises/auto-resolves system notices.
+3.  **Tenant Cleanup** (`0 1 * * *`): Permanently deletes inactive tenants past their 10-day `scheduledDeletionDate` and cascade-deletes their related records.
+
+A GitHub Actions keep-warm workflow pings the Vercel health endpoint (`https://stay-sync-six.vercel.app/api/health`) every 5 minutes to prevent serverless cold starts.
 
 ---
 
@@ -206,12 +207,10 @@ MONGO_DB_NAME=smart-hostel
 JWT_SECRET=your_jwt_access_secret_key_minimum_16_characters
 REFRESH_TOKEN_SECRET=your_jwt_refresh_secret_key_minimum_16_characters
 CLIENT_URL=http://localhost:5173
-MOCK_OTP=true
-RAZORPAY_KEY_ID=rzp_test_yourKeyId
-RAZORPAY_KEY_SECRET=yourRazorpaySecret
+SEND_REAL_EMAIL=false
 ```
 > [!NOTE]
-> Setting `MOCK_OTP=true` bypasses physical SMS gateways. When logging in a tenant, use `123456` as the standard verification code.
+> OTPs are random 6-digit codes. When `SEND_REAL_EMAIL=false` (the default in dev), the OTP is returned in the API response and logged to the console — no email is sent. When `SEND_REAL_EMAIL=true`, OTPs are delivered by SMTP and are never returned in the response.
 
 Start the backend in development hot-reload mode:
 ```bash
@@ -234,7 +233,6 @@ cp .env.example .env.development
 Configure `.env.development`:
 ```env
 VITE_DEV_PROXY_TARGET=http://localhost:5000
-VITE_RAZORPAY_KEY_ID=rzp_test_yourKeyId
 ```
 
 Start Vite client local server:
@@ -247,29 +245,27 @@ Vite will boot on `http://localhost:5173`. Any client calls to `/api/*` will aut
 
 ## 🌐 Production Deployments
 
-### Backend (Render Web Service)
-1.  Select the `server` directory as project root directory.
-2.  Build command: `npm install`.
-3.  Start command: `npm start`.
-4.  Set the following environment variables:
-    *   `NODE_ENV=production`
-    *   `CLIENT_URL=https://your-frontend-app.vercel.app`
-    *   Configure `MONGO_URI`, JWT secret variables, and Razorpay API credentials.
+The app has a dual backend setup.
 
-### Frontend (Vercel)
-1.  Select the `client` directory as project root directory.
-2.  Build command: `npm run build` (output directory: `dist`).
-3.  Set environment variables:
-    *   `VITE_API_URL=https://your-backend-app.onrender.com`
-    *   `VITE_RAZORPAY_KEY_ID=rzp_test_yourKeyId`
-4.  Ensure `vercel.json` is configured in the `client` folder to route all client paths back to `index.html` (SPA routing mode).
+### Vercel (full-stack serverless — default)
+The root `vercel.json` serves the Express API (`api/index.js`) and the built client (`client/dist`) from a single domain.
+1.  Project root: repository root. Build command: `cd client && npx vite build` (output: `client/dist`).
+2.  Set environment variables: `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `CLIENT_URL`.
+3.  In production the client defaults to same-origin `/api` calls — do **not** set `VITE_API_URL`.
+4.  Note: real-time Socket.IO is not available on Vercel serverless; use the Render deployment when WebSockets are required.
+
+### Render (long-running Node service)
+`render.yaml` deploys the `server` folder as a persistent web service with full Socket.IO, WebSockets, and cron jobs.
+1.  Project root: `server`. Build command: `npm install`. Start command: `npm start`.
+2.  Set environment variables: `NODE_ENV=production`, `CLIENT_URL=https://your-frontend-app.vercel.app`, `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`.
+3.  Point the client at Render instead of same-origin by setting `VITE_API_URL=https://your-backend-app.onrender.com` at build time.
 
 ---
 
 ## 🩺 Troubleshooting
 
 > [!WARNING]
-> **Database Cold Starts & False CORS Errors**: When deployed to Render's free tier, the backend web service spins down after 15 minutes of inactivity. When a request comes in, it takes ~30 seconds to boot up. During this period, the server fails to respond, causing the browser to throw a misleading CORS exception instead of a 504. Send a manual `GET` request to `https://your-app.onrender.com/api/health` first to warm up the server.
+> **Cold Starts & False CORS Errors**: Serverless cold starts can delay the first request. The keep-warm workflow pings `https://stay-sync-six.vercel.app/api/health` every 5 minutes to keep the function warm. If you still hit a delay, send a manual `GET` request to the health endpoint first.
 
 *   **Cookie Sync Failure**: In production, access tokens are sent securely. Ensure the backend has trust proxies enabled (`app.set("trust proxy", 1)`) and headers utilize `secure: true` and `SameSite: "None"`.
 *   **Vite Hot-Reload Issues**: If styles or proxy paths do not resolve after modifying `.env.development`, terminate the client process and run `npm run dev` again to rebuild Vite's server configuration context.

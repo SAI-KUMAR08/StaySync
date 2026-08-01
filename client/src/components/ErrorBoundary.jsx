@@ -1,5 +1,6 @@
-import React from 'react';
-import { MdErrorOutline, MdRefresh } from 'react-icons/md';
+import React from "react";
+import { MdErrorOutline, MdRefresh } from "react-icons/md";
+import { captureError } from "../utils/errorTracking";
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -12,7 +13,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Global Error Boundary Caught:", error, errorInfo);
+    captureError(error, { component: errorInfo?.componentStack || null });
   }
 
   render() {
@@ -23,18 +24,21 @@ class ErrorBoundary extends React.Component {
             <MdErrorOutline size={48} />
           </div>
           <div className="max-w-md">
-            <h1 className="text-3xl font-black text-text-primary tracking-tighter mb-2">Something went wrong</h1>
+            <h1 className="text-3xl font-black text-text-primary tracking-tighter mb-2">
+              Something went wrong
+            </h1>
             <p className="text-text-secondary font-medium mb-8">
-              A runtime error occurred. The technical team has been notified. Please refresh the page to continue operations.
+              A runtime error occurred. The technical team has been notified. Please refresh the
+              page to continue operations.
             </p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="btn btn-primary w-full py-4 gap-3"
             >
               <MdRefresh size={20} /> Reload Application
             </button>
           </div>
-          {import.meta.env.MODE !== 'production' && (
+          {import.meta.env.MODE !== "production" && (
             <div className="mt-8 p-6 bg-card rounded-3xl text-left max-w-2xl w-full overflow-auto">
               <p className="text-rose-400 font-mono text-sm">{this.state.error?.toString()}</p>
             </div>

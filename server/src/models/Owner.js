@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { ACCOUNT } from "../utils/constants.js";
 
 const ownerSchema = new mongoose.Schema(
   {
@@ -9,9 +10,9 @@ const ownerSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 6, select: false },
     otp: { type: String, select: false },
     otpExpires: { type: Date, select: false },
-    role: { type: String, enum: ["owner", "manager"], default: "owner" },
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", default: null, index: true },
-    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", default: null, index: true },
+    role: { type: String, enum: ["owner"], default: "owner" },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", default: null },
+    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", default: null },
     isActive: { type: Boolean, default: true },
     // ── Account lockout ─────────────────────────────────
     loginAttempts: { type: Number, default: 0 },
@@ -23,9 +24,6 @@ const ownerSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-// ── Index for lockout queries ────────────────────────────
-ownerSchema.index({ loginAttempts: 1, lockUntil: 1 });
 
 // ── Pre-save: hash password ──────────────────────────────
 ownerSchema.pre("save", async function hashPassword() {
@@ -52,8 +50,8 @@ ownerSchema.methods.isLocked = function isLocked() {
  */
 ownerSchema.methods.incrementLoginAttempts = async function incrementLoginAttempts() {
   this.loginAttempts = (this.loginAttempts || 0) + 1;
-  if (this.loginAttempts >= 5) {
-    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 min lock
+  if (this.loginAttempts >= ACCOUNT.MAX_LOGIN_ATTEMPTS) {
+    this.lockUntil = new Date(Date.now() + ACCOUNT.LOCK_DURATION_MS); // 15 min lock
   }
   await this.save();
 };
@@ -78,4 +76,3 @@ ownerSchema.set("toJSON", { virtuals: true });
 ownerSchema.set("toObject", { virtuals: true });
 
 export const Owner = mongoose.model("Owner", ownerSchema);
-

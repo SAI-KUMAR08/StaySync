@@ -16,6 +16,9 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   REFRESH_TOKEN_SECRET: z.string().min(16).optional(),
   CLIENT_URL: z.string().default("http://localhost:5173"),
+  // Predefined admin account. Override in production (.env) — defaults keep existing deployments working.
+  ADMIN_EMAIL: z.string().default("pravitha.555@gmail.com"),
+  ADMIN_PASSWORD: z.string().default("Srirama@1234"),
   // SMTP — email delivery for OTPs
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
@@ -61,17 +64,47 @@ function resolveMongoUri(data) {
 export const env = {
   ...(parsed.success ? parsed.data : process.env),
   MONGO_URI: resolveMongoUri(parsed.success ? parsed.data : process.env),
-  REFRESH_TOKEN_SECRET: parsed.data?.REFRESH_TOKEN_SECRET || parsed.data?.JWT_SECRET || process.env.JWT_SECRET || "",
-  CLIENT_URL: (parsed.data?.CLIENT_URL || process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, ""),
+  REFRESH_TOKEN_SECRET:
+    parsed.data?.REFRESH_TOKEN_SECRET || parsed.data?.JWT_SECRET || process.env.JWT_SECRET || "",
+  CLIENT_URL: (
+    parsed.data?.CLIENT_URL ||
+    process.env.CLIENT_URL ||
+    "http://localhost:5173"
+  ).replace(/\/$/, ""),
 };
 
-// Warn about placeholder secrets in production
-if (env.NODE_ENV === "production") {
-  const placeholder = /^your_/i;
-  if (placeholder.test(env.JWT_SECRET)) {
-    console.error("[env] ⚠️ JWT_SECRET appears to be a placeholder! Set a strong, unique secret for production.");
+// Fail-closed production gates. Serverless (Vercel) deployments skip these so a
+// cold start can surface a clear error through the handler instead of crashing.
+if (env.NODE_ENV === "production" && !process.env.VERCEL) {
+  // SEND_REAL_EMAIL=false echoes OTPs in API responses — never acceptable in
+  // production. It must be explicitly enabled ("true") or startup fails.
+  if (process.env.SEND_REAL_EMAIL !== "true") {
+    throw new Error(
+      'SEND_REAL_EMAIL must be explicitly set to "true" in production. When false, OTP codes are echoed in API responses — that is only acceptable for local development.'
+    );
   }
-  if (!process.env.REFRESH_TOKEN_SECRET && env.REFRESH_TOKEN_SECRET === env.JWT_SECRET) {
-    console.warn("[env] ⚠️ REFRESH_TOKEN_SECRET is not set — falling back to JWT_SECRET. Set a separate REFRESH_TOKEN_SECRET for better security.");
+
+  // Placeholder or missing JWT secrets must never reach production.
+  const placeholder = /^your_/i;
+  if (!env.JWT_SECRET || placeholder.test(env.JWT_SECRET)) {
+    throw new Error(
+      "JWT_SECRET must be set to a strong, unique value in production (placeholder secrets are rejected)."
+    );
+  }
+
+  // Refresh tokens must not fall back to the access-token secret in production.
+  if (!process.env.REFRESH_TOKEN_SECRET || env.REFRESH_TOKEN_SECRET === env.JWT_SECRET) {
+    throw new Error(
+      "REFRESH_TOKEN_SECRET must be explicitly set in production. Falling back to JWT_SECRET is not allowed."
+    );
+  }
+
+  // Warn (don't fail) when the well-known default admin password is still in
+  // effect — failing startup would break deployments that rely on the default,
+  // but operators must be told the super-admin is using a public credential.
+  if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD === "Srirama@1234") {
+    console.warn(
+      "⚠️  ADMIN_PASSWORD is not overridden — the default admin password is active in production. Set a strong ADMIN_PASSWORD in env vars immediately."
+    );
   }
 }

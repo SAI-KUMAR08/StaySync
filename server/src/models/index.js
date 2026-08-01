@@ -15,4 +15,8 @@ export { RoomAssignmentHistory } from "./RoomAssignmentHistory.js";
 export { default as Expense } from "./Expense.js";
 export { MealTiming } from "./MealTiming.js";
 export { PaymentRequest } from "./PaymentRequest.js";
-
+export { VacateRequest } from "./VacateRequest.js";
+export { TemporaryAllotmentRequest } from "./TemporaryAllotmentRequest.js";
+export { ProfileUpdateRequest } from "./ProfileUpdateRequest.js";
+export { Notification } from "./Notification.js";
+export { CronLock } from "./CronLock.js";

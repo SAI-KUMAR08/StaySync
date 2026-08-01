@@ -2,13 +2,22 @@ import mongoose from "mongoose";
 
 const noticeSchema = new mongoose.Schema(
   {
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true, index: true },
-    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true, index: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true },
+    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true },
     title: { type: String, required: true, trim: true },
     message: { type: String, required: true, trim: true },
     type: {
       type: String,
-      enum: ["maintenance", "water_shutdown", "curfew", "fee_reminder", "emergency", "general", "system_incomplete_profile"],
+      enum: [
+        "maintenance",
+        "water_shutdown",
+        "curfew",
+        "fee_reminder",
+        "emergency",
+        "general",
+        "system_incomplete_profile",
+        "rent_changed",
+      ],
       default: "general",
     },
     priority: { type: String, enum: ["low", "medium", "high"], default: "medium" },
@@ -20,5 +29,7 @@ const noticeSchema = new mongoose.Schema(
 );
 
 noticeSchema.index({ ownerId: 1, hostelId: 1, isActive: 1 });
+noticeSchema.index({ ownerId: 1, hostelId: 1, createdAt: -1 });
+noticeSchema.index({ readBy: 1 });
 
 export const Notice = mongoose.model("Notice", noticeSchema);

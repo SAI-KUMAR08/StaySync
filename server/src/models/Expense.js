@@ -2,14 +2,23 @@ import mongoose from "mongoose";
 
 const expenseSchema = new mongoose.Schema(
   {
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true, index: true },
-    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true, index: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "Owner", required: true },
+    hostelId: { type: mongoose.Schema.Types.ObjectId, ref: "Hostel", required: true },
     category: {
       type: String,
       enum: [
-        "electricity", "water", "maintenance", "cleaning",
-        "food", "salary", "repairs", "internet",
-        "security", "supplies", "furniture", "other"
+        "electricity",
+        "water",
+        "maintenance",
+        "cleaning",
+        "food",
+        "salary",
+        "repairs",
+        "internet",
+        "security",
+        "supplies",
+        "furniture",
+        "other",
       ],
       required: true,
     },
@@ -30,5 +39,6 @@ const expenseSchema = new mongoose.Schema(
 
 expenseSchema.index({ ownerId: 1, hostelId: 1, date: -1 });
 expenseSchema.index({ ownerId: 1, hostelId: 1, category: 1 });
+expenseSchema.index({ ownerId: 1, date: -1 });
 
 export default mongoose.model("Expense", expenseSchema);

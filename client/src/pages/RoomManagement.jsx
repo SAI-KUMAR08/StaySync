@@ -1,10 +1,18 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/axios";
 import {
-  MdMeetingRoom, MdHotel, MdAddCircle, MdEdit,
-  MdClose, MdAttachMoney, MdOutlineAcUnit, MdOutlineWbSunny,
-  MdLayers, MdSearch, MdFilterList, MdAdd, MdDelete,
-  MdChevronLeft, MdChevronRight, MdCheckCircle, MdPeople, MdHome
+  MdMeetingRoom,
+  MdHotel,
+  MdAddCircle,
+  MdEdit,
+  MdClose,
+  MdAttachMoney,
+  MdLayers,
+  MdAdd,
+  MdDelete,
+  MdChevronLeft,
+  MdChevronRight,
+  MdCheckCircle,
 } from "react-icons/md";
 import { toast } from "react-hot-toast";
 import ErrorRetry from "../components/ErrorRetry";
@@ -13,12 +21,11 @@ import { normalizeStructure } from "../utils/normalizeStructure";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 
-
 const RoomManagement = () => {
   const { user } = useAuth();
   const { socket } = useSocket();
-  const isOwner = user?.role === "owner" || user?.role === "manager";
-  
+  const isOwner = user?.role === "owner";
+
   const [structure, setStructure] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,7 +37,7 @@ const RoomManagement = () => {
     floorId: "",
     sharingType: 2,
     price: 4500,
-    type: "Non-AC"
+    type: "Non-AC",
   });
 
   const [isSettingUp, setIsSettingUp] = useState(false);
@@ -55,28 +62,35 @@ const RoomManagement = () => {
   };
 
   const addSetupRoom = (floorIdx) => {
-    const newFloors = [...setupFloors];
-    const floorNum = newFloors[floorIdx].number;
-    const roomCount = newFloors[floorIdx].rooms.length + 1;
-    newFloors[floorIdx].rooms.push({
-      number: `${floorNum}${String(roomCount).padStart(2, '0')}`,
+    const floorNum = setupFloors[floorIdx].number;
+    const roomCount = setupFloors[floorIdx].rooms.length + 1;
+    const newRoom = {
+      number: `${floorNum}${String(roomCount).padStart(2, "0")}`,
       sharingType: 2,
       price: 5000,
-      isAC: false
-    });
-    setSetupFloors(newFloors);
+      isAC: false,
+    };
+    setSetupFloors(
+      setupFloors.map((f, i) => (i === floorIdx ? { ...f, rooms: [...f.rooms, newRoom] } : f))
+    );
   };
 
   const updateSetupRoom = (floorIdx, roomIdx, field, value) => {
-    const newFloors = [...setupFloors];
-    newFloors[floorIdx].rooms[roomIdx][field] = value;
-    setSetupFloors(newFloors);
+    setSetupFloors(
+      setupFloors.map((f, i) =>
+        i === floorIdx
+          ? { ...f, rooms: f.rooms.map((r, j) => (j === roomIdx ? { ...r, [field]: value } : r)) }
+          : f
+      )
+    );
   };
 
   const removeSetupRoom = (floorIdx, roomIdx) => {
-    const newFloors = [...setupFloors];
-    newFloors[floorIdx].rooms.splice(roomIdx, 1);
-    setSetupFloors(newFloors);
+    setSetupFloors(
+      setupFloors.map((f, i) =>
+        i === floorIdx ? { ...f, rooms: f.rooms.filter((_, j) => j !== roomIdx) } : f
+      )
+    );
   };
 
   const handleSetupSubmit = async () => {
@@ -149,16 +163,6 @@ const RoomManagement = () => {
     }
   };
 
-  const handleAddFloor = async () => {
-    try {
-      await api.post("/owner/floors");
-      toast.success("New floor added successfully");
-      fetchStructure();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to add floor");
-    }
-  };
-
   const handleBedDoubleClick = async (bed) => {
     const tenantId = bed.tenantId?._id || bed.tenantId;
     if (bed.status !== "occupied" || !tenantId) return;
@@ -173,40 +177,43 @@ const RoomManagement = () => {
           email: t.email || t.personalInfo?.email || "",
         });
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to load tenant details");
     }
   };
 
   if (error) return <ErrorRetry message={error} onRetry={fetchStructure} />;
-  if (loading) return (
-    <div className="space-y-8" role="status" aria-label="Loading inventory">
-      <div className="flex items-center gap-6 px-2">
-        <div className={`skeleton h-9 w-28 rounded-2xl`} />
-        <div className={`h-[2px] flex-1 bg-border rounded-full`} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="arch-card overflow-hidden">
-            <div className="p-7 pb-5 space-y-4">
-              <div className="skeleton h-5 w-28" />
-              <div className="skeleton h-3 w-18" />
-              <div className="skeleton h-5 w-24 mt-2" />
-            </div>
-            <div className="grid grid-cols-2 p-7 py-5 bg-background/50 space-y-2">
-              <div className="skeleton h-4 w-14" />
-              <div className="skeleton h-4 w-14" />
-            </div>
-            <div className="p-7 pt-5">
-              <div className="flex gap-3">
-                {[...Array(3)].map((_, j) => <div key={j} className={`skeleton w-12 h-12 rounded-2xl`} />)}
+  if (loading)
+    return (
+      <div className="space-y-8" role="status" aria-label="Loading inventory">
+        <div className="flex items-center gap-6 px-2">
+          <div className={`skeleton h-9 w-28 rounded-2xl`} />
+          <div className={`h-[2px] flex-1 bg-border rounded-full`} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="arch-card overflow-hidden">
+              <div className="p-7 pb-5 space-y-4">
+                <div className="skeleton h-5 w-28" />
+                <div className="skeleton h-3 w-18" />
+                <div className="skeleton h-5 w-24 mt-2" />
+              </div>
+              <div className="grid grid-cols-2 p-7 py-5 bg-background/50 space-y-2">
+                <div className="skeleton h-4 w-14" />
+                <div className="skeleton h-4 w-14" />
+              </div>
+              <div className="p-7 pt-5">
+                <div className="flex gap-3">
+                  {[...Array(3)].map((_, j) => (
+                    <div key={j} className={`skeleton w-12 h-12 rounded-2xl`} />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="space-y-10 pb-20">
@@ -216,11 +223,17 @@ const RoomManagement = () => {
           <div className="section-ornament-diamond mb-3">
             <MdLayers /> Facility Inventory
           </div>
-          <h2 className="section-title">Inventory <span>Management</span></h2>
+          <h2 className="section-title">
+            Inventory <span>Management</span>
+          </h2>
           <p className="section-sub">Manage floors, rooms, and unit-level specifications.</p>
           <div className="flex flex-wrap gap-4 mt-3 text-[9px] font-medium uppercase tracking-wider text-text-secondary/70">
-            <span className="inline-flex items-center gap-1.5"><span className="status-dot-occupied" /> Occupied</span>
-            <span className="inline-flex items-center gap-1.5"><span className="status-dot-available" /> Available</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="status-dot-occupied" /> Occupied
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="status-dot-available" /> Available
+            </span>
             <span className="text-text-secondary/40">Double-click for tenant info</span>
           </div>
         </div>
@@ -233,8 +246,12 @@ const RoomManagement = () => {
               <div className="arch-card p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Hostel Floor Setup</h3>
-                    <p className="text-xs text-text-secondary/60 font-medium uppercase tracking-wider mt-1">Step 1: Configure Floors</p>
+                    <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">
+                      Hostel Floor Setup
+                    </h3>
+                    <p className="text-xs text-text-secondary/60 font-medium uppercase tracking-wider mt-1">
+                      Step 1: Configure Floors
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -255,8 +272,13 @@ const RoomManagement = () => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {setupFloors.map((f) => (
-                    <div key={f.number} className={`bg-background/50 p-5 rounded-3xl border border-border/50 text-center`}>
-                      <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">Floor</p>
+                    <div
+                      key={f.number}
+                      className={`bg-background/50 p-5 rounded-3xl border border-border/50 text-center`}
+                    >
+                      <p className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">
+                        Floor
+                      </p>
                       <p className="text-3xl font-black text-primary mt-1">{f.number}</p>
                     </div>
                   ))}
@@ -269,18 +291,23 @@ const RoomManagement = () => {
                 </button>
                 <button
                   onClick={() => {
-                    const newFloors = [...setupFloors];
-                    newFloors.forEach((floor) => {
-                      if (floor.rooms.length === 0) {
-                        floor.rooms = [{
-                          number: `${floor.number}01`,
-                          sharingType: 2,
-                          price: 5000,
-                          isAC: false
-                        }];
-                      }
-                    });
-                    setSetupFloors(newFloors);
+                    setSetupFloors(
+                      setupFloors.map((floor) =>
+                        floor.rooms.length === 0
+                          ? {
+                              ...floor,
+                              rooms: [
+                                {
+                                  number: `${floor.number}01`,
+                                  sharingType: 2,
+                                  price: 5000,
+                                  isAC: false,
+                                },
+                              ],
+                            }
+                          : floor
+                      )
+                    );
                     setSetupStep(2);
                   }}
                   className="btn btn-primary px-8 gap-2"
@@ -293,25 +320,36 @@ const RoomManagement = () => {
             <div className="space-y-8 animate-slide-up">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center arch-card p-7 gap-4">
                 <div className="flex items-center gap-4">
-                  <div className={`w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center`}>
+                  <div
+                    className={`w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center`}
+                  >
                     <MdLayers size={22} />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Hostel Structure</h3>
-                    <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Step 2: Add Rooms & Beds</p>
+                    <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">
+                      Hostel Structure
+                    </h3>
+                    <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">
+                      Step 2: Add Rooms & Beds
+                    </p>
                   </div>
                 </div>
-                <button onClick={addSetupFloor} className={`bg-text-primary text-white px-5 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all text-xs uppercase tracking-wider`}>
+                <button
+                  onClick={addSetupFloor}
+                  className={`bg-text-primary text-white px-5 py-2.5 rounded-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-all text-xs uppercase tracking-wider`}
+                >
                   <MdAdd size={14} /> Add Floor
                 </button>
               </div>
 
               <div className="space-y-5">
                 {setupFloors.map((floor, fIdx) => (
-                  <div key={fIdx} className="arch-card p-7 space-y-5">
+                  <div key={floor.number} className="arch-card p-7 space-y-5">
                     <div className="flex justify-between items-center border-b border-border/50 pb-5">
                       <div className="flex items-center gap-3">
-                        <span className={`w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm`}>
+                        <span
+                          className={`w-9 h-9 rounded-full bg-text-primary text-white flex items-center justify-center font-bold text-sm`}
+                        >
                           {floor.number}
                         </span>
                         <h4 className="font-bold text-text-primary">Floor Details</h4>
@@ -323,7 +361,10 @@ const RoomManagement = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                       {floor.rooms.map((room, rIdx) => (
-                        <div key={rIdx} className={`p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all`}>
+                        <div
+                          key={room.number}
+                          className={`p-5 rounded-2xl border border-border/50 bg-surface space-y-4 relative group hover:bg-card hover:shadow-lg transition-all`}
+                        >
                           <button
                             onClick={() => removeSetupRoom(fIdx, rIdx)}
                             className="absolute top-3 right-3 text-text-secondary/30 hover:text-[#C62828] opacity-0 group-hover:opacity-100 transition-all"
@@ -332,26 +373,70 @@ const RoomManagement = () => {
                           </button>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
-                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">Room Name / No.</label>
-                              <input type="text" className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
-                                value={room.number} onChange={(e) => updateSetupRoom(fIdx, rIdx, "number", e.target.value)} />
+                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">
+                                Room Name / No.
+                              </label>
+                              <input
+                                type="text"
+                                className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
+                                value={room.number}
+                                onChange={(e) =>
+                                  updateSetupRoom(fIdx, rIdx, "number", e.target.value)
+                                }
+                              />
                             </div>
                             <div>
-                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">Sharing</label>
-                              <select className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
-                                value={room.sharingType} onChange={(e) => updateSetupRoom(fIdx, rIdx, "sharingType", parseInt(e.target.value) || 1)}>
-                                {[1,2,3,4,6].map(n => <option key={n} value={n}>{n} Bed</option>)}
+                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">
+                                Sharing
+                              </label>
+                              <select
+                                className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
+                                value={room.sharingType}
+                                onChange={(e) =>
+                                  updateSetupRoom(
+                                    fIdx,
+                                    rIdx,
+                                    "sharingType",
+                                    parseInt(e.target.value) || 1
+                                  )
+                                }
+                              >
+                                {[1, 2, 3, 4, 6].map((n) => (
+                                  <option key={n} value={n}>
+                                    {n} Bed
+                                  </option>
+                                ))}
                               </select>
                             </div>
                             <div>
-                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">Monthly Rent</label>
-                              <input type="number" className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
-                                value={room.price} onChange={(e) => updateSetupRoom(fIdx, rIdx, "price", parseInt(e.target.value) || 0)} />
+                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">
+                                Monthly Rent
+                              </label>
+                              <input
+                                type="number"
+                                className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
+                                value={room.price}
+                                onChange={(e) =>
+                                  updateSetupRoom(
+                                    fIdx,
+                                    rIdx,
+                                    "price",
+                                    parseInt(e.target.value) || 0
+                                  )
+                                }
+                              />
                             </div>
                             <div className="col-span-2">
-                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">Type</label>
-                              <select className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
-                                value={room.isAC} onChange={(e) => updateSetupRoom(fIdx, rIdx, "isAC", e.target.value === 'true')}>
+                              <label className="text-[8px] uppercase font-bold text-text-secondary tracking-wider">
+                                Type
+                              </label>
+                              <select
+                                className="w-full bg-transparent border-b border-border/60 focus:border-primary outline-none py-2 font-semibold text-text-primary text-sm"
+                                value={room.isAC}
+                                onChange={(e) =>
+                                  updateSetupRoom(fIdx, rIdx, "isAC", e.target.value === "true")
+                                }
+                              >
                                 <option value="false">Non-AC</option>
                                 <option value="true">AC</option>
                               </select>
@@ -359,7 +444,10 @@ const RoomManagement = () => {
                           </div>
                           <div className="flex flex-wrap gap-1.5 pt-2">
                             {[...Array(room.sharingType)].map((_, i) => (
-                              <div key={i} className="w-6 h-6 bg-card text-text-secondary/50 rounded-lg flex items-center justify-center border border-border/50 group-hover:text-primary/50 group-hover:border-primary/20 transition-all shadow-sm">
+                              <div
+                                key={i}
+                                className="w-6 h-6 bg-card text-text-secondary/50 rounded-lg flex items-center justify-center border border-border/50 group-hover:text-primary/50 group-hover:border-primary/20 transition-all shadow-sm"
+                              >
                                 <MdMeetingRoom size={14} />
                               </div>
                             ))}
@@ -367,7 +455,9 @@ const RoomManagement = () => {
                         </div>
                       ))}
                       {floor.rooms.length === 0 && (
-                        <div className={`col-span-full py-8 text-center border-2 border-dashed border-border/50 rounded-2xl text-text-secondary/40 font-medium italic text-sm`}>
+                        <div
+                          className={`col-span-full py-8 text-center border-2 border-dashed border-border/50 rounded-2xl text-text-secondary/40 font-medium italic text-sm`}
+                        >
                           No rooms added to this floor yet.
                         </div>
                       )}
@@ -380,172 +470,243 @@ const RoomManagement = () => {
                 <button onClick={() => setSetupStep(1)} className="btn btn-secondary w-1/4 gap-2">
                   <MdChevronLeft size={20} /> Back
                 </button>
-                <button disabled={setupLoading || setupFloors.length === 0} onClick={handleSetupSubmit} className="btn btn-primary flex-1 py-4 gap-3">
-                  {setupLoading ? "Initializing..." : "Finalize & Launch"} <MdCheckCircle size={20} />
+                <button
+                  disabled={setupLoading || setupFloors.length === 0}
+                  onClick={handleSetupSubmit}
+                  className="btn btn-primary flex-1 py-4 gap-3"
+                >
+                  {setupLoading ? "Initializing..." : "Finalize & Launch"}{" "}
+                  <MdCheckCircle size={20} />
                 </button>
               </div>
             </div>
           )
         ) : (
           <div className="arch-card p-16 flex flex-col items-center justify-center text-center">
-            <div className={`w-20 h-20 rounded-3xl bg-surface flex items-center justify-center mb-6`}>
+            <div
+              className={`w-20 h-20 rounded-3xl bg-surface flex items-center justify-center mb-6`}
+            >
               <MdMeetingRoom className="text-4xl text-text-secondary/30" />
             </div>
-            <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">Empty Inventory</h3>
-            <p className="text-text-secondary font-medium max-w-xs mt-3 mb-6">Start by running the setup wizard to define your hostel's floors and rooms.</p>
+            <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">
+              Empty Inventory
+            </h3>
+            <p className="text-text-secondary font-medium max-w-xs mt-3 mb-6">
+              Start by running the setup wizard to define your hostel's floors and rooms.
+            </p>
             <Button onClick={startSetupWizard} icon={MdChevronRight} iconPosition="right">
               Configure floors and beds
             </Button>
           </div>
         )
-      ) : (<>
-        <div className="text-right">
-          {isOwner && (
-            <Button onClick={async () => {
-              try {
-                await api.post("/owner/floors", {});
-                toast.success("New floor added");
-                fetchStructure();
-              } catch (e) {
-                toast.error("Failed to add floor");
-              }
-            }} icon={MdAdd} variant="secondary" size="sm">Add Floor</Button>
-          )}
-        </div>
-        {structure.map((floor) => (
-          <section key={floor._id} className="space-y-6 animate-slide-up">
-            <div className="flex items-center gap-5 px-2">
-              <div className={`bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-bold font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10`}>
-                Floor {floor.number}
-              </div>
-              <div className={`h-[1px] flex-1 bg-border/80 rounded-full`}></div>
-              <p className="text-[9px] font-medium text-text-secondary uppercase tracking-wider">{floor.rooms.length} Units</p>
-              {isOwner && (
-                <div className="flex gap-1">
-                  <button onClick={async () => {
-                    const roomNum = prompt("Enter room number (e.g. 101):");
-                    if (!roomNum) return;
-                    try {
-                      await api.post("/owner/rooms", {
-                        roomNumber: roomNum,
-                        floorId: floor._id,
-                        capacity: 1,
-                        pricing: 0,
-                      });
-                      toast.success("Room added");
-                      fetchStructure();
-                    } catch (e) {
-                      toast.error("Failed to add room");
-                    }
-                  }} className={`p-1.5 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-lg transition-all`} title="Add Room">
-                    <MdAddCircle size={16} />
-                  </button>
-                  <button onClick={async () => {
-                    if (!window.confirm(`Delete Floor ${floor.number} and all its rooms?`)) return;
-                    try {
-                      for (const room of floor.rooms || []) {
-                        if (room._id) await api.delete(`/owner/rooms/${room._id}`);
-                      }
-                      toast.success(`Floor ${floor.number} cleared`);
-                      fetchStructure();
-                    } catch (e) {
-                      toast.error("Failed to delete rooms");
-                    }
-                  }} className={`p-1.5 text-text-secondary/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all`} title="Delete Floor">
-                    <MdDelete size={16} />
-                  </button>
+      ) : (
+        <>
+          <div className="text-right">
+            {isOwner && (
+              <Button
+                onClick={async () => {
+                  try {
+                    await api.post("/owner/floors", {});
+                    toast.success("New floor added");
+                    fetchStructure();
+                  } catch {
+                    toast.error("Failed to add floor");
+                  }
+                }}
+                icon={MdAdd}
+                variant="secondary"
+                size="sm"
+              >
+                Add Floor
+              </Button>
+            )}
+          </div>
+          {structure.map((floor) => (
+            <section key={floor._id} className="space-y-6 animate-slide-up">
+              <div className="flex items-center gap-5 px-2">
+                <div
+                  className={`bg-primary text-white px-6 py-2.5 rounded-2xl text-[9px] font-bold font-sans uppercase tracking-[0.15em] shadow-lg shadow-text-primary/10`}
+                >
+                  Floor {floor.number}
                 </div>
-              )}
-            </div>
+                <div className={`h-[1px] flex-1 bg-border/80 rounded-full`}></div>
+                <p className="text-[9px] font-medium text-text-secondary uppercase tracking-wider">
+                  {floor.rooms.length} Units
+                </p>
+                {isOwner && (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={async () => {
+                        const roomNum = prompt("Enter room number (e.g. 101):");
+                        if (!roomNum) return;
+                        try {
+                          await api.post("/owner/rooms", {
+                            roomNumber: roomNum,
+                            floorId: floor._id,
+                            capacity: 1,
+                            pricing: 0,
+                          });
+                          toast.success("Room added");
+                          fetchStructure();
+                        } catch {
+                          toast.error("Failed to add room");
+                        }
+                      }}
+                      className={`p-1.5 text-text-secondary/50 hover:text-primary hover:bg-primary/5 rounded-lg transition-all`}
+                      title="Add Room"
+                    >
+                      <MdAddCircle size={16} />
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`Delete Floor ${floor.number} and all its rooms?`))
+                          return;
+                        try {
+                          for (const room of floor.rooms || []) {
+                            if (room._id) await api.delete(`/owner/rooms/${room._id}`);
+                          }
+                          await api.delete(`/owner/floors/${floor._id}`);
+                          toast.success(`Floor ${floor.number} deleted`);
+                          fetchStructure();
+                        } catch {
+                          toast.error("Failed to delete floor");
+                        }
+                      }}
+                      className={`p-1.5 text-text-secondary/50 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all`}
+                      title="Delete Floor"
+                    >
+                      <MdDelete size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
-              {floor.rooms.map((room, i) => (
-                <div key={room._id} className="stagger-enter" style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}>
-                  <div className="arch-card overflow-hidden group">
-
-                    {/* Specs Header */}
-                    <div className="p-6 pb-5 relative">
-                      <div className="flex justify-between items-start mb-5">
-                        <div className="space-y-1">
-                          <h4 className="text-xl font-bold font-display text-text-primary tracking-tight">Room {room.number}</h4>
-                          <div className="flex items-center gap-2">
-                            <span className={`badge ${room.type === 'AC' ? 'badge-primary' : 'badge-slate'}`}>
-                              {room.type}
-                            </span>
-                            <span className="text-[8px] font-bold text-text-secondary/50 uppercase tracking-wider">{room.sharingType} Bed</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setEditingRoom(room);
-                            setFormData({ number: room.number, floorId: floor._id, sharingType: room.sharingType, price: room.price, type: room.type || "Non-AC" });
-                            setShowModal(true);
-                          }}
-                          className={`w-9 h-9 flex items-center justify-center bg-card text-text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all rounded-xl border border-border/60`}
-                        >
-                          <MdEdit size={16} />
-                        </button>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-black text-text-primary tracking-tight">₹{room.price?.toLocaleString()}</span>
-                        <span className="text-[8px] font-medium text-text-secondary/60 uppercase tracking-wider">/ month</span>
-                      </div>
-                    </div>
-
-                    {/* Occupancy Bar */}
-                    <div className="grid grid-cols-2 px-6 py-5 bg-surface border-y border-border/40">
-                      <div className="space-y-0.5">
-                        <p className="text-[8px] font-bold text-text-secondary uppercase tracking-wider">Occupied</p>
-                        <p className="text-xl font-black text-[#C62828]">{room.occupiedBeds}</p>
-                      </div>
-                      <div className="space-y-0.5 border-l border-border/40 pl-6">
-                        <p className="text-[8px] font-bold text-text-secondary uppercase tracking-wider">Vacant</p>
-                        <p className="text-xl font-black text-emerald-500">{room.totalBeds - room.occupiedBeds}</p>
-                      </div>
-                    </div>
-
-                    {/* Bed Layout */}
-                    <div className="p-6 pt-5">
-                      <div className="flex flex-wrap gap-2.5">
-                        {room.beds.map((bed) => {
-                          const isOccupied = bed.status === "occupied";
-                          return (
-                          <div
-                            key={bed._id}
-                            title={
-                              isOccupied
-                                ? `Bed ${bed.number} — ${bed.tenantId?.name || bed.tenantId?.personalInfo?.name || "Occupied"} (double-click for details)`
-                                : `Bed ${bed.number} — Available`
-                            }
-                            onDoubleClick={() => handleBedDoubleClick(bed)}
-                            className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${
-                              isOccupied
-                                ? "bg-[#C62828] text-white shadow-[0_2px_8px_rgba(198,40,40,0.3)] cursor-pointer hover:scale-105"
-                                : "bg-[#2E7D32] text-white shadow-[0_2px_8px_rgba(46,125,50,0.3)]"
-                            }`}
-                          >
-                            {isOccupied ? (
-                              <span className="text-[10px] font-black leading-none">
-                                {(bed.tenantId?.name || bed.tenantId?.personalInfo?.name || "T").charAt(0).toUpperCase()}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+                {floor.rooms.map((room, i) => (
+                  <div
+                    key={room._id}
+                    className="stagger-enter"
+                    style={{ animationDelay: `${Math.min(i * 0.06, 0.3)}s` }}
+                  >
+                    <div className="arch-card overflow-hidden group">
+                      {/* Specs Header */}
+                      <div className="p-6 pb-5 relative">
+                        <div className="flex justify-between items-start mb-5">
+                          <div className="space-y-1">
+                            <h4 className="text-xl font-bold font-display text-text-primary tracking-tight">
+                              Room {room.number}
+                            </h4>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`badge ${room.type === "AC" ? "badge-primary" : "badge-slate"}`}
+                              >
+                                {room.type}
                               </span>
-                            ) : (
-                              <MdHotel size={16} />
-                            )}
-                            <span className="text-[6px] font-bold uppercase tracking-wider leading-none truncate max-w-[44px] px-0.5">
-                              {isOccupied ? ((bed.tenantId?.name || bed.tenantId?.personalInfo?.name)?.split(" ")?.[0] || "Busy") : "Open"}
-                            </span>
+                              <span className="text-[8px] font-bold text-text-secondary/50 uppercase tracking-wider">
+                                {room.sharingType} Bed
+                              </span>
+                            </div>
                           </div>
-                          );
-                        })}
+                          <button
+                            onClick={() => {
+                              setEditingRoom(room);
+                              setFormData({
+                                number: room.number,
+                                floorId: floor._id,
+                                sharingType: room.sharingType,
+                                price: room.price,
+                                type: room.type || "Non-AC",
+                              });
+                              setShowModal(true);
+                            }}
+                            className={`w-9 h-9 flex items-center justify-center bg-card text-text-secondary/40 hover:text-primary hover:bg-primary/5 transition-all rounded-xl border border-border/60`}
+                          >
+                            <MdEdit size={16} />
+                          </button>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-black text-text-primary tracking-tight">
+                            ₹{room.price?.toLocaleString()}
+                          </span>
+                          <span className="text-[8px] font-medium text-text-secondary/60 uppercase tracking-wider">
+                            / month
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Occupancy Bar */}
+                      <div className="grid grid-cols-2 px-6 py-5 bg-surface border-y border-border/40">
+                        <div className="space-y-0.5">
+                          <p className="text-[8px] font-bold text-text-secondary uppercase tracking-wider">
+                            Occupied
+                          </p>
+                          <p className="text-xl font-black text-[#C62828]">{room.occupiedBeds}</p>
+                        </div>
+                        <div className="space-y-0.5 border-l border-border/40 pl-6">
+                          <p className="text-[8px] font-bold text-text-secondary uppercase tracking-wider">
+                            Vacant
+                          </p>
+                          <p className="text-xl font-black text-emerald-500">
+                            {room.totalBeds - room.occupiedBeds}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Bed Layout */}
+                      <div className="p-6 pt-5">
+                        <div className="flex flex-wrap gap-2.5">
+                          {room.beds.map((bed) => {
+                            const isOccupied = bed.status === "occupied";
+                            const isTemp = isOccupied && !!bed.tenantId?.isTemporary;
+                            return (
+                              <div
+                                key={bed._id}
+                                title={
+                                  isOccupied
+                                    ? `Bed ${bed.number} — ${bed.tenantId?.name || bed.tenantId?.personalInfo?.name || "Occupied"}${isTemp ? " (Temporary)" : ""} (double-click for details)`
+                                    : `Bed ${bed.number} — Available`
+                                }
+                                onDoubleClick={() => handleBedDoubleClick(bed)}
+                                className={`relative w-12 h-12 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${
+                                  isOccupied
+                                    ? "bg-[#C62828] text-white shadow-[0_2px_8px_rgba(198,40,40,0.3)] cursor-pointer hover:scale-105"
+                                    : "bg-[#2E7D32] text-white shadow-[0_2px_8px_rgba(46,125,50,0.3)]"
+                                }`}
+                              >
+                                {isOccupied ? (
+                                  <span className="text-[10px] font-black leading-none">
+                                    {(bed.tenantId?.name || bed.tenantId?.personalInfo?.name || "T")
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </span>
+                                ) : (
+                                  <MdHotel size={16} />
+                                )}
+                                <span className="text-[6px] font-bold uppercase tracking-wider leading-none truncate max-w-[44px] px-0.5">
+                                  {isOccupied
+                                    ? (
+                                        bed.tenantId?.name || bed.tenantId?.personalInfo?.name
+                                      )?.split(" ")?.[0] || "Busy"
+                                    : "Open"}
+                                </span>
+                                {isTemp && (
+                                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-[7px] font-black text-amber-950 flex items-center justify-center shadow">
+                                    T
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </>)}
+                ))}
+              </div>
+            </section>
+          ))}
+        </>
+      )}
 
       {/* Edit Room Modal */}
       {showModal && (
@@ -556,9 +717,14 @@ const RoomManagement = () => {
                 <h3 className="text-xl font-bold font-display text-text-primary tracking-tight uppercase">
                   Update Pricing
                 </h3>
-                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">Room Pricing</p>
+                <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider mt-1">
+                  Room Pricing
+                </p>
               </div>
-              <button onClick={() => setShowModal(false)} className={`w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-xl transition-all`}>
+              <button
+                onClick={() => setShowModal(false)}
+                className={`w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-xl transition-all`}
+              >
                 <MdClose size={18} />
               </button>
             </div>
@@ -567,13 +733,20 @@ const RoomManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="field-label">Room No.</label>
-                  <input type="text" disabled value={formData.number} className="field opacity-50" />
+                  <input
+                    type="text"
+                    disabled
+                    value={formData.number}
+                    className="field opacity-50"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <label className="field-label">AC Type</label>
-                  <select value={formData.type}
+                  <select
+                    value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="field-select">
+                    className="field-select"
+                  >
                     <option value="Non-AC">Non-AC</option>
                     <option value="AC">AC</option>
                   </select>
@@ -584,19 +757,31 @@ const RoomManagement = () => {
                 <label className="field-label">Monthly Rent (₹)</label>
                 <div className="relative">
                   <MdAttachMoney className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary/30 text-lg" />
-                  <input type="number" required value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) || "" })}
-                    className="field pl-10" />
+                  <input
+                    type="number"
+                    required
+                    value={formData.price}
+                    onChange={(e) =>
+                      setFormData({ ...formData, price: Number(e.target.value) || "" })
+                    }
+                    className="field pl-10"
+                  />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <label className="field-label">Sharing Capacity</label>
-                <select value={formData.sharingType}
-                  onChange={(e) => setFormData({ ...formData, sharingType: parseInt(e.target.value) })}
-                  className="field-select">
-                  {[1, 2, 3, 4, 6].map(n => (
-                    <option key={n} value={n}>{n} Bed{ n > 1 ? 's' : '' }</option>
+                <select
+                  value={formData.sharingType}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sharingType: parseInt(e.target.value) })
+                  }
+                  className="field-select"
+                >
+                  {[1, 2, 3, 4, 6].map((n) => (
+                    <option key={n} value={n}>
+                      {n} Bed{n > 1 ? "s" : ""}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -612,20 +797,32 @@ const RoomManagement = () => {
       {/* Tenant QuickView Modal */}
       {selectedTenant && (
         <div className="modal-overlay" onClick={() => setSelectedTenant(null)}>
-          <div className="arch-card max-w-sm w-full p-8 border border-border/60 shadow-2xl animate-slide-up" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedTenant(null)} className={`absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-2xl transition-all`}>
+          <div
+            className="arch-card max-w-sm w-full p-8 border border-border/60 shadow-2xl animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedTenant(null)}
+              className={`absolute top-6 right-6 w-9 h-9 flex items-center justify-center bg-surface text-text-secondary/50 hover:text-text-primary rounded-2xl transition-all`}
+            >
               <MdClose size={18} />
             </button>
 
             <div className="flex flex-col items-center text-center space-y-4 mb-6">
               <div className={`w-20 h-20 rounded-full bg-primary p-0.5 shadow-md`}>
-                <div className={`w-full h-full rounded-full bg-card flex items-center justify-center text-2xl font-black text-text-primary`}>
+                <div
+                  className={`w-full h-full rounded-full bg-card flex items-center justify-center text-2xl font-black text-text-primary`}
+                >
                   {selectedTenant.name?.[0]?.toUpperCase()}
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">{selectedTenant.name}</h3>
-                <p className="text-[9px] font-bold text-primary uppercase tracking-wider mt-1">Resident</p>
+                <h3 className="text-xl font-bold font-display text-text-primary tracking-tight">
+                  {selectedTenant.name}
+                </h3>
+                <p className="text-[9px] font-bold text-primary uppercase tracking-wider mt-1">
+                  Tenant
+                </p>
               </div>
             </div>
 
@@ -633,13 +830,29 @@ const RoomManagement = () => {
               {[
                 { label: "Mobile", value: selectedTenant.phone },
                 { label: "Room", value: selectedTenant.roomId?.roomNumber || "—" },
-                { label: "Bed", value: selectedTenant.bedId?.bedNumber || selectedTenant.bedId?.bedLabel || "—" },
+                {
+                  label: "Bed",
+                  value: selectedTenant.bedId?.bedNumber || selectedTenant.bedId?.bedLabel || "—",
+                },
                 { label: "Email", value: selectedTenant.email },
-                { label: "Rent", value: `₹${selectedTenant.monthlyRent?.toLocaleString()} /mo`, highlight: true },
+                {
+                  label: "Rent",
+                  value: `₹${selectedTenant.monthlyRent?.toLocaleString()} /mo`,
+                  highlight: true,
+                },
               ].map(({ label, value, highlight }) => (
-                <div key={label} className="flex justify-between items-center pb-3 border-b border-border/30 last:border-b-0 last:pb-0">
-                  <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">{label}</span>
-                  <span className={`text-sm ${highlight ? 'font-black text-text-primary' : 'font-semibold text-text-primary'}`}>{value}</span>
+                <div
+                  key={label}
+                  className="flex justify-between items-center pb-3 border-b border-border/30 last:border-b-0 last:pb-0"
+                >
+                  <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider">
+                    {label}
+                  </span>
+                  <span
+                    className={`text-sm ${highlight ? "font-black text-text-primary" : "font-semibold text-text-primary"}`}
+                  >
+                    {value}
+                  </span>
                 </div>
               ))}
             </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { MdInbox } from "react-icons/md";
 
-const EmptyState = ({ icon: Icon, title, description, action, size = "md" }) => {
+const EmptyState = ({ icon: Icon, title, description, action }) => {
   const IconComponent = Icon || MdInbox;
   return (
     <div className="empty-state">
