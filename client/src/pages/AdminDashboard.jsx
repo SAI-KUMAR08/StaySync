@@ -100,8 +100,6 @@ const AdminDashboard = () => {
   const { user, hostels } = useAuth();
   const [stats, setStats] = useState(null);
   const [expenseSummary, setExpenseSummary] = useState(null);
-  const [hostelSummaries, setHostelSummaries] = useState([]);
-  const [hostelSummaryLoading, setHostelSummaryLoading] = useState(true);
   const [financialOverview, setFinancialOverview] = useState(null);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -122,7 +120,6 @@ const AdminDashboard = () => {
 
   // ── Use refs to keep socket callbacks fresh ──
   const fetchDataRef = useRef(null);
-  const fetchHostelSummariesRef = useRef(null);
   const fetchComplaintsRef = useRef(null);
 
   useEffect(() => {
@@ -149,18 +146,8 @@ const AdminDashboard = () => {
 
   const fetchPendingRequests = useCallback(async () => {
     try {
-      const [profile, payment, bedShift, vacate] = await Promise.all([
-        api.get("/owner/profile-requests?status=pending").catch(() => ({ data: { data: [] } })),
-        api.get("/owner/payment-requests?status=pending").catch(() => ({ data: { data: [] } })),
-        api.get("/owner/bed-shift-requests?status=pending").catch(() => ({ data: { data: [] } })),
-        api.get("/owner/vacate-requests?status=pending").catch(() => ({ data: { data: [] } })),
-      ]);
-      setPendingRequests({
-        profile: (profile.data.data || []).length,
-        payment: (payment.data.data || []).length,
-        bedShift: (bedShift.data.data || []).length,
-        vacate: (vacate.data.data || []).length,
-      });
+      const res = await api.get("/owner/pending-counts");
+      setPendingRequests(res.data.data || { profile: 0, payment: 0, bedShift: 0, vacate: 0 });
     } catch {
       /* non-critical */
     }
@@ -189,32 +176,16 @@ const AdminDashboard = () => {
     }
   }, []);
 
-  const fetchHostelSummaries = useCallback(async () => {
-    setHostelSummaryLoading(true);
-    try {
-      const res = await api.get("/owner/hostels-summary");
-      setHostelSummaries(res.data.data || []);
-    } catch {
-      /* non-critical — the Multi-Hostel box falls back to /owner/financial-overview */
-    } finally {
-      setHostelSummaryLoading(false);
-    }
-  }, []);
-
   // Keep refs in sync
   useEffect(() => {
     fetchDataRef.current = fetchData;
   }, [fetchData]);
-  useEffect(() => {
-    fetchHostelSummariesRef.current = fetchHostelSummaries;
-  }, [fetchHostelSummaries]);
   useEffect(() => {
     fetchComplaintsRef.current = fetchComplaints;
   }, [fetchComplaints]);
 
   const fullRefresh = useCallback(() => {
     if (fetchDataRef.current) fetchDataRef.current();
-    if (fetchHostelSummariesRef.current) fetchHostelSummariesRef.current();
     if (fetchIncompleteProfiles) fetchIncompleteProfiles();
     if (fetchPendingRequests) fetchPendingRequests();
   }, [fetchIncompleteProfiles, fetchPendingRequests]);
@@ -229,9 +200,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData, user?.hostelId]);
-  useEffect(() => {
-    fetchHostelSummaries();
-  }, [fetchHostelSummaries, hostels?.length]);
   useEffect(() => {
     fetchIncompleteProfiles();
   }, [fetchIncompleteProfiles, user?.hostelId]);
@@ -312,29 +280,16 @@ const AdminDashboard = () => {
     );
   }
 
-  // Multi-Hostel box data — prefer the cross-hostel /owner/financial-overview
-  // payload (fetched alongside the dashboard with the main loader) and fall
-  // back to summing the per-hostel hostels-summary rows when that endpoint is
-  // unavailable. Both compute the same month totals (paid non-deposit payments
-  // + this-month expenses across all the owner's hostels).
-  const summaryTotalIncome = hostelSummaries.reduce((s, h) => s + (h.monthlyIncome || 0), 0);
-  const summaryTotalExpenses = hostelSummaries.reduce((s, h) => s + (h.monthlyExpenses || 0), 0);
-  const totalIncome = financialOverview ? (financialOverview.totalIncome ?? 0) : summaryTotalIncome;
-  const totalExpenses = financialOverview
-    ? (financialOverview.totalExpenses ?? 0)
-    : summaryTotalExpenses;
-  const net = financialOverview
-    ? (financialOverview.net ?? totalIncome - totalExpenses)
-    : totalIncome - totalExpenses;
-  const propertyCount = financialOverview
-    ? (financialOverview.hostelCount ?? hostelSummaries.length)
-    : hostelSummaries.length;
-  // financial-overview is resolved by the time the page renders (part of the
-  // main fetchData Promise.all), so the box only needs its own skeleton while
-  // the hostels-summary fallback is still in flight.
-  const financialBoxLoading = !financialOverview && hostelSummaryLoading;
-  // The backend reports the most recent month WITH activity (never an empty
-  // current month at the start of a cycle) — surface that label.
+  // Multi-Hostel box data — all from /owner/financial-overview (fetched in main
+  // fetchData Promise.all). hostelSummaries fallback removed since financialOverview
+  // is always available by the time the page renders.
+  const totalIncome = financialOverview?.totalIncome ?? 0;
+  const totalExpenses = financialOverview?.totalExpenses ?? 0;
+  const net = financialOverview?.net ?? totalIncome - totalExpenses;
+  const propertyCount = financialOverview?.hostelCount ?? 0;
+  // Show skeleton only until financial-overview resolves (part of main fetchData).
+  const financialBoxLoading = !financialOverview;
+  // The backend reports the most recent month WITH activity — surface that label.
   const financialMonthLabel = financialOverview?.month
     ? `${financialOverview.month}${financialOverview.year ? ` ${financialOverview.year}` : ""}`
     : "this month";
@@ -374,22 +329,20 @@ const AdminDashboard = () => {
             icon={MdAttachMoney}
             href="/admin/expenses"
           />
-          {hostelSummaries.length > 0 && (
-            <div className="card card-md card-hover h-full flex flex-col">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center">
-                  <MdAttachMoney className="text-lg text-primary" />
-                </div>
+          <div className="card card-md card-hover h-full flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-9 h-9 rounded-lg bg-primary-light flex items-center justify-center">
+                <MdAttachMoney className="text-lg text-primary" />
               </div>
-              <p className="text-xs font-medium text-text-tertiary mb-0.5">Total Unpaid Bills</p>
-              <p className="text-2xl font-semibold font-numeric text-text-primary tracking-tight leading-none">
-                ₹{(paymentTotals.totalPending + paymentTotals.totalOverdue).toLocaleString()}
-              </p>
-              <p className="text-xs text-text-tertiary mt-auto pt-2">
-                {paymentTotals.unpaidCount + paymentTotals.overdueCount} outstanding
-              </p>
             </div>
-          )}
+            <p className="text-xs font-medium text-text-tertiary mb-0.5">Total Unpaid Bills</p>
+            <p className="text-2xl font-semibold font-numeric text-text-primary tracking-tight leading-none">
+              ₹{(paymentTotals.totalPending + paymentTotals.totalOverdue).toLocaleString()}
+            </p>
+            <p className="text-xs text-text-tertiary mt-auto pt-2">
+              {paymentTotals.unpaidCount + paymentTotals.overdueCount} outstanding
+            </p>
+          </div>
         </div>
       )}
 

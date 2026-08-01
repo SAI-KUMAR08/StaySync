@@ -50,6 +50,11 @@ router.get(
   requirePermission(PERMISSIONS.READ_DASHBOARD),
   owner.getFinancialOverview
 );
+router.get(
+  "/pending-counts",
+  requirePermission(PERMISSIONS.READ_DASHBOARD),
+  owner.getPendingCounts
+);
 router.get("/occupancy", requirePermission(PERMISSIONS.READ_OCCUPANCY), owner.getOccupancy);
 router.get("/hostel", requirePermission(PERMISSIONS.READ_HOSTEL), owner.getHostel);
 router.get("/structure", requirePermission(PERMISSIONS.READ_HOSTEL), owner.getHostelStructure);
