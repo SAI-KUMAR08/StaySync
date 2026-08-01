@@ -73,6 +73,9 @@ export default async function handler(req, res) {
         message: "Database unavailable. Check Vercel environment variables (MONGO_URI).",
       });
     }
+    if (req.url && req.url.startsWith("/api/index.js")) {
+      req.url = req.url.replace("/api/index.js", "/api") || "/api";
+    }
     return app(req, res);
   } catch (err) {
     console.error("[Vercel Handler Error]:", err);
