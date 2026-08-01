@@ -37,6 +37,11 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
   // Hostel options menu state (three dots)
   const [activeMenuHostelId, setActiveMenuHostelId] = useState(null);
 
+  // Create hostel modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newHostelName, setNewHostelName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
   // Delete confirmation modal state
   const [deletingHostel, setDeletingHostel] = useState(null);
   const [confirmInput, setConfirmInput] = useState("");
@@ -81,16 +86,27 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     );
   }, [hostels, search]);
 
-  const createNew = async () => {
-    const name = window.prompt("New hostel name");
-    if (!name?.trim()) return;
+  const openCreateModal = () => {
+    setNewHostelName("");
+    setIsCreateModalOpen(true);
+    setOpen(false);
+  };
+
+  const executeCreateHostel = async () => {
+    if (!newHostelName.trim()) return;
+    setIsCreating(true);
     try {
-      const res = await api.post("/owner/hostels", { hostelName: name.trim() });
-      toast.success("Hostel created");
+      const res = await api.post("/owner/hostels", { hostelName: newHostelName.trim() });
+      toast.success("Hostel created successfully");
+      setIsCreateModalOpen(false);
+      setNewHostelName("");
+      setOpen(false);
       if (refreshHostels) await refreshHostels();
       await onSwitch(res.data.data._id);
     } catch (e) {
       toast.error(e.response?.data?.message || "Failed to create hostel");
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -189,6 +205,86 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     [open, filtered, focusIdx, selectHostel]
   );
 
+  const renderCreateModal = () => {
+    if (!isCreateModalOpen) return null;
+    const isValid = Boolean(newHostelName.trim());
+
+    return (
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in text-left"
+        onClick={() => {
+          if (!isCreating) {
+            setIsCreateModalOpen(false);
+            setNewHostelName("");
+          }
+        }}
+      >
+        <div
+          className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border/80 origin-center animate-scale-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-start gap-3.5 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <MdApartment size={22} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-text-primary">Create New Hostel</h3>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                Set up a new hostel property to manage
+              </p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (isValid && !isCreating) executeCreateHostel();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1.5">
+              <label className="block text-xs text-text-secondary font-medium">
+                Hostel Name <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                value={newHostelName}
+                onChange={(e) => setNewHostelName(e.target.value)}
+                placeholder="e.g. Sri Rama Mens PG 2"
+                autoFocus
+                className="w-full px-3.5 py-2.5 text-xs border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder:text-text-tertiary/40"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isCreating}
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setNewHostelName("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:bg-black/5 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!isValid || isCreating}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-1.5"
+              >
+                {isCreating ? "Creating..." : "Create Hostel"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   const renderDeleteModal = () => {
     if (!deletingHostel) return null;
     const expectedString = `delete hostel ${deletingHostel.name}`;
@@ -196,7 +292,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
 
     return (
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in text-left"
         onClick={() => {
           if (!isDeleting) {
             setDeletingHostel(null);
@@ -205,7 +301,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         }}
       >
         <div
-          className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border/80 origin-center animate-scale-up text-left"
+          className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border/80 origin-center animate-scale-up"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -333,7 +429,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             </div>
             <div className="px-3 py-2">
               <button
-                onClick={createNew}
+                onClick={openCreateModal}
                 className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-text-tertiary hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
               >
                 <MdAdd size={14} /> New Hostel
@@ -341,6 +437,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             </div>
           </div>
         )}
+        {renderCreateModal()}
         {renderDeleteModal()}
       </div>
     );
@@ -541,7 +638,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
           {/* ── New Hostel ── */}
           <div className="border-t border-border/40 px-3 py-2">
             <button
-              onClick={createNew}
+              onClick={openCreateModal}
               className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-text-tertiary hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
             >
               <MdAdd size={14} /> New Hostel
@@ -550,6 +647,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         </div>
       )}
 
+      {renderCreateModal()}
       {renderDeleteModal()}
     </div>
   );
