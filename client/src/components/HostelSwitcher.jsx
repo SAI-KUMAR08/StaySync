@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   MdAdd,
   MdCheck,
@@ -209,7 +210,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     if (!isCreateModalOpen) return null;
     const isValid = Boolean(newHostelName.trim());
 
-    return (
+    return createPortal(
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in text-left"
         onClick={() => {
@@ -281,7 +282,8 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             </div>
           </form>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   };
 
@@ -290,7 +292,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     const expectedString = `delete hostel ${deletingHostel.name}`;
     const isValid = confirmInput.trim() === expectedString;
 
-    return (
+    return createPortal(
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in text-left"
         onClick={() => {
@@ -363,7 +365,8 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   };
 
