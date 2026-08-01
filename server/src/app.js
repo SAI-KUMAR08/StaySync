@@ -180,6 +180,7 @@ app.get("/", (req, res) => {
 
 // 6. Routes
 app.use("/api", routes);
+app.use("/", routes);
 
 // 7. Error Middleware
 app.use(errorHandler);

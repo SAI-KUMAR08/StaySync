@@ -17,7 +17,9 @@ async function ensureDb() {
 
   if (!uri) {
     console.error("[Vercel] MONGO_URI is NOT set in Vercel environment variables.");
-    console.error("[Vercel] Go to https://vercel.com/~/projects/stay-sync/settings/environment-variables");
+    console.error(
+      "[Vercel] Go to https://vercel.com/~/projects/stay-sync/settings/environment-variables"
+    );
     console.error("[Vercel] Add MONGO_URI with your MongoDB Atlas connection string.");
     return false;
   }
@@ -27,40 +29,32 @@ async function ensureDb() {
   console.log(`[Vercel] Connecting to MongoDB at ${safePrefix} db=${dbName}`);
 
   try {
-    // Use short timeout & disable buffering so failed queries surface
-    // immediately as 503, not after 10s silent timeout
     await mongoose.connect(uri, {
       dbName,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 30000,
       retryWrites: true,
       family: 4,
-      bufferCommands: false,
     });
     connected = true;
     console.log("[Vercel] MongoDB connected");
     return true;
   } catch (err) {
     console.error("[Vercel] MongoDB connection failed:", err.message);
-    console.error("[Vercel] Troubleshooting:");
-    console.error("[Vercel]   1. MONGO_URI value is correct in Vercel env vars?");
-    console.error("[Vercel]   2. Atlas cluster is ACTIVE (not paused)?");
-    console.error("[Vercel]   3. Network Access has 0.0.0.0/0 allowed?");
-    console.error("[Vercel]   4. Password in URI doesn't contain special chars (@ : /) needing URL-encoding?");
     return false;
   }
 }
 
 // Mount a dummy Socket.IO so app.get("io") doesn't crash.
-// Real-time features (complaint updates, payment notifications, occupancy changes)
-// require a long-running server process and are NOT available on Vercel serverless.
 const { EventEmitter } = await import("events");
 const dummyIo = new EventEmitter();
 dummyIo.to = () => dummyIo;
 dummyIo.in = () => dummyIo;
 dummyIo.emit = function warn() {
   if (process.env.NODE_ENV !== "production" || !this._warned) {
-    console.warn("[Vercel] Real-time socket events not available on serverless — use a long-running server for WebSocket features.");
+    console.warn(
+      "[Vercel] Real-time socket events not available on serverless — use a long-running server for WebSocket features."
+    );
     if (process.env.NODE_ENV === "production") this._warned = true;
   }
   return dummyIo;
@@ -71,12 +65,20 @@ app.set("io", dummyIo);
 
 // Vercel serverless handler
 export default async function handler(req, res) {
-  const dbOk = await ensureDb();
-  if (!dbOk) {
-    return res.status(503).json({
+  try {
+    const dbOk = await ensureDb();
+    if (!dbOk) {
+      return res.status(503).json({
+        success: false,
+        message: "Database unavailable. Check Vercel environment variables (MONGO_URI).",
+      });
+    }
+    return app(req, res);
+  } catch (err) {
+    console.error("[Vercel Handler Error]:", err);
+    return res.status(500).json({
       success: false,
-      message: "Database unavailable. Check Vercel environment variables (MONGO_URI).",
+      message: err.message || "Internal Server Error",
     });
   }
-  return app(req, res);
 }
