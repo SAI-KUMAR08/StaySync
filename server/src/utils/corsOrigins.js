@@ -22,6 +22,7 @@ const DEPLOYED_FRONTENDS = [
   "https://hostel-frountend.vercel.app",
   "https://hostel-frontend.vercel.app",
   "https://stay-sync-git-main-code-catalist.vercel.app",
+  "https://stay-sync-djjtd5a51-code-catalist.vercel.app",
 ];
 
 export function getAllowedCorsOrigins() {
@@ -57,6 +58,7 @@ const VERCEL_PROJECT_PREFIXES = [
   "my-hostel-client",
   "hostel-frontend",
   "hostel-frountend",
+  "stay-sync",
   "stay-sync-git-main-code-catalist",
 ];
 
@@ -100,7 +102,11 @@ export function corsOriginDelegate(origin, callback) {
     `[CORS] Blocked origin: ${origin || "(none)"}. Allowed: ${getAllowedCorsOrigins().join(", ")}` +
       ` | Set CLIENT_URL or CLIENT_URLS env var on the server to add this origin.`
   );
-  return callback(new Error("CORS blocked"));
+  // Use a structured error with statusCode so the error handler returns 403
+  // instead of falling through to 500 (plain Error has no .statusCode).
+  const err = new Error("CORS: origin not allowed");
+  err.statusCode = 403;
+  return callback(err);
 }
 
 /** Apply CORS headers on error responses (preflight / 5xx must still include ACAO) */
