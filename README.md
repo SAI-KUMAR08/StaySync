@@ -176,7 +176,7 @@ The system runs the following scheduled jobs (`server/src/services/cronService.j
 2.  **Incomplete Profile Check** (`0 3 * * *`): Scans all hostels for tenants with incomplete profiles and raises/auto-resolves system notices.
 3.  **Tenant Cleanup** (`0 1 * * *`): Permanently deletes inactive tenants past their 10-day `scheduledDeletionDate` and cascade-deletes their related records.
 
-A GitHub Actions keep-warm workflow pings the Vercel health endpoint (`https://stay-sync-six.vercel.app/api/health`) every 5 minutes to prevent serverless cold starts.
+A GitHub Actions keep-warm workflow pings the Railway health endpoint (`https://<your-service>.up.railway.app/api/health`, set via the `RAILWAY_HEALTH_URL` repository variable) every 5 minutes as an uptime monitor (Railway paid services run continuously, so this is optional).
 
 ---
 
@@ -245,27 +245,24 @@ Vite will boot on `http://localhost:5173`. Any client calls to `/api/*` will aut
 
 ## 🌐 Production Deployments
 
-The app has a dual backend setup.
+Production topology: **Vercel serves the static React SPA; Railway runs the backend** (REST API + Socket.IO + cron).
 
-### Vercel (full-stack serverless — default)
-The root `vercel.json` serves the Express API (`api/index.js`) and the built client (`client/dist`) from a single domain.
+### Vercel (static frontend)
+`vercel.json` builds `client/dist` and serves it as a static SPA (every path rewrites to `/index.html`). There is no `/api` rewrite — the backend lives on Railway.
 1.  Project root: repository root. Build command: `cd client && npx vite build` (output: `client/dist`).
-2.  Set environment variables: `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `CLIENT_URL`.
-3.  In production the client defaults to same-origin `/api` calls — do **not** set `VITE_API_URL`.
-4.  Note: real-time Socket.IO is not available on Vercel serverless; use the Render deployment when WebSockets are required.
+2.  Set `VITE_API_URL` (build-time) to the Railway service, e.g. `https://your-backend-app.up.railway.app`. The axios base URL and Socket.IO origin both derive from it.
 
-### Render (long-running Node service)
-`render.yaml` deploys the `server` folder as a persistent web service with full Socket.IO, WebSockets, and cron jobs.
-1.  Project root: `server`. Build command: `npm install`. Start command: `npm start`.
-2.  Set environment variables: `NODE_ENV=production`, `CLIENT_URL=https://your-frontend-app.vercel.app`, `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`.
-3.  Point the client at Render instead of same-origin by setting `VITE_API_URL=https://your-backend-app.onrender.com` at build time.
+### Railway (long-running Node service — required)
+Create a Railway service from this repo with Root Directory `server`; `server/railway.toml` handles the build (`npm install`), start (`npm start`), and `/api/health` healthcheck. Paid Railway plans run continuously, so Socket.IO and the `node-cron` jobs stay alive.
+1.  Railway → New Project → Deploy from GitHub → select this repo → service Root Directory `server` → Generate Domain.
+2.  Set environment variables: `CLIENT_URL=https://your-frontend-app.vercel.app`, `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `SEND_REAL_EMAIL=true`, plus the SMTP_* and ADMIN_* vars (see `docs/DEPLOYMENT.md`).
 
 ---
 
 ## 🩺 Troubleshooting
 
 > [!WARNING]
-> **Cold Starts & False CORS Errors**: Serverless cold starts can delay the first request. The keep-warm workflow pings `https://stay-sync-six.vercel.app/api/health` every 5 minutes to keep the function warm. If you still hit a delay, send a manual `GET` request to the health endpoint first.
+> **Backend unreachable**: The Railway service must be on a paid plan (continuous uptime) for cron jobs and WebSockets. If `/api/health` is slow or the client shows network errors, check the service is deployed, the Root Directory is `server`, and the environment variables are set. Send a manual `GET` request to `https://<your-service>.up.railway.app/api/health` to confirm.
 
 *   **Cookie Sync Failure**: In production, access tokens are sent securely. Ensure the backend has trust proxies enabled (`app.set("trust proxy", 1)`) and headers utilize `secure: true` and `SameSite: "None"`.
 *   **Vite Hot-Reload Issues**: If styles or proxy paths do not resolve after modifying `.env.development`, terminate the client process and run `npm run dev` again to rebuild Vite's server configuration context.

@@ -1,17 +1,29 @@
-name: Keep server warm
+name: Keep backend warm
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Every 5 minutes — prevents Vercel cold starts
+    - cron: '*/5 * * * *'  # Every 5 minutes
   workflow_dispatch:        # Manual trigger option
 
+# Railway paid services run continuously (no spin-down), so this job is an
+# optional uptime monitor rather than a cold-start preventer. It succeeds even
+# when RAILWAY_HEALTH_URL is not set, so it never fails CI on a fresh fork.
 jobs:
   ping:
-    name: Ping health endpoint
+    name: Ping Railway health endpoint
     runs-on: ubuntu-latest
     steps:
-      - name: Call /api/health to keep serverless function alive
+      - name: Call /api/health on Railway
+        env:
+          RAILWAY_HEALTH_URL: ${{ vars.RAILWAY_HEALTH_URL }}
         run: |
+          if [ -z "$RAILWAY_HEALTH_URL" ]; then
+            echo "RAILWAY_HEALTH_URL repository variable is not set."
+            echo "Set it (Settings → Secrets and variables → Actions → Variables) to:"
+            echo "  https://<your-service>.up.railway.app/api/health"
+            echo "to enable the uptime ping."
+            exit 0
+          fi
           curl -s -o /dev/null -w "%{http_code}" \
-            https://stay-sync-six.vercel.app/api/health \
-            --max-time 10 || echo "Ping failed (expected on first cold start)"
+            "$RAILWAY_HEALTH_URL" \
+            --max-time 10 || echo "Ping failed"

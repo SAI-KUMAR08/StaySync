@@ -39,7 +39,7 @@
 | **Email** | Nodemailer | OTP and notification emails |
 | **Payments** | Payment tracking + admin-approved requests | Tenant submits a payment request; owner approves/rejects |
 | **Security** | Helmet, CORS, rate limiting, mongo-sanitize | Production-grade middleware stack |
-| **Deployment** | Vercel full-stack serverless + Render long-running | Client defaults to same-origin `/api` on Vercel; Render runs full Socket.IO |
+| **Deployment** | Vercel static SPA + Railway long-running | Client calls Railway `/api` via `VITE_API_URL`; Railway runs full Socket.IO + cron |
 
 ---
 
@@ -50,7 +50,7 @@ Client (Vite React SPA)
   │  Axios calls /api/*
   │  Socket.io client
   ▼
-Vite Dev Proxy → Reverse Proxy (Render/Nginx)
+Vite Dev Proxy → Reverse Proxy (Railway/Nginx)
   │
   ▼
 Express.js API Server
@@ -530,18 +530,16 @@ All cron jobs run via `node-cron` and are initialized in `cronService.js`:
 - Removes tenant references from notice `readBy` arrays
 
 ### Keep-Warm (GitHub Actions)
-- `.github/workflows/keep-warm.yml` runs every 5 minutes and pings the Vercel health URL (`https://stay-sync-six.vercel.app/api/health`) to prevent serverless cold starts
+- `.github/workflows/keep-warm.yml` runs every 5 minutes and pings the Railway health URL (`RAILWAY_HEALTH_URL` repo variable → `https://<your-service>.up.railway.app/api/health`) as an optional uptime monitor (Railway paid services run continuously — no spin-down)
 
 ---
 
 ## 🌐 Deployment
 
-The app has a dual backend setup:
+Production topology: **Vercel serves the static React SPA; Railway runs the long-running backend** (REST API + Socket.IO + cron jobs).
 
-- **Vercel (full-stack serverless)** — the root `vercel.json` + `api/index.js` serve the Express API and the built client from one domain. In production the client defaults to same-origin `/api` calls (no `VITE_API_URL` set). Real-time Socket.IO is NOT available on Vercel serverless — `api/index.js` mounts a stub IO that logs a warning and drops events.
-- **Render (long-running)** — `render.yaml` deploys `server/` as a persistent Node service with full Socket.IO, WebSockets, and cron jobs. To point the client at Render instead of same-origin, set `VITE_API_URL=https://<your-service>.onrender.com` at build time.
-
-Use Vercel for the default same-origin deployment; use Render when real-time features or cron jobs are required.
+- **Vercel (static frontend)** — `vercel.json` builds `client/dist` and serves it as a static SPA (every path rewrites to `/index.html`). The client is built with `VITE_API_URL=https://<your-service>.up.railway.app`, so both axios (`/api`) and the Socket.IO client target Railway. The former serverless handler (`api/index.js`) and its `/api` rewrite were removed on 2026-08-03 — Vercel no longer runs the API.
+- **Railway (long-running backend, required)** — create a Railway service from this repo with Root Directory `server`; `server/railway.toml` drives the build (`npm start`) and the `/api/health` healthcheck. Paid Railway plans run continuously (Socket.IO + node-cron stay alive). Requires the env vars in `docs/DEPLOYMENT.md` (`SEND_REAL_EMAIL=true`, SMTP_*, ADMIN_*, distinct JWT/refresh secrets — startup fails otherwise).
 
 ---
 
@@ -711,6 +709,31 @@ When `SEND_REAL_EMAIL=false` (default in dev):
 ## 📝 Recent Changes
 
 > This section is updated every session. Newest entries at the top.
+
+### 2026-08-04 — Railway deploy fix: root `railway.toml` makes repo-root services build (client build skipped)
+> User's Railway service was rooted at the **repo root**, so Railpack ran the root `package.json` scripts: `npm run build` (= `cd client && npx vite build`) crashed with `Cannot find package 'vite'` (client deps aren't installed at the root). Root cause was a dashboard setting (Root Directory), not code; the server itself boots from the repo root because the root `package.json` already lists all server deps (Node parent-resolution from `/app/node_modules`).
+- **`railway.toml` (repo root) added**: `[build] buildCommand = "npm install --prefix server"` replaces the root client-build step (frontend is served by Vercel, never built on Railway); `[deploy] startCommand = "npm run start --prefix server"`, `healthcheckPath = "/api/health"`, restart-on-failure. Now a service rooted at the repo root OR at `server/` (where `server/railway.toml` applies) both deploy correctly.
+- **Root `package.json`**: `build` is now a no-op that always exits 0 (frontend is built by Vercel via `vercel.json`); local client builds moved to `npm run build:client`. Belt-and-suspenders — even if Railpack ignores `railway.toml` and runs the detected root `npm run build`, the build can't fail on the Vite client build.
+- **Docs**: `docs/DEPLOYMENT.md` Railway section now documents both supported service roots and what a successful build log should show.
+- **Runtime reminder (still pending on the dashboard)**: the deploy also needs `MONGO_URI` (current failure: `Invalid scheme, expected mongodb:// or mongodb+srv://` = empty/missing URI), plus `ADMIN_PASSWORD`, `CLIENT_URL`, SMTP_*. Set in Variables → redeploy.
+
+### 2026-08-03 — Decommissioned Vercel serverless; backend now targets Railway (long-running)
+> User-approved topology: **Vercel = static frontend, Railway = backend**. The API now runs on a persistent Railway service with real Socket.IO + node-cron jobs; the Vercel serverless handler is removed. Repo changes only — the Railway/Vercel dashboard steps are still pending (see "To finish" below).
+- **`vercel.json`**: removed the `/api/(.*)` → `/api/index.js` rewrite — Vercel is now pure static SPA hosting (every path → `/index.html`).
+- **`api/index.js` deleted**: the serverless handler (dummy Socket.IO stub + connection cache) is no longer used. Nothing references it except `vercel.json`/docs, both updated.
+- **`server/railway.toml` added** (replaces the deleted `render.yaml`): Railpack builder, `startCommand = "npm start"`, `healthcheckPath = "/api/health"`, restart-on-failure.
+- **Client**: production builds must set `VITE_API_URL=https://<your-service>.up.railway.app` (Vercel env var, build-time). `client/src/config/api.js` derives the axios base URL **and** the Socket.IO origin from this one variable. `client/.env.example` updated to flag it as REQUIRED.
+- **`.github/workflows/keep-warm.yml`**: optional uptime monitor now pinging `RAILWAY_HEALTH_URL` (repo variable) instead of the Vercel serverless health endpoint.
+- **Docs**: `CLAUDE.md` Deployment + Keep-Warm sections, `docs/DEPLOYMENT.md`, and `README.md` rewritten for the Railway topology (env var tables, smoke test, common errors).
+- **To finish (dashboard, not code)**: (1) create a Railway service from this repo with Root Directory `server` (reject the auto-import staging a `client` service — the frontend stays on Vercel) and Generate Domain → `https://<your-service>.up.railway.app`; (2) set Railway Variables: `MONGO_URI`, distinct `JWT_SECRET`/`REFRESH_TOKEN_SECRET`, `SEND_REAL_EMAIL=true`, SMTP_*, `ADMIN_EMAIL`/`ADMIN_PASSWORD`, `CLIENT_URL=https://stay-sync-six.vercel.app`; (3) add `VITE_API_URL` to Vercel production env + redeploy; (4) set the `RAILWAY_HEALTH_URL` Actions variable (optional); (5) verify `/api/health` 200 and two-tab real-time updates. Same MongoDB — no data migration; only the Railway server runs cron (`api/index.js` never called `initCronJobs`).
+
+### 2026-08-02 — DB cleared intentionally (prior session) — empty state is expected; MongoDB recovered; rent-repair moot; server back up
+> **Remember this (user-confirmed)**: the tenant/bed data was **deliberately cleared by the user in a previous session**. This was not recorded in CLAUDE.md at the time, so this entry is the correction. The empty state is NOT data loss.
+- **State check (2026-08-02)**: `smart-hostel` currently holds **2 hostels, 0 tenants (active or inactive), 0 beds** — expected. No tenant data exists to repair or preserve.
+- **MongoDB Atlas recovered**: the `ReplicaSetNoPrimary` outage (blocking everything on 2026-08-01) has cleared — replica set `atlas-pn3pi7-shard-0` is healthy and reachable.
+- **Rent repair script (`server/scripts/sync-tenant-rents.js`) is MOOT for now**: idempotent, ran clean, and found nothing to sync because there are no tenants. Keep the script; re-run it after real tenant data exists (it backs up first and only touches mismatches).
+- **Live server recovered**: `GET https://stay-sync-six.vercel.app/api/health` → **HTTP 200, `db: "connected"`** (cold-start after the outage). The 2026-08-01 "server crashed; pending restart on recovery" item is resolved — no manual restart needed on Vercel serverless.
+- **Testing note**: since the DB is empty, the 45/45 DB-free tests + live verification against throwaway data remain the way to validate; any future "active tenant" flows need test tenants created first.
 
 ### 2026-08-01 — Production engineering audit + behavior-preserving optimizations (8-dimension fan-out)
 > 8 parallel read-only audit subagents (security ×2, performance ×2, code quality ×2, DB indexes, deploy/reliability). All changes below are behavior-preserving unless noted. ⚠️ Live runtime verification deferred — MongoDB Atlas was in a `ReplicaSetNoPrimary` outage (server crashed; pending rent-repair + restart on recovery).

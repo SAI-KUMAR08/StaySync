@@ -1,0 +1,21 @@
+# Railway config-as-code — backend service, deployable from the REPO ROOT.
+#
+# Railway can root a service at the repo root OR at server/. This file makes the
+# repo-root option work: Railpack detects the root package.json ("stay-sync"),
+# whose `build` script would try to build the Vite client — but the frontend is
+# served by Vercel, so we override the build step to install the server deps and
+# start the server. (If you instead set the service Root Directory to `server`,
+# server/railway.toml applies and this file is ignored.)
+
+[build]
+builder = "RAILPACK"
+# Railpack installs the root package first; this step installs server/ deps and
+# replaces the root `npm run build` (client Vite build) which would otherwise fail.
+buildCommand = "npm install --prefix server"
+
+[deploy]
+startCommand = "npm run start --prefix server"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
