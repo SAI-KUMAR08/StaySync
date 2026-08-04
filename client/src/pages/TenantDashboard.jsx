@@ -25,58 +25,6 @@ import ErrorRetry from "../components/ErrorRetry";
 import HostelRulesModal from "../components/HostelRulesModal";
 import TenantVacateRequest from "../components/TenantVacateRequest";
 
-// ── Static hostel info from .docx files ──
-const FOOD_TIMINGS = [
-  { meal: "Breakfast", time: "07:30 AM – 09:30 AM", emoji: "🍳" },
-  { meal: "Lunch", time: "12:30 PM – 02:30 PM", emoji: "🍛" },
-  { meal: "Dinner", time: "07:30 PM – 09:30 PM", emoji: "🌙" },
-];
-
-const WEEKLY_MENU = [
-  {
-    day: "Sun",
-    breakfast: "Upma + Chutney",
-    lunch: "Rice, Dal, Pachi Pulusu, Buttermilk",
-    dinner: "Bagara Rice, Chicken Curry, Buttermilk",
-  },
-  {
-    day: "Mon",
-    breakfast: "Idli + Chutney",
-    lunch: "Rice, Veg Curry, Dal, Buttermilk",
-    dinner: "Chapati, Veg Curry, Sambar, Buttermilk",
-  },
-  {
-    day: "Tue",
-    breakfast: "Bonda + Chutney",
-    lunch: "Rice, Veg Curry, Dal, Buttermilk",
-    dinner: "Rice, Egg, Rasam, Buttermilk",
-  },
-  {
-    day: "Wed",
-    breakfast: "Uttapam / Dosa + Chutney",
-    lunch: "Rice, Veg Curry, Dal, Buttermilk",
-    dinner: "Rice, Chicken Curry, Buttermilk",
-  },
-  {
-    day: "Thu",
-    breakfast: "Tomato Rice / Kichidi / Upma + Chutney",
-    lunch: "Rice, Veg Curry, Dal, Buttermilk",
-    dinner: "Chapati, Veg Curry, Sambar, Buttermilk",
-  },
-  {
-    day: "Fri",
-    breakfast: "Poori + Curry",
-    lunch: "Rice, Veg Curry, Dal, Buttermilk",
-    dinner: "Rice, Egg, Rasam, Buttermilk",
-  },
-  {
-    day: "Sat",
-    breakfast: "Poha",
-    lunch: "Rice, Veg Curry, Dal, Buttermilk",
-    dinner: "Chapati, Veg Curry, Sambar, Buttermilk",
-  },
-];
-
 const HOSTEL_RULES = [
   "Room rent must be paid within 2–3 days of the due date.",
   "A security deposit of ₹1000 is required and is non-refundable.",
@@ -85,6 +33,219 @@ const HOSTEL_RULES = [
   "Any damage to the room will result in a fine of ₹1000–₹2000, depending on the damage.",
   "Smoking, spitting, and consumption of alcohol are strictly prohibited.",
 ];
+
+const MEAL_ICONS = { breakfast: "🌅", lunch: "☀️", snacks: "🍪", dinner: "🌙" };
+const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", snacks: "Snacks", dinner: "Dinner" };
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const ALL_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// ── Meal info card — fetches live from the same API as the Meals page ──
+const MealInfoSection = ({ socket }) => {
+  const [timings, setTimings] = useState([]);
+  const [mealLoading, setMealLoading] = useState(true);
+
+  const fetchMeals = useCallback(async () => {
+    try {
+      const res = await api.get("/tenant/meal-timings");
+      setTimings(Array.isArray(res.data.data) ? res.data.data : []);
+    } catch {
+      // non-critical — fail silently
+    } finally {
+      setMealLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMeals();
+  }, [fetchMeals]);
+
+  // Real-time: reflect admin edits instantly via socket
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("meal_timing_updated", fetchMeals);
+    return () => socket.off("meal_timing_updated", fetchMeals);
+  }, [socket, fetchMeals]);
+
+  // — Build food timings (global times, dayOfWeek === null)
+  const globalTimings = timings.filter((t) => t.dayOfWeek === null);
+  const timingsByMeal = {};
+  globalTimings.forEach((t) => {
+    timingsByMeal[t.mealType] = t;
+  });
+  const mealOrder = ["breakfast", "lunch", "snacks", "dinner"];
+  const hasTiming = mealOrder.some((m) => timingsByMeal[m]?.startTime);
+
+  // — Build weekly menu table
+  const todayIdx = new Date().getDay();
+  // For each day, merge global entries overridden by day-specific ones
+  const weekRows = DAY_NAMES.map((short, i) => {
+    const row = { day: short, isToday: i === todayIdx };
+    ["breakfast", "lunch", "snacks", "dinner"].forEach((meal) => {
+      const global = timings.find((t) => t.mealType === meal && t.dayOfWeek === null);
+      const specific = timings.find((t) => t.mealType === meal && t.dayOfWeek === i);
+      const entry = specific || global;
+      row[meal] = entry?.items?.join(", ") || "";
+    });
+    return row;
+  });
+  const hasMenu = weekRows.some((r) => r.breakfast || r.lunch || r.dinner);
+
+  if (mealLoading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[0, 1].map((i) => (
+          <div key={i} className={`arch-card p-6 ${i === 1 ? "lg:col-span-2" : ""}`}>
+            <div className="skeleton h-6 w-36 mb-4" />
+            <div className="space-y-3">
+              {[0, 1, 2].map((j) => (
+                <div key={j} className="skeleton h-10 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!hasTiming && !hasMenu) return null;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Food Timings */}
+      {hasTiming && (
+        <div className="arch-card p-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <MdAccessTime className="text-amber-600" size={22} />
+            </div>
+            <div>
+              <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                Daily Schedule
+              </h3>
+              <p className="text-base font-bold font-display text-text-primary tracking-tight">
+                Food Timings
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {mealOrder.map((meal) => {
+              const entry = timingsByMeal[meal];
+              if (!entry?.startTime) return null;
+              const time = [entry.startTime, entry.endTime].filter(Boolean).join(" – ");
+              return (
+                <div
+                  key={meal}
+                  className="flex items-center justify-between p-3 rounded-xl bg-amber-50/60 border border-amber-200/40"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{MEAL_ICONS[meal]}</span>
+                    <span className="text-sm font-semibold text-text-primary">
+                      {MEAL_LABELS[meal]}
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-lg font-mono">
+                    {time}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-[10px] text-text-tertiary italic leading-relaxed border-t border-border/40 pt-3">
+            ⚠️ After the above timings, food may not be available. Please plan accordingly.
+          </p>
+          <p className="mt-2 text-[10px] font-bold text-danger/80 uppercase tracking-wider">
+            No Smoking • No Alcohol • No Drugs • No Spitting
+          </p>
+        </div>
+      )}
+
+      {/* Weekly Menu */}
+      {hasMenu && (
+        <div
+          className={`${hasTiming ? "lg:col-span-2" : "lg:col-span-3"} arch-card p-6 animate-fade-in`}
+          style={{ animationDelay: "0.2s" }}
+        >
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <MdRestaurant className="text-emerald-600" size={22} />
+              </div>
+              <div>
+                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                  Sri Rama Hostel
+                </h3>
+                <p className="text-base font-bold font-display text-text-primary tracking-tight">
+                  Weekly Menu
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/tenant/meal-timings"
+              className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5"
+            >
+              Full Menu <MdChevronRight size={14} />
+            </Link>
+          </div>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-xs min-w-[520px]">
+              <thead>
+                <tr className="border-b border-border/60">
+                  <th className="text-left py-2 px-2 text-[10px] font-bold text-text-tertiary uppercase tracking-wider w-12">
+                    Day
+                  </th>
+                  <th className="text-left py-2 px-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+                    🍳 Breakfast
+                  </th>
+                  <th className="text-left py-2 px-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                    🍛 Lunch
+                  </th>
+                  <th className="text-left py-2 px-2 text-[10px] font-bold text-primary uppercase tracking-wider">
+                    🌙 Dinner
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {weekRows.map(({ day, isToday, breakfast, lunch, dinner }, i) => (
+                  <tr
+                    key={day}
+                    className={`border-b border-border/30 transition-colors ${
+                      isToday ? "bg-primary/[0.04]" : i % 2 === 0 ? "bg-black/[0.01]" : ""
+                    }`}
+                  >
+                    <td className="py-2.5 px-2">
+                      <span
+                        className={`text-xs font-bold ${isToday ? "text-primary" : "text-text-secondary"}`}
+                      >
+                        {day}
+                        {isToday && (
+                          <span className="ml-1 text-[8px] bg-primary text-white px-1 py-0.5 rounded font-semibold">
+                            Today
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
+                      {breakfast || <span className="text-text-tertiary/40">—</span>}
+                    </td>
+                    <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
+                      {lunch || <span className="text-text-tertiary/40">—</span>}
+                    </td>
+                    <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
+                      {dinner || <span className="text-text-tertiary/40">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-[10px] text-text-tertiary italic border-t border-border/40 pt-3">
+            ** Menu may vary. Management reserves the right to make changes at any time.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Collapsible Rules Card ──
 const RulesCard = () => {
@@ -659,127 +820,8 @@ const TenantDashboard = () => {
         {/* Vacate Request */}
         <TenantVacateRequest />
 
-        {/* ── Info Sections from .docx files ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Food Timings */}
-          <div className="arch-card p-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                <MdAccessTime className="text-amber-600" size={22} />
-              </div>
-              <div>
-                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
-                  Daily Schedule
-                </h3>
-                <p className="text-base font-bold font-display text-text-primary tracking-tight">
-                  Food Timings
-                </p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {FOOD_TIMINGS.map(({ meal, time, emoji }) => (
-                <div
-                  key={meal}
-                  className="flex items-center justify-between p-3 rounded-xl bg-amber-50/60 border border-amber-200/40"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-lg">{emoji}</span>
-                    <span className="text-sm font-semibold text-text-primary">{meal}</span>
-                  </div>
-                  <span className="text-xs font-medium text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-lg font-mono">
-                    {time}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-[10px] text-text-tertiary italic leading-relaxed border-t border-border/40 pt-3">
-              ⚠️ After the above timings, food may not be available. Please plan accordingly.
-            </p>
-            <p className="mt-2 text-[10px] font-bold text-danger/80 uppercase tracking-wider">
-              No Smoking • No Alcohol • No Drugs • No Spitting
-            </p>
-          </div>
-
-          {/* Weekly Menu */}
-          <div
-            className="lg:col-span-2 arch-card p-6 animate-fade-in"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                <MdRestaurant className="text-emerald-600" size={22} />
-              </div>
-              <div>
-                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
-                  Sri Rama Hostel
-                </h3>
-                <p className="text-base font-bold font-display text-text-primary tracking-tight">
-                  Weekly Menu
-                </p>
-              </div>
-            </div>
-            <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-xs min-w-[520px]">
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th className="text-left py-2 px-2 text-[10px] font-bold text-text-tertiary uppercase tracking-wider w-12">
-                      Day
-                    </th>
-                    <th className="text-left py-2 px-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider">
-                      🍳 Breakfast
-                    </th>
-                    <th className="text-left py-2 px-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
-                      🍛 Lunch
-                    </th>
-                    <th className="text-left py-2 px-2 text-[10px] font-bold text-primary uppercase tracking-wider">
-                      🌙 Dinner
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {WEEKLY_MENU.map(({ day, breakfast, lunch, dinner }, i) => {
-                    const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
-                    const isToday = today === day;
-                    return (
-                      <tr
-                        key={day}
-                        className={`border-b border-border/30 transition-colors ${
-                          isToday ? "bg-primary/[0.04]" : i % 2 === 0 ? "bg-black/[0.01]" : ""
-                        }`}
-                      >
-                        <td className="py-2.5 px-2">
-                          <span
-                            className={`text-xs font-bold ${
-                              isToday ? "text-primary" : "text-text-secondary"
-                            }`}
-                          >
-                            {day}
-                            {isToday && (
-                              <span className="ml-1 text-[8px] bg-primary text-white px-1 py-0.5 rounded font-semibold">
-                                Today
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
-                          {breakfast}
-                        </td>
-                        <td className="py-2.5 px-2 text-text-secondary leading-relaxed">{lunch}</td>
-                        <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
-                          {dinner}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-[10px] text-text-tertiary italic border-t border-border/40 pt-3">
-              ** Note: Menu offerings may vary, and management reserves the right to make changes at
-              any time.
-            </p>
-          </div>
-        </div>
+        {/* ── Live Meal Info — linked to admin Meals page ── */}
+        <MealInfoSection socket={socket} />
 
         {/* Hostel Rules — collapsible */}
         <RulesCard />
