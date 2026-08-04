@@ -146,7 +146,7 @@ const Complaints = () => {
     if (!note) return;
     try {
       await api.patch(`/owner/complaints/${id}`, { note });
-      toast.success("Reply sent to tenant");
+      toast.success("Reply sent to resident");
       setNotes((prev) => ({ ...prev, [id]: "" }));
       fetchComplaints();
     } catch {
@@ -228,7 +228,7 @@ const Complaints = () => {
           <h2 className="section-title">
             Support <span className="highlight">Desk</span>
           </h2>
-          <p className="section-sub">Monitor and resolve tenant issues</p>
+          <p className="section-sub">Monitor and resolve resident issues</p>
         </div>
         {user?.role === "tenant" && (
           <Button onClick={() => setShowModal(true)} icon={MdAdd}>
@@ -339,7 +339,7 @@ const Complaints = () => {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-text-primary leading-none mb-0.5">
-                      {c.tenantId?.name || c.tenantId?.personalInfo?.name || "Tenant"}
+                      {c.tenantId?.name || c.tenantId?.personalInfo?.name || "Resident"}
                     </p>
                     <p className="text-[8px] text-text-secondary font-medium uppercase tracking-wider">
                       Room {c.roomId?.roomNumber || c.tenantId?.roomId?.roomNumber || "N/A"}
@@ -395,7 +395,7 @@ const Complaints = () => {
                 <div className="mt-3 flex gap-2">
                   <input
                     className="field flex-1 !py-2 text-xs"
-                    placeholder="Reply / note for the tenant…"
+                    placeholder="Reply / note for the resident…"
                     value={notes[c._id] || ""}
                     onChange={(e) => setNotes((prev) => ({ ...prev, [c._id]: e.target.value }))}
                   />

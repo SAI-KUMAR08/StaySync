@@ -10,6 +10,7 @@ import {
   MdMoreVert,
   MdDelete,
   MdWarning,
+  MdEdit,
 } from "react-icons/md";
 import api from "../api/axios";
 import toast from "react-hot-toast";
@@ -42,6 +43,11 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newHostelName, setNewHostelName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Rename modal state
+  const [renamingHostel, setRenamingHostel] = useState(null); // { _id, name }
+  const [renameInput, setRenameInput] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
 
   // Delete confirmation modal state
   const [deletingHostel, setDeletingHostel] = useState(null);
@@ -108,6 +114,36 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
       toast.error(e.response?.data?.message || "Failed to create hostel");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleRenameClick = (e, hostel) => {
+    e.stopPropagation();
+    setActiveMenuHostelId(null);
+    setRenamingHostel({ _id: hostel._id, name: hostel.name || hostel.hostelName || "" });
+    setRenameInput(hostel.name || hostel.hostelName || "");
+  };
+
+  const executeRenameHostel = async () => {
+    if (!renamingHostel || !renameInput.trim()) return;
+    if (renameInput.trim() === renamingHostel.name) {
+      setRenamingHostel(null);
+      return;
+    }
+    setIsRenaming(true);
+    try {
+      await api.patch(`/owner/hostels/${renamingHostel._id}`, {
+        hostelName: renameInput.trim(),
+      });
+      toast.success("Hostel renamed successfully");
+      setRenamingHostel(null);
+      setRenameInput("");
+      setOpen(false);
+      if (refreshHostels) await refreshHostels();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to rename hostel");
+    } finally {
+      setIsRenaming(false);
     }
   };
 
@@ -205,6 +241,89 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     },
     [open, filtered, focusIdx, selectHostel]
   );
+
+  // ── Rename Modal ──
+  const renderRenameModal = () => {
+    if (!renamingHostel) return null;
+    const isValid = renameInput.trim().length > 0 && renameInput.trim() !== renamingHostel.name;
+
+    return createPortal(
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in text-left"
+        onClick={() => {
+          if (!isRenaming) {
+            setRenamingHostel(null);
+            setRenameInput("");
+          }
+        }}
+      >
+        <div
+          className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-border/80 origin-center animate-scale-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-start gap-3.5 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <MdEdit size={22} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-text-primary">Rename Hostel</h3>
+              <p className="text-xs text-text-tertiary mt-0.5">
+                Enter a new name for{" "}
+                <span className="font-semibold text-text-secondary">{renamingHostel.name}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (isValid && !isRenaming) executeRenameHostel();
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-1.5">
+              <label className="block text-xs text-text-secondary font-medium">
+                New Hostel Name <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                placeholder="Enter new name"
+                autoFocus
+                className="w-full px-3.5 py-2.5 text-xs border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder:text-text-tertiary/40"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isRenaming}
+                onClick={() => {
+                  setRenamingHostel(null);
+                  setRenameInput("");
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-text-secondary hover:bg-black/5 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!isValid || isRenaming}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-1.5"
+              >
+                {isRenaming ? "Saving..." : "Save Name"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>,
+      document.body
+    );
+  };
 
   const renderCreateModal = () => {
     if (!isCreateModalOpen) return null;
@@ -370,6 +489,32 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
     );
   };
 
+  // ── Three-dot options menu content (shared) ──
+  const renderOptionsMenu = (hostel) => (
+    <div
+      className="absolute right-3 top-10 w-40 bg-white border border-border/80 rounded-xl shadow-lg z-50 py-1 overflow-hidden"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={(e) => handleRenameClick(e, hostel)}
+        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-primary font-medium hover:bg-black/5 transition-colors"
+      >
+        <MdEdit size={14} className="text-text-tertiary" />
+        Rename Hostel
+      </button>
+      <div className="my-1 border-t border-border/40" />
+      <button
+        type="button"
+        onClick={(e) => handleDeleteClick(e, hostel)}
+        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-danger font-medium hover:bg-danger/5 transition-colors"
+      >
+        <MdDelete size={14} />
+        Delete Hostel
+      </button>
+    </div>
+  );
+
   // ── Single hostel — compact pill ──
   if (hostels.length <= 1) {
     return (
@@ -412,21 +557,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
                   >
                     <MdMoreVert size={16} />
                   </button>
-                  {activeMenuHostelId === active._id && (
-                    <div
-                      className="absolute right-0 top-7 w-36 bg-white border border-border/80 rounded-xl shadow-lg z-50 py-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteClick(e, active)}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-danger font-medium hover:bg-danger/5 transition-colors"
-                      >
-                        <MdDelete size={14} />
-                        Delete Hostel
-                      </button>
-                    </div>
-                  )}
+                  {activeMenuHostelId === active._id && renderOptionsMenu(active)}
                 </div>
               )}
             </div>
@@ -440,6 +571,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
             </div>
           </div>
         )}
+        {renderRenameModal()}
         {renderCreateModal()}
         {renderDeleteModal()}
       </div>
@@ -617,21 +749,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
                     </button>
 
                     {/* Popover options menu */}
-                    {isMenuOpen && (
-                      <div
-                        className="absolute right-3 top-10 w-36 bg-white border border-border/80 rounded-xl shadow-lg z-50 py-1"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteClick(e, h)}
-                          className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-danger font-medium hover:bg-danger/5 transition-colors"
-                        >
-                          <MdDelete size={14} />
-                          Delete Hostel
-                        </button>
-                      </div>
-                    )}
+                    {isMenuOpen && renderOptionsMenu(h)}
                   </div>
                 );
               })
@@ -650,6 +768,7 @@ const HostelSwitcher = ({ hostels, activeHostelId, onSwitch }) => {
         </div>
       )}
 
+      {renderRenameModal()}
       {renderCreateModal()}
       {renderDeleteModal()}
     </div>

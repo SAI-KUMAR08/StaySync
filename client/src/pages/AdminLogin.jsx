@@ -172,13 +172,13 @@ const AdminLogin = () => {
               Sri Rama
             </h1>
             <p className="text-sm text-text-secondary font-medium mb-7 leading-relaxed">
-              Complete hostel management platform — rooms, tenants, payments, and reports all in one
-              place.
+              Complete hostel management platform — rooms, residents, payments, and reports all in
+              one place.
             </p>
             <div className="space-y-3.5">
               {[
                 { title: "Room Management", desc: "Floors, rooms, beds — full inventory control." },
-                { title: "Tenant Management", desc: "Onboard, track, and manage residents." },
+                { title: "Resident Management", desc: "Onboard, track, and manage residents." },
                 {
                   title: "Payments & Reports",
                   desc: "Rent tracking, expenses, and financial overview.",

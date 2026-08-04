@@ -385,7 +385,7 @@ const AdminProfile = () => {
             />
             <StatTile
               icon={MdPeople}
-              label="Active Tenants"
+              label="Active Residents"
               value={stats.totalTenants}
               color="amber"
             />

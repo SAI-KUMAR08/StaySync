@@ -26,7 +26,7 @@ const AdminRequests = () => {
       <div className="flex items-center gap-3 mb-2">
         <div className="w-8 h-1.5 rounded-full bg-primary" />
         <h2 className="text-lg font-bold font-display text-text-primary">Requests</h2>
-        <p className="text-[10px] text-text-tertiary hidden sm:inline">Review tenant requests</p>
+        <p className="text-[10px] text-text-tertiary hidden sm:inline">Review resident requests</p>
       </div>
 
       {/* Type filter — same pill style as the Tenants page */}

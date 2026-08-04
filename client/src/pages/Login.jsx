@@ -42,7 +42,7 @@ const Login = () => {
     try {
       const data = await checkTenantStatus(fullPhone());
       if (!data.exists) {
-        setLoginError("Tenant with this mobile number does not exist.");
+        setLoginError("Resident with this mobile number does not exist.");
         return;
       }
       if (data.hasPassword) setTenantFlow("password");
@@ -50,7 +50,7 @@ const Login = () => {
     } catch (error) {
       setLoginError(
         error.response?.status === 404
-          ? "Tenant with this mobile number does not exist."
+          ? "Resident with this mobile number does not exist."
           : "Something went wrong"
       );
     } finally {
@@ -135,7 +135,7 @@ const Login = () => {
               Sri Rama
             </h1>
             <p className="text-sm text-text-secondary font-medium mb-7 leading-relaxed">
-              Hostel management for real life — rent tracking, maintenance requests, and tenant
+              Hostel management for real life — rent tracking, maintenance requests, and resident
               records under one roof.
             </p>
             <div className="space-y-3.5">
@@ -146,9 +146,12 @@ const Login = () => {
                 },
                 {
                   title: "Maintenance",
-                  desc: "Tenants submit requests; you track and close them.",
+                  desc: "Residents submit requests; you track and close them.",
                 },
-                { title: "Tenant records", desc: "Room assignments, contact info, move-in dates." },
+                {
+                  title: "Resident records",
+                  desc: "Room assignments, contact info, move-in dates.",
+                },
               ].map((item) => (
                 <div key={item.title} className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-primary/60 mt-2 shrink-0" />
@@ -186,7 +189,7 @@ const Login = () => {
 
           <div className="hidden lg:block mb-10">
             <h2 className="text-[1.75rem] font-bold font-display tracking-tight mb-1 text-text-primary leading-[1.08]">
-              Tenant Login
+              Resident Login
             </h2>
             <p className="text-sm text-text-secondary">Sign in with your phone number</p>
           </div>

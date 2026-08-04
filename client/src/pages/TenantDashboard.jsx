@@ -11,6 +11,11 @@ import {
   MdAssignment,
   MdCheckCircle,
   MdSwapHoriz,
+  MdAccessTime,
+  MdRestaurant,
+  MdGavel,
+  MdExpandMore,
+  MdExpandLess,
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 
@@ -19,6 +24,119 @@ import { useAutoRefresh } from "../hooks/useAutoRefresh";
 import ErrorRetry from "../components/ErrorRetry";
 import HostelRulesModal from "../components/HostelRulesModal";
 import TenantVacateRequest from "../components/TenantVacateRequest";
+
+// ── Static hostel info from .docx files ──
+const FOOD_TIMINGS = [
+  { meal: "Breakfast", time: "07:30 AM – 09:30 AM", emoji: "🍳" },
+  { meal: "Lunch", time: "12:30 PM – 02:30 PM", emoji: "🍛" },
+  { meal: "Dinner", time: "07:30 PM – 09:30 PM", emoji: "🌙" },
+];
+
+const WEEKLY_MENU = [
+  {
+    day: "Sun",
+    breakfast: "Upma + Chutney",
+    lunch: "Rice, Dal, Pachi Pulusu, Buttermilk",
+    dinner: "Bagara Rice, Chicken Curry, Buttermilk",
+  },
+  {
+    day: "Mon",
+    breakfast: "Idli + Chutney",
+    lunch: "Rice, Veg Curry, Dal, Buttermilk",
+    dinner: "Chapati, Veg Curry, Sambar, Buttermilk",
+  },
+  {
+    day: "Tue",
+    breakfast: "Bonda + Chutney",
+    lunch: "Rice, Veg Curry, Dal, Buttermilk",
+    dinner: "Rice, Egg, Rasam, Buttermilk",
+  },
+  {
+    day: "Wed",
+    breakfast: "Uttapam / Dosa + Chutney",
+    lunch: "Rice, Veg Curry, Dal, Buttermilk",
+    dinner: "Rice, Chicken Curry, Buttermilk",
+  },
+  {
+    day: "Thu",
+    breakfast: "Tomato Rice / Kichidi / Upma + Chutney",
+    lunch: "Rice, Veg Curry, Dal, Buttermilk",
+    dinner: "Chapati, Veg Curry, Sambar, Buttermilk",
+  },
+  {
+    day: "Fri",
+    breakfast: "Poori + Curry",
+    lunch: "Rice, Veg Curry, Dal, Buttermilk",
+    dinner: "Rice, Egg, Rasam, Buttermilk",
+  },
+  {
+    day: "Sat",
+    breakfast: "Poha",
+    lunch: "Rice, Veg Curry, Dal, Buttermilk",
+    dinner: "Chapati, Veg Curry, Sambar, Buttermilk",
+  },
+];
+
+const HOSTEL_RULES = [
+  "Room rent must be paid within 2–3 days of the due date.",
+  "A security deposit of ₹1000 is required and is non-refundable.",
+  "Residents must inform at least 15 days in advance before vacating the hostel.",
+  "Day rent is ₹300 per day.",
+  "Any damage to the room will result in a fine of ₹1000–₹2000, depending on the damage.",
+  "Smoking, spitting, and consumption of alcohol are strictly prohibited.",
+];
+
+// ── Collapsible Rules Card ──
+const RulesCard = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="arch-card overflow-hidden animate-fade-in" style={{ animationDelay: "0.3s" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between p-6 text-left hover:bg-black/[0.01] transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <MdGavel className="text-primary" size={22} />
+          </div>
+          <div>
+            <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+              Important
+            </h3>
+            <p className="text-base font-bold font-display text-text-primary tracking-tight">
+              Hostel Rules &amp; Regulations
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-text-tertiary hidden sm:block">
+            {open ? "Collapse" : "View Rules"}
+          </span>
+          {open ? (
+            <MdExpandLess size={20} className="text-text-tertiary" />
+          ) : (
+            <MdExpandMore size={20} className="text-text-tertiary" />
+          )}
+        </div>
+      </button>
+      {open && (
+        <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-border/40 pt-5">
+          {HOSTEL_RULES.map((rule, i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 p-3 rounded-xl bg-amber-50/60 border border-amber-200/40"
+            >
+              <span className="shrink-0 w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold mt-0.5">
+                {i + 1}
+              </span>
+              <p className="text-sm font-medium text-text-primary leading-relaxed">{rule}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const StatCard = ({ label, value, sub, icon: Icon, color }) => {
   return (
@@ -540,6 +658,131 @@ const TenantDashboard = () => {
 
         {/* Vacate Request */}
         <TenantVacateRequest />
+
+        {/* ── Info Sections from .docx files ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Food Timings */}
+          <div className="arch-card p-6 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <MdAccessTime className="text-amber-600" size={22} />
+              </div>
+              <div>
+                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                  Daily Schedule
+                </h3>
+                <p className="text-base font-bold font-display text-text-primary tracking-tight">
+                  Food Timings
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {FOOD_TIMINGS.map(({ meal, time, emoji }) => (
+                <div
+                  key={meal}
+                  className="flex items-center justify-between p-3 rounded-xl bg-amber-50/60 border border-amber-200/40"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{emoji}</span>
+                    <span className="text-sm font-semibold text-text-primary">{meal}</span>
+                  </div>
+                  <span className="text-xs font-medium text-amber-700 bg-amber-100/80 px-2.5 py-1 rounded-lg font-mono">
+                    {time}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-[10px] text-text-tertiary italic leading-relaxed border-t border-border/40 pt-3">
+              ⚠️ After the above timings, food may not be available. Please plan accordingly.
+            </p>
+            <p className="mt-2 text-[10px] font-bold text-danger/80 uppercase tracking-wider">
+              No Smoking • No Alcohol • No Drugs • No Spitting
+            </p>
+          </div>
+
+          {/* Weekly Menu */}
+          <div
+            className="lg:col-span-2 arch-card p-6 animate-fade-in"
+            style={{ animationDelay: "0.2s" }}
+          >
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <MdRestaurant className="text-emerald-600" size={22} />
+              </div>
+              <div>
+                <h3 className="text-[8px] font-bold text-text-secondary uppercase tracking-[0.15em]">
+                  Sri Rama Hostel
+                </h3>
+                <p className="text-base font-bold font-display text-text-primary tracking-tight">
+                  Weekly Menu
+                </p>
+              </div>
+            </div>
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs min-w-[520px]">
+                <thead>
+                  <tr className="border-b border-border/60">
+                    <th className="text-left py-2 px-2 text-[10px] font-bold text-text-tertiary uppercase tracking-wider w-12">
+                      Day
+                    </th>
+                    <th className="text-left py-2 px-2 text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+                      🍳 Breakfast
+                    </th>
+                    <th className="text-left py-2 px-2 text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
+                      🍛 Lunch
+                    </th>
+                    <th className="text-left py-2 px-2 text-[10px] font-bold text-primary uppercase tracking-wider">
+                      🌙 Dinner
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {WEEKLY_MENU.map(({ day, breakfast, lunch, dinner }, i) => {
+                    const today = new Date().toLocaleDateString("en-US", { weekday: "short" });
+                    const isToday = today === day;
+                    return (
+                      <tr
+                        key={day}
+                        className={`border-b border-border/30 transition-colors ${
+                          isToday ? "bg-primary/[0.04]" : i % 2 === 0 ? "bg-black/[0.01]" : ""
+                        }`}
+                      >
+                        <td className="py-2.5 px-2">
+                          <span
+                            className={`text-xs font-bold ${
+                              isToday ? "text-primary" : "text-text-secondary"
+                            }`}
+                          >
+                            {day}
+                            {isToday && (
+                              <span className="ml-1 text-[8px] bg-primary text-white px-1 py-0.5 rounded font-semibold">
+                                Today
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
+                          {breakfast}
+                        </td>
+                        <td className="py-2.5 px-2 text-text-secondary leading-relaxed">{lunch}</td>
+                        <td className="py-2.5 px-2 text-text-secondary leading-relaxed">
+                          {dinner}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 text-[10px] text-text-tertiary italic border-t border-border/40 pt-3">
+              ** Note: Menu offerings may vary, and management reserves the right to make changes at
+              any time.
+            </p>
+          </div>
+        </div>
+
+        {/* Hostel Rules — collapsible */}
+        <RulesCard />
       </div>
     </>
   );

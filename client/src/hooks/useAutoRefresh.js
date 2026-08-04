@@ -19,7 +19,7 @@ import { useEffect, useCallback, useRef } from "react";
  * Existing socket listeners are unaffected; on Render/local the socket still
  * delivers instant updates and this hook is simply the Vercel-safe fallback.
  */
-export function useAutoRefresh(refetch, { interval = 60000, fresh = true, enabled = true } = {}) {
+export function useAutoRefresh(refetch, { interval = 300000, fresh = true, enabled = true } = {}) {
   const refetchRef = useRef(refetch);
   const inFlightRef = useRef(false);
 

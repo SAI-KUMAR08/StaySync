@@ -157,11 +157,9 @@ const AdminDashboard = () => {
     setError(null);
     try {
       const [s, e, f] = await Promise.all([
-        api.get("/owner/dashboard", { _skipCache: true }),
-        api.get("/owner/expenses/summary", { _skipCache: true }),
-        api
-          .get("/owner/financial-overview", { _skipCache: true })
-          .catch(() => ({ data: { data: null } })),
+        api.get("/owner/dashboard"),
+        api.get("/owner/expenses/summary"),
+        api.get("/owner/financial-overview").catch(() => ({ data: { data: null } })),
       ]);
       setStats(s.data.data.stats || null);
       setExpenseSummary(e.data.data || null);
@@ -206,15 +204,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchPendingRequests();
   }, [fetchPendingRequests, user?.hostelId]);
-
-  // Re-fetch when tab regains focus — catches stale data if socket events were missed
-  useEffect(() => {
-    const onFocus = () => {
-      fullRefresh();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [fullRefresh]);
 
   useEffect(() => {
     if (!loading) fetchComplaints(supportFilter).catch(() => {});
@@ -309,7 +298,7 @@ const AdminDashboard = () => {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
-            label="Active Tenants"
+            label="Active Residents"
             value={stats.totalTenants}
             icon={MdPeople}
             href="/admin/tenants"
@@ -460,7 +449,7 @@ const AdminDashboard = () => {
                         {a.title || a.description}
                       </p>
                       <p className="text-xs text-text-tertiary mt-0.5">
-                        {a.tenantId?.name || a.tenantId?.personalInfo?.name || "Tenant"}
+                        {a.tenantId?.name || a.tenantId?.personalInfo?.name || "Resident"}
                         {" · "}
                         {new Date(a.createdAt).toLocaleDateString("en-US", {
                           month: "short",
@@ -522,7 +511,7 @@ const AdminDashboard = () => {
             {
               key: "vacate",
               label: "Vacate Requests",
-              desc: "Tenant move-out notices",
+              desc: "Resident move-out notices",
               icon: MdExitToApp,
               count: pendingRequests.vacate,
               href: "/admin/requests?type=vacate",
@@ -600,8 +589,8 @@ const AdminDashboard = () => {
             <div>
               <h3 className="text-sm font-bold text-danger">Immediate Action Required</h3>
               <p className="text-xs text-text-secondary mt-0.5">
-                {incompleteProfiles.length} tenant profile{incompleteProfiles.length > 1 ? "s" : ""}{" "}
-                with missing information
+                {incompleteProfiles.length} resident profile
+                {incompleteProfiles.length > 1 ? "s" : ""} with missing information
               </p>
             </div>
           </div>

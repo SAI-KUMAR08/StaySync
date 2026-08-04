@@ -50,7 +50,7 @@ const NAV_GROUPS = {
       group: "Management",
       items: [
         { to: "/admin/inventory", icon: MdLayers, label: "Inventory" },
-        { to: "/admin/tenants", icon: MdPeople, label: "Tenants" },
+        { to: "/admin/tenants", icon: MdPeople, label: "Residents" },
         { to: "/admin/complaints", icon: MdReportProblem, label: "Support" },
         { to: "/admin/requests", icon: MdSwapHoriz, label: "Requests" },
       ],
@@ -230,7 +230,7 @@ const DashboardLayout = () => {
                 <MdMenu size={20} />
               </button>
               <div className="flex items-center gap-2 text-xs text-text-tertiary">
-                <span className="font-medium">{user?.role === "owner" ? "Owner" : "Tenant"}</span>
+                <span className="font-medium">{user?.role === "owner" ? "Owner" : "Resident"}</span>
                 <MdChevronRight size={12} />
                 <span className="font-semibold text-text-secondary">{getPageLabel()}</span>
               </div>
