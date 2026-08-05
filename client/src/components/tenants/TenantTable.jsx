@@ -11,7 +11,7 @@ const TenantTable = ({ tenants, onView, onReassign, onDelete }) => {
       <table className="heritage-table">
         <thead>
           <tr>
-            <th>Tenant</th>
+            <th>Resident</th>
             <th>Hostel</th>
             <th>Assignment</th>
             <th>Rent</th>
@@ -85,7 +85,7 @@ const TenantTable = ({ tenants, onView, onReassign, onDelete }) => {
                     // Explain WHY the Vacate action is unavailable so the admin
                     // never has to calculate the waiting period themselves.
                     const vacateTitle = !v.blocked
-                      ? "Vacate tenant"
+                      ? "Vacate resident"
                       : v.status === "approved"
                         ? `Vacating available on ${v.eligibleDate.toLocaleDateString()}`
                         : v.status === "pending"
@@ -94,7 +94,7 @@ const TenantTable = ({ tenants, onView, onReassign, onDelete }) => {
                             ? "Vacate request was rejected — a new request is required"
                             : v.status === "completed"
                               ? "Vacate request already processed"
-                              : "A tenant can only be vacated after an approved vacate request";
+                              : "A resident can only be vacated after an approved vacate request";
                     return (
                       <>
                         {v.blocked && v.status === "approved" && (
@@ -137,7 +137,7 @@ const TenantTable = ({ tenants, onView, onReassign, onDelete }) => {
               <td colSpan="6" className="px-6 py-16 text-center">
                 <MdPeople className="text-4xl mx-auto mb-3 opacity-20 text-text-secondary" />
                 <p className="text-text-secondary/60 font-medium italic">
-                  No tenants found matching your criteria.
+                  No residents found matching your criteria.
                 </p>
               </td>
             </tr>

@@ -103,7 +103,7 @@ const TenantOnboardModal = ({
             </div>
             <div>
               <h4 className="text-lg font-bold font-display text-text-primary tracking-tight">
-                {reassigningTenant ? "Reassign Bed" : "Onboard Tenant"}
+                {reassigningTenant ? "Reassign Bed" : "Onboard Resident"}
               </h4>
               <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">
                 {step === 1

@@ -702,7 +702,7 @@ const TenantProfile = () => {
                   Edit Profile
                 </h4>
                 <p className="text-[9px] text-text-secondary font-medium uppercase tracking-wider">
-                  Update tenant information
+                  Update resident information
                 </p>
               </div>
               <button

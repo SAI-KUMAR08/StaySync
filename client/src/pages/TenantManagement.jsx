@@ -164,7 +164,7 @@ const TenantManagement = () => {
             : {}),
           ...(isTemporary ? { isTemporary, preferredSharing } : {}),
         });
-        toast.success("Tenant moved to an available room of the selected type successfully!");
+        toast.success("Resident moved to an available room of the selected type successfully!");
       } else {
         await api.post("/owner/tenants", {
           name: formData.name,
@@ -186,7 +186,7 @@ const TenantManagement = () => {
           securityDepositDate: formData.securityDepositPaid ? new Date().toISOString() : null,
         });
         toast.success(
-          isTemporary ? "Tenant onboarded temporarily!" : "Tenant onboarded successfully!"
+          isTemporary ? "Resident onboarded temporarily!" : "Resident onboarded successfully!"
         );
       }
       setShowModal(false);
@@ -230,7 +230,7 @@ const TenantManagement = () => {
       toast(
         (t) => (
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium">Tenant vacated successfully.</span>
+            <span className="text-sm font-medium">Resident vacated successfully.</span>
             <button
               type="button"
               className="btn btn-primary btn-sm"
@@ -246,7 +246,7 @@ const TenantManagement = () => {
         { position: "bottom-right", duration: 10000 }
       );
     } catch {
-      toast.error("Failed to vacate tenant");
+      toast.error("Failed to vacate resident");
       setVacatingTenant(null);
     }
   };
@@ -278,7 +278,7 @@ const TenantManagement = () => {
 
   if (loading)
     return (
-      <div className="space-y-5" role="status" aria-label="Loading tenants">
+      <div className="space-y-5" role="status" aria-label="Loading residents">
         <div className="card card-lg overflow-hidden">
           <div className="bg-background/80 border-b border-border/60 px-6 py-4">
             <div className="flex gap-12">
@@ -312,17 +312,17 @@ const TenantManagement = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
         <div>
           <div className="section-ornament-diamond mb-3">
-            <MdPeople /> Tenants
+            <MdPeople /> Residents
           </div>
           <h2 className="section-title">
-            Tenant <span>Management</span>
+            Resident <span>Management</span>
           </h2>
           <p className="section-sub">
-            Manage tenant lifecycle, unit assignments, and temporary allotments
+            Manage resident lifecycle, unit assignments, and temporary allotments
           </p>
         </div>
         <Button onClick={openAddTenant} icon={MdAdd}>
-          Add Tenant
+          Add Resident
         </Button>
       </div>
 
@@ -400,7 +400,7 @@ const TenantManagement = () => {
       {/* Vacating confirmation modal */}
       {vacatingTenant && (
         <ConfirmModal
-          title="Confirm Tenant Vacating"
+          title="Confirm Resident Vacating"
           confirmLabel="Confirm Vacating"
           cancelLabel="Cancel"
           onCancel={() => setVacatingTenant(null)}
@@ -409,9 +409,9 @@ const TenantManagement = () => {
           <p>
             Are you sure you want to mark{" "}
             <span className="font-bold text-text-primary">
-              {vacatingTenant.name || vacatingTenant.personalInfo?.name || "this tenant"}
+              {vacatingTenant.name || vacatingTenant.personalInfo?.name || "this resident"}
             </span>{" "}
-            as vacated? Their room allocation will be released, and their tenant information will
+            as vacated? Their room allocation will be released, and their resident information will
             remain retained for 15 days before becoming eligible for permanent deletion.
           </p>
         </ConfirmModal>
