@@ -135,6 +135,7 @@ const TenantProfile = () => {
     name: "",
     phone: "",
     email: "",
+    address: "",
     emergencyContact: "",
     aadhaarNumber: "",
     monthlyRent: 0,
@@ -306,6 +307,7 @@ const TenantProfile = () => {
                       name: tenant.name || "",
                       phone: tenant.phone || "",
                       email: tenant.email || "",
+                      address: tenant.address || "",
                       emergencyContact: tenant.emergencyContact || "",
                       aadhaarNumber: tenant.aadhaarNumber || "",
                       monthlyRent: tenant.monthlyRent || 0,
@@ -674,6 +676,7 @@ const TenantProfile = () => {
                   name: editForm.name,
                   phone: editForm.phone,
                   email: editForm.email,
+                  address: editForm.address,
                   emergencyContact: editForm.emergencyContact,
                   aadhaarNumber: editForm.aadhaarNumber,
                   monthlyRent: editForm.monthlyRent,
@@ -714,7 +717,7 @@ const TenantProfile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
-                  Full Name
+                  Full Name *
                 </label>
                 <input
                   required
@@ -726,7 +729,7 @@ const TenantProfile = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
-                  Phone
+                  Phone *
                 </label>
                 <input
                   required
@@ -754,7 +757,7 @@ const TenantProfile = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
-                  Emergency Contact
+                  Emergency Contact *
                 </label>
                 <input
                   type="text"
@@ -765,7 +768,7 @@ const TenantProfile = () => {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
-                  Aadhaar Number
+                  Aadhaar Number *
                 </label>
                 <input
                   type="text"
@@ -788,6 +791,17 @@ const TenantProfile = () => {
                   }
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
+                Address *
+              </label>
+              <textarea
+                className="field min-h-[60px]"
+                value={editForm.address}
+                onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+              />
             </div>
 
             <div className="pt-1 border-t border-border/40 space-y-4">

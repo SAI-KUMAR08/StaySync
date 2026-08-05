@@ -5,7 +5,9 @@ import Button from "../Button";
 /** Inline field error helper */
 function FieldError({ fieldErrors, name }) {
   return fieldErrors[name] ? (
-    <p className="text-[10px] text-danger font-semibold mt-1 ml-1">{fieldErrors[name]}</p>
+    <p className="text-[10px] text-danger font-semibold mt-1 ml-1" role="alert">
+      {fieldErrors[name]}
+    </p>
   ) : null;
 }
 
@@ -41,16 +43,23 @@ const TenantOnboardModal = ({
 
   const validateForm = () => {
     const errs = {};
-    // The bed-reassign path doesn't require personal-info fields — the tenant
-    // already has them on record. Only validate them for new onboarding.
     if (!reassigningTenant) {
-      if (!formData.aadhaarNumber || !/^\d{12}$/.test(formData.aadhaarNumber))
+      if (!formData.name || !formData.name.trim()) {
+        errs.name = "Full Name is required";
+      }
+      if (!formData.phone || formData.phone.length !== 10) {
+        errs.phone = "Mobile Number must be exactly 10 digits";
+      }
+      if (!formData.aadhaarNumber || !/^\d{12}$/.test(formData.aadhaarNumber)) {
         errs.aadhaarNumber = "Aadhaar Number must contain exactly 12 digits";
-      if (!formData.address || !formData.address.trim()) errs.address = "Address is required";
-      if (!formData.emergencyContact || !/^\d{10}$/.test(formData.emergencyContact))
+      }
+      if (!formData.address || !formData.address.trim()) {
+        errs.address = "Address is required";
+      }
+      if (!formData.emergencyContact || !/^\d{10}$/.test(formData.emergencyContact)) {
         errs.emergencyContact = "Emergency Contact must contain exactly 10 digits";
+      }
     }
-    // Mobile and Emergency Contact must not be the same.
     if (
       formData.phone &&
       formData.emergencyContact &&
@@ -62,13 +71,20 @@ const TenantOnboardModal = ({
     return Object.keys(errs).length === 0;
   };
 
+  const handleNextStep = () => {
+    if (validateForm()) {
+      setStep(2);
+    }
+  };
+
   const handleSubmitWrapper = () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      setStep(1);
+      return;
+    }
     onSubmit();
   };
 
-  // Room types (sharing capacities) that currently have at least one available
-  // room — full/inactive/unavailable types are not shown.
   const availableTypes = [1, 2, 3, 4, 6].filter((type) =>
     structure.some((f) =>
       f.rooms.some((r) => r.sharingType === type && r.occupiedBeds < r.totalBeds)
@@ -112,7 +128,7 @@ const TenantOnboardModal = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
-                    Full Name
+                    Full Name *
                   </label>
                   <input
                     required
@@ -120,12 +136,16 @@ const TenantOnboardModal = ({
                     placeholder="John Doe"
                     className="field"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: "" });
+                    }}
                   />
+                  <FieldError fieldErrors={fieldErrors} name="name" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[9px] font-bold font-sans text-text-secondary uppercase tracking-wider ml-1">
-                    Mobile Number
+                    Mobile Number *
                   </label>
                   <div className="flex gap-2">
                     <div className="relative shrink-0">
@@ -152,6 +172,7 @@ const TenantOnboardModal = ({
                         onChange={(e) => {
                           const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
                           setFormData({ ...formData, phone: raw });
+                          if (fieldErrors.phone) setFieldErrors({ ...fieldErrors, phone: "" });
                           if (raw.length > 0 && raw.length !== 10) {
                             setPhoneError("Must be exactly 10 digits");
                           } else {
@@ -164,6 +185,7 @@ const TenantOnboardModal = ({
                   {phoneError && (
                     <p className="text-[9px] text-danger font-bold mt-1 ml-1">{phoneError}</p>
                   )}
+                  <FieldError fieldErrors={fieldErrors} name="phone" />
                 </div>
               </div>
               <div className="space-y-1.5">
@@ -487,7 +509,7 @@ const TenantOnboardModal = ({
                 </div>
               )}
 
-              {/* 🆕 Temporary Allotment Toggle */}
+              {/* Temporary Allotment Toggle */}
               {!reassigningTenant && (
                 <div className="pt-4 border-t border-border/40 space-y-4">
                   <div className="flex items-center gap-3 cursor-pointer group">
@@ -520,7 +542,7 @@ const TenantOnboardModal = ({
                     </div>
                   </div>
 
-                  {/* 🆕 Preferred Sharing Selector */}
+                  {/* Preferred Sharing Selector */}
                   {isTemporary && (
                     <div className="space-y-1.5 animate-slide-down pl-[52px]">
                       <label className="text-[9px] font-bold font-sans text-primary uppercase tracking-wider ml-1">
@@ -548,7 +570,7 @@ const TenantOnboardModal = ({
               )}
 
               <Button
-                onClick={() => setStep(2)}
+                onClick={handleNextStep}
                 disabled={isTemporary && !preferredSharing}
                 fullWidth
                 className="mt-4"
