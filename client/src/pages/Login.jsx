@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { COUNTRY_CODES } from "../utils/phone";
-import { MdLock, MdVisibility, MdVisibilityOff, MdHome } from "react-icons/md";
+import { MdLock, MdVisibility, MdVisibilityOff, MdHome, MdPhone } from "react-icons/md";
 
 // Password strength policy — matches server strongPassword (validators/auth.js):
 // min 8 chars, at least one uppercase, one lowercase, one number.
@@ -14,103 +14,141 @@ const Login = () => {
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [tenantFlow, setTenantFlow] = useState("phone");
-  const [tenantPassword, setTenantPassword] = useState("");
-  const [showTenantPassword, setShowTenantPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
+
+  // "idle" | "checking" | "has-password" | "no-password"
+  const [phoneStatus, setPhoneStatus] = useState("idle");
+
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [newPasswordError, setNewPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+
   const [loading, setLoading] = useState(false);
+
   const { checkTenantStatus, tenantPasswordLogin, setInitialPassword, loadingStates } = useAuth();
   const navigate = useNavigate();
 
-  const handlePhoneChange = (e) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
-    setPhone(raw);
-    if (loginError) setLoginError("");
-    if (raw.length > 0 && raw.length !== 10) setPhoneError("Must be exactly 10 digits");
-    else setPhoneError("");
-  };
-
-  const handleCheckPhone = async (e) => {
-    e.preventDefault();
-    setLoginError("");
-    setLoading(true);
-    try {
-      const data = await checkTenantStatus(fullPhone());
-      if (!data.exists) {
-        setLoginError("Resident with this mobile number does not exist.");
-        return;
-      }
-      if (data.hasPassword) setTenantFlow("password");
-      else setTenantFlow("set-password");
-    } catch (error) {
-      setLoginError(
-        error.response?.status === 404
-          ? "Resident with this mobile number does not exist."
-          : "Something went wrong"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await tenantPasswordLogin(fullPhone(), tenantPassword);
-      navigate("/tenant/dashboard");
-    } catch (error) {
-      setLoginError(error.response?.data?.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSetInitialPassword = async (e) => {
-    e.preventDefault();
-    setNewPasswordError("");
-    setConfirmPasswordError("");
-    // Inline validation below the respective fields (no browser alerts).
-    const passOk =
-      newPassword.length >= 8 &&
-      /[a-z]/.test(newPassword) &&
-      /[A-Z]/.test(newPassword) &&
-      /[0-9]/.test(newPassword);
-    if (!passOk) {
-      setNewPasswordError(passwordStrengthError);
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setConfirmPasswordError("Passwords do not match");
-      return;
-    }
-    setLoading(true);
-    try {
-      await setInitialPassword(fullPhone(), newPassword);
-      navigate("/tenant/dashboard");
-    } catch (error) {
-      setLoginError(error.response?.data?.message || "Failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const passwordRef = useRef(null);
+  const confirmRef = useRef(null);
+  const checkRef = useRef(null); // debounce timer
 
   const fullPhone = () => countryCode + phone;
 
-  const resetFlow = () => {
-    setTenantFlow("phone");
+  // ── Auto-check when phone hits 10 digits ──────────────────────────────────
+  const handlePhoneChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhone(raw);
     setLoginError("");
-    setTenantPassword("");
-    setNewPassword("");
+    setPhoneStatus("idle");
+    setPassword("");
     setConfirmPassword("");
-    setNewPasswordError("");
+    setPasswordError("");
     setConfirmPasswordError("");
+
+    if (raw.length > 0 && raw.length !== 10) {
+      setPhoneError("Must be exactly 10 digits");
+    } else {
+      setPhoneError("");
+    }
+
+    if (raw.length === 10) {
+      // debounce 300 ms
+      clearTimeout(checkRef.current);
+      checkRef.current = setTimeout(() => checkPhone(countryCode + raw), 300);
+    }
   };
+
+  const checkPhone = async (full) => {
+    setPhoneStatus("checking");
+    setLoginError("");
+    try {
+      const data = await checkTenantStatus(full);
+      if (!data.exists) {
+        setLoginError("Resident with this mobile number does not exist.");
+        setPhoneStatus("idle");
+      } else if (data.hasPassword) {
+        setPhoneStatus("has-password");
+        setTimeout(() => passwordRef.current?.focus(), 80);
+      } else {
+        setPhoneStatus("no-password");
+        setTimeout(() => passwordRef.current?.focus(), 80);
+      }
+    } catch (err) {
+      setLoginError(
+        err.response?.status === 404
+          ? "Resident with this mobile number does not exist."
+          : "Something went wrong"
+      );
+      setPhoneStatus("idle");
+    }
+  };
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoginError("");
+    setPasswordError("");
+    setConfirmPasswordError("");
+
+    if (phoneStatus === "has-password") {
+      if (!password) return;
+      setLoading(true);
+      try {
+        await tenantPasswordLogin(fullPhone(), password);
+        navigate("/tenant/dashboard");
+      } catch (err) {
+        setLoginError(err.response?.data?.message || "Login failed. Check your password.");
+      } finally {
+        setLoading(false);
+      }
+    } else if (phoneStatus === "no-password") {
+      // Validate password strength
+      const passOk =
+        password.length >= 8 &&
+        /[a-z]/.test(password) &&
+        /[A-Z]/.test(password) &&
+        /[0-9]/.test(password);
+      if (!passOk) {
+        setPasswordError(passwordStrengthError);
+        return;
+      }
+      if (password !== confirmPassword) {
+        setConfirmPasswordError("Passwords do not match");
+        return;
+      }
+      setLoading(true);
+      try {
+        await setInitialPassword(fullPhone(), password);
+        navigate("/tenant/dashboard");
+      } catch (err) {
+        setLoginError(err.response?.data?.message || "Failed to create password");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Focus confirm-password when it appears
+  useEffect(() => {
+    if (phoneStatus === "no-password" && password.length >= 8) {
+      // small nudge — user can still tab there naturally
+    }
+  }, [phoneStatus, password]);
+
+  const isChecking = phoneStatus === "checking" || loadingStates.checkStatus;
+  const showPasswordField = phoneStatus === "has-password" || phoneStatus === "no-password";
+  const showConfirmField = phoneStatus === "no-password";
+  const canSubmit =
+    !loading &&
+    phone.length === 10 &&
+    showPasswordField &&
+    password.length > 0 &&
+    (!showConfirmField || confirmPassword.length > 0);
+
+  const submitLabel = phoneStatus === "no-password" ? "Create Password & Sign In" : "Sign In";
 
   return (
     <div className="min-h-screen flex bg-background overflow-hidden relative">
@@ -194,233 +232,202 @@ const Login = () => {
             <p className="text-sm text-text-secondary">Sign in with your phone number</p>
           </div>
 
-          <div className="space-y-8">
-            {tenantFlow === "phone" && (
-              <form onSubmit={handleCheckPhone} className="space-y-5">
-                <div className="space-y-1.5">
-                  <label className="form-label">Mobile Number</label>
-                  <div className="flex gap-2">
-                    <div className="relative shrink-0">
-                      <select
-                        value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className="field-select !pr-7 !pl-3 !w-[88px] text-center font-bold text-sm"
-                      >
-                        {COUNTRY_CODES.map((cc) => (
-                          <option key={`${cc.code}-${cc.label}`} value={cc.code}>
-                            {cc.flag} {cc.code}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="relative flex-1">
-                      <input
-                        required
-                        type="tel"
-                        inputMode="numeric"
-                        className="field-input font-mono tracking-wider text-center text-lg"
-                        placeholder="0000000"
-                        value={phone}
-                        onChange={handlePhoneChange}
-                      />
-                    </div>
-                  </div>
-                  {phoneError && (
-                    <p className="text-[10px] text-danger font-semibold mt-1 ml-1">{phoneError}</p>
-                  )}
-                </div>
-                <button
-                  disabled={loading || loadingStates.checkStatus || phone.length !== 10}
-                  type="submit"
-                  className="btn btn-primary w-full py-4"
-                >
-                  {loadingStates.checkStatus ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />{" "}
-                      Checking...
-                    </>
-                  ) : (
-                    "Continue"
-                  )}
-                </button>
-                {loginError && (
-                  <p className="text-[10px] text-danger font-semibold mt-3 text-center">
-                    {loginError}
-                  </p>
-                )}
-              </form>
-            )}
-
-            {tenantFlow === "password" && (
-              <form onSubmit={handlePasswordLogin} className="space-y-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-text-secondary font-medium">
-                    Welcome back! {fullPhone()}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={resetFlow}
-                    className="text-xs text-primary font-semibold hover:underline"
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {/* ── Mobile Number ── */}
+            <div className="space-y-1.5">
+              <label className="form-label">Mobile Number</label>
+              <div className="flex gap-2">
+                <div className="relative shrink-0">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => {
+                      setCountryCode(e.target.value);
+                      if (phone.length === 10) {
+                        clearTimeout(checkRef.current);
+                        checkRef.current = setTimeout(
+                          () => checkPhone(e.target.value + phone),
+                          300
+                        );
+                      }
+                    }}
+                    className="field-select !pr-7 !pl-3 !w-[88px] text-center font-bold text-sm"
                   >
-                    Not you?
-                  </button>
+                    {COUNTRY_CODES.map((cc) => (
+                      <option key={`${cc.code}-${cc.label}`} value={cc.code}>
+                        {cc.flag} {cc.code}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="form-label">Password</label>
-                  <div className="relative">
-                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
-                    <input
-                      required
-                      type={showTenantPassword ? "text" : "password"}
-                      className="field-input pl-11 pr-11"
-                      placeholder="Enter your password"
-                      value={tenantPassword}
-                      onChange={(e) => setTenantPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowTenantPassword(!showTenantPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
-                    >
-                      {showTenantPassword ? (
-                        <MdVisibilityOff size={18} />
-                      ) : (
-                        <MdVisibility size={18} />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <button
-                  disabled={loading || !tenantPassword}
-                  type="submit"
-                  className="btn btn-primary w-full py-4"
-                >
-                  {loading ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />{" "}
-                      Signing in...
-                    </>
-                  ) : (
-                    "Sign in"
+                <div className="relative flex-1">
+                  <MdPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                  <input
+                    required
+                    type="tel"
+                    inputMode="numeric"
+                    className="field-input pl-11 font-mono tracking-wider text-lg"
+                    placeholder="0000000000"
+                    value={phone}
+                    onChange={handlePhoneChange}
+                    autoFocus
+                  />
+                  {/* Checking spinner inside the input */}
+                  {isChecking && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                   )}
-                </button>
-                {loginError && (
-                  <p className="text-[10px] text-danger font-semibold mt-3 text-center">
-                    {loginError}
-                  </p>
-                )}
-              </form>
-            )}
+                  {/* Check mark when resolved */}
+                  {!isChecking && showPasswordField && (
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-primary text-base font-bold">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </div>
+              {phoneError && (
+                <p className="text-[10px] text-danger font-semibold mt-1 ml-1">{phoneError}</p>
+              )}
+            </div>
 
-            {tenantFlow === "set-password" && (
-              <form onSubmit={handleSetInitialPassword} className="space-y-5" noValidate>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-text-secondary font-medium">
-                    Create your password for {fullPhone()}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={resetFlow}
-                    className="text-xs text-primary font-semibold hover:underline"
-                  >
-                    Not you?
-                  </button>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="form-label">Create New Password</label>
-                  <div className="relative">
-                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
-                    <input
-                      required
-                      type={showNewPassword ? "text" : "password"}
-                      className="field-input pl-11 pr-11"
-                      placeholder="At least 8 characters"
-                      value={newPassword}
-                      onChange={(e) => {
-                        setNewPassword(e.target.value);
-                        if (newPasswordError) setNewPasswordError("");
-                      }}
-                      aria-invalid={!!newPasswordError}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
-                      aria-label={showNewPassword ? "Hide password" : "Show password"}
-                    >
-                      {showNewPassword ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
-                    </button>
-                  </div>
-                  {newPasswordError && (
-                    <p className="text-[10px] text-danger font-semibold mt-1 ml-1" role="alert">
-                      {newPasswordError}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="form-label">Confirm Password</label>
-                  <div className="relative">
-                    <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
-                    <input
-                      required
-                      type={showConfirmPassword ? "text" : "password"}
-                      className="field-input pl-11 pr-11"
-                      placeholder="Re-enter password"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        if (confirmPasswordError) setConfirmPasswordError("");
-                      }}
-                      aria-invalid={!!confirmPasswordError}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                    >
-                      {showConfirmPassword ? (
-                        <MdVisibilityOff size={18} />
-                      ) : (
-                        <MdVisibility size={18} />
-                      )}
-                    </button>
-                  </div>
-                  {confirmPasswordError && (
-                    <p className="text-[10px] text-danger font-semibold mt-1 ml-1" role="alert">
-                      {confirmPasswordError}
-                    </p>
-                  )}
-                </div>
-                <button
-                  disabled={loading || !newPassword || !confirmPassword}
-                  type="submit"
-                  className="btn btn-primary w-full py-4"
-                >
-                  {loading ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />{" "}
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Password & Login"
-                  )}
-                </button>
-                {loginError && (
-                  <p className="text-[10px] text-danger font-semibold mt-3 text-center">
-                    {loginError}
-                  </p>
-                )}
+            {/* ── Password ── */}
+            <div
+              className="space-y-1.5 transition-all duration-300"
+              style={{
+                opacity: showPasswordField ? 1 : 0.35,
+                pointerEvents: showPasswordField ? "auto" : "none",
+              }}
+            >
+              <label className="form-label">
+                {phoneStatus === "no-password" ? "Create Password" : "Password"}
+              </label>
+              <div className="relative">
+                <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                <input
+                  ref={passwordRef}
+                  required={showPasswordField}
+                  type={showPassword ? "text" : "password"}
+                  className="field-input pl-11 pr-11"
+                  placeholder={
+                    phoneStatus === "no-password" ? "At least 8 characters" : "Enter your password"
+                  }
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (passwordError) setPasswordError("");
+                    if (loginError) setLoginError("");
+                  }}
+                  aria-invalid={!!passwordError}
+                  tabIndex={showPasswordField ? 0 : -1}
+                />
                 <button
                   type="button"
-                  onClick={resetFlow}
-                  className="w-full text-[10px] text-text-tertiary font-medium hover:text-text-primary"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  tabIndex={showPasswordField ? 0 : -1}
                 >
-                  Use different number
+                  {showPassword ? <MdVisibilityOff size={18} /> : <MdVisibility size={18} />}
                 </button>
-              </form>
+              </div>
+              {passwordError && (
+                <p className="text-[10px] text-danger font-semibold mt-1 ml-1" role="alert">
+                  {passwordError}
+                </p>
+              )}
+            </div>
+
+            {/* ── Confirm Password (only for new accounts) ── */}
+            <div
+              className="overflow-hidden transition-all duration-300"
+              style={{
+                maxHeight: showConfirmField ? "120px" : "0px",
+                opacity: showConfirmField ? 1 : 0,
+              }}
+            >
+              <div className="space-y-1.5 pt-1">
+                <label className="form-label">Confirm Password</label>
+                <div className="relative">
+                  <MdLock className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary text-lg" />
+                  <input
+                    ref={confirmRef}
+                    required={showConfirmField}
+                    type={showConfirmPassword ? "text" : "password"}
+                    className="field-input pl-11 pr-11"
+                    placeholder="Re-enter password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (confirmPasswordError) setConfirmPasswordError("");
+                    }}
+                    aria-invalid={!!confirmPasswordError}
+                    tabIndex={showConfirmField ? 0 : -1}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    tabIndex={showConfirmField ? 0 : -1}
+                  >
+                    {showConfirmPassword ? (
+                      <MdVisibilityOff size={18} />
+                    ) : (
+                      <MdVisibility size={18} />
+                    )}
+                  </button>
+                </div>
+                {confirmPasswordError && (
+                  <p className="text-[10px] text-danger font-semibold mt-1 ml-1" role="alert">
+                    {confirmPasswordError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ── Helper label for new accounts ── */}
+            {phoneStatus === "no-password" && (
+              <p className="text-[11px] text-primary/80 font-medium -mt-1">
+                👋 First time? Create a password to access your account.
+              </p>
             )}
-          </div>
+
+            {/* ── Error ── */}
+            {loginError && (
+              <p className="text-[10px] text-danger font-semibold text-center" role="alert">
+                {loginError}
+              </p>
+            )}
+
+            {/* ── Submit ── */}
+            <button type="submit" disabled={!canSubmit} className="btn btn-primary w-full py-4">
+              {loading ? (
+                <>
+                  <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                  {phoneStatus === "no-password" ? "Creating..." : "Signing in..."}
+                </>
+              ) : (
+                submitLabel
+              )}
+            </button>
+
+            {/* ── Change number ── */}
+            {showPasswordField && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPhone("");
+                  setPhoneStatus("idle");
+                  setPassword("");
+                  setConfirmPassword("");
+                  setPasswordError("");
+                  setConfirmPasswordError("");
+                  setLoginError("");
+                }}
+                className="w-full text-[11px] text-text-tertiary font-medium hover:text-text-primary transition-colors"
+              >
+                Use a different number
+              </button>
+            )}
+          </form>
         </div>
       </div>
     </div>
