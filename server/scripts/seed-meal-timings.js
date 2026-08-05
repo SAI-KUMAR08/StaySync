@@ -1,6 +1,7 @@
 /**
  * Seed script to populate meal timings and menu exactly as specified
  * in "Food Timings.docx" and "Menu - SRI RAMA LUXURY MENS PG HOSTEL.docx"
+ * for ALL hostels in the system.
  *
  * Run: node scripts/seed-meal-timings.js
  */
@@ -16,7 +17,7 @@ async function seed() {
   await mongoose.connect(uri, { dbName });
   const db = mongoose.connection.db;
 
-  // Create or find the admin owner
+  // Find all owners or default admin
   let owner = await db.collection("owners").findOne({ email: "pravitha.555@gmail.com" });
   if (!owner) {
     const hashed = await bcrypt.hash("Srirama@1234", 10);
@@ -32,18 +33,16 @@ async function seed() {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    owner = result.insertedId
-      ? await db.collection("owners").findOne({ _id: result.insertedId })
-      : null;
+    owner = await db.collection("owners").findOne({ _id: result.insertedId });
     console.log("Created admin owner.");
   }
 
-  // Create or find a default hostel
-  let hostel = await db.collection("hostels").findOne({ ownerId: owner._id });
-  if (!hostel) {
+  // Get ALL hostels
+  let hostels = await db.collection("hostels").find({}).toArray();
+  if (hostels.length === 0) {
     const result = await db.collection("hostels").insertOne({
       ownerId: owner._id,
-      name: "My Hostel",
+      name: "Sri Rama",
       address: "",
       city: "",
       isActive: true,
@@ -54,25 +53,13 @@ async function seed() {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    hostel = result.insertedId
-      ? await db.collection("hostels").findOne({ _id: result.insertedId })
-      : null;
+    hostels = [await db.collection("hostels").findOne({ _id: result.insertedId })];
     console.log("Created default hostel.");
   }
 
-  const f = { ownerId: owner._id, hostelId: hostel._id };
   const now = new Date();
 
-  // Clear existing meal timings for this hostel
-  await db.collection("mealtimings").deleteMany(f);
-  console.log("Cleared existing meal timings.");
-
   // ── Timings from Food Timings.docx ──
-  // Breakfast: 07:30 AM - 09:30 AM
-  // Lunch: 12:30 PM - 02:30 PM
-  // Dinner: 07:30 PM - 09:30 PM
-  // Evening Snacks (evening refreshments, per the portal's 4 meal types)
-
   const mealTypes = [
     { mealType: "breakfast", name: "Breakfast", startTime: "07:30", endTime: "09:30" },
     { mealType: "lunch", name: "Lunch", startTime: "12:30", endTime: "14:30" },
@@ -81,7 +68,6 @@ async function seed() {
   ];
 
   // ── Weekly Menu from Menu docx ──
-  // Each day has breakfast, lunch, dinner items exactly as written
   const weeklyMenu = {
     sunday: {
       breakfast: ["Upma", "Chutney"],
@@ -137,37 +123,40 @@ async function seed() {
     saturday: 6,
   };
 
-  // Create meal timing entries for each day × meal type
-  let count = 0;
-  for (const [dayName, dayIndex] of Object.entries(dayMap)) {
-    const menu = weeklyMenu[dayName];
-    for (const mt of mealTypes) {
-      const dayMenu = menu[mt.mealType] || [];
-      await db.collection("mealtimings").insertOne({
-        ...f,
-        mealType: mt.mealType,
-        name: mt.name,
-        items: dayMenu,
-        startTime: mt.startTime,
-        endTime: mt.endTime,
-        isActive: true,
-        dayOfWeek: dayIndex,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      count++;
+  let totalCount = 0;
+
+  for (const hostel of hostels) {
+    const filter = { hostelId: hostel._id };
+    await db.collection("mealtimings").deleteMany(filter);
+
+    const ownerId = hostel.ownerId || owner._id;
+
+    for (const [dayName, dayIndex] of Object.entries(dayMap)) {
+      const menu = weeklyMenu[dayName];
+      for (const mt of mealTypes) {
+        const dayMenu = menu[mt.mealType] || [];
+        await db.collection("mealtimings").insertOne({
+          ownerId,
+          hostelId: hostel._id,
+          mealType: mt.mealType,
+          name: mt.name,
+          items: dayMenu,
+          startTime: mt.startTime,
+          endTime: mt.endTime,
+          isActive: true,
+          dayOfWeek: dayIndex,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        totalCount++;
+      }
     }
+    console.log(`Seeded 28 meal timing entries for hostel "${hostel.name}" (${hostel._id})`);
   }
 
   console.log(
-    `✅ Seeded ${count} meal timing entries (4 meals × 7 days) with exact data from documents.`
+    `\n✅ Total Seeded: ${totalCount} meal timing entries across ${hostels.length} hostel(s).`
   );
-  console.log(
-    `Last seeded: ${getEnglishMonthName(now)} ${now.getFullYear()} — weekly menu applies every week.`
-  );
-  console.log("Timings:");
-  mealTypes.forEach((mt) => console.log(`  ${mt.name}: ${mt.startTime} - ${mt.endTime}`));
-  console.log("Weekly menu items populated for all 7 days.");
 
   await mongoose.disconnect();
 }
