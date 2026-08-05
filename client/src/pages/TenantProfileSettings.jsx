@@ -170,8 +170,10 @@ const TenantProfileSettings = () => {
           : (profile[key] || "").trim();
       if (next !== cur) payload[key] = next;
     }
-    if (idProofFile) payload.idProof = idProofFile;
-    if (offlineFormFile) payload.offlineBookingForm = offlineFormFile;
+    const docs = [];
+    if (idProofFile) docs.push({ name: "ID Proof", url: idProofFile });
+    if (offlineFormFile) docs.push({ name: "Offline Application Form", url: offlineFormFile });
+    if (docs.length > 0) payload.documents = docs;
     if (Object.keys(payload).length === 0) {
       toast.error("No changes to submit — your profile already has these values.");
       return;

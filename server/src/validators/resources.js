@@ -350,7 +350,7 @@ export const mealTimingSchema = z.object({
     items: mealItems,
     startTime: timeFormat.optional(),
     endTime: timeFormat.optional(),
-    dayOfWeek: z.coerce.number().int().min(0).max(6).nullable().optional(),
+    dayOfWeek: z.union([z.number().int().min(0).max(6), z.null()]).optional(),
   }),
 });
 
@@ -362,7 +362,7 @@ export const mealTimingUpdateSchema = z.object({
     items: mealItems,
     startTime: timeFormat.optional(),
     endTime: timeFormat.optional(),
-    dayOfWeek: z.coerce.number().int().min(0).max(6).nullable().optional(),
+    dayOfWeek: z.union([z.number().int().min(0).max(6), z.null()]).optional(),
     isActive: z.boolean().optional(),
   }),
 });

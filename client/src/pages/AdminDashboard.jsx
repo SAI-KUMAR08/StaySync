@@ -16,11 +16,211 @@ import {
   MdPayment,
   MdSwapHoriz,
   MdExitToApp,
+  MdAccessTime,
+  MdRestaurant,
+  MdEdit,
 } from "react-icons/md";
 import { Link } from "react-router-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { usePaymentTotals } from "../context/PaymentContext";
+
+const MEAL_ICONS = { breakfast: "🌅", lunch: "☀️", snacks: "🍪", dinner: "🌙" };
+const MEAL_LABELS = { breakfast: "Breakfast", lunch: "Lunch", snacks: "Snacks", dinner: "Dinner" };
+const MEAL_ORDER = ["breakfast", "lunch", "snacks", "dinner"];
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// ── Live Meal Preview (admin) ──
+const MealPreview = ({ socket }) => {
+  const [timings, setTimings] = useState([]);
+  const [mealLoading, setMealLoading] = useState(true);
+
+  const fetchMeals = useCallback(async () => {
+    try {
+      const res = await api.get("/owner/meal-timings");
+      setTimings(Array.isArray(res.data.data) ? res.data.data : []);
+    } catch {
+      /* non-critical */
+    } finally {
+      setMealLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchMeals();
+  }, [fetchMeals]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on("meal_timing_updated", fetchMeals);
+    return () => socket.off("meal_timing_updated", fetchMeals);
+  }, [socket, fetchMeals]);
+
+  const globalTimings = timings.filter((t) => t.dayOfWeek === null);
+  const byMeal = {};
+  globalTimings.forEach((t) => {
+    byMeal[t.mealType] = t;
+  });
+  const hasTiming = MEAL_ORDER.some((m) => byMeal[m]?.startTime);
+
+  const todayIdx = new Date().getDay();
+  const weekRows = DAY_SHORT.map((short, i) => {
+    const row = { day: short, isToday: i === todayIdx };
+    MEAL_ORDER.forEach((meal) => {
+      const global = timings.find((t) => t.mealType === meal && t.dayOfWeek === null);
+      const specific = timings.find((t) => t.mealType === meal && t.dayOfWeek === i);
+      row[meal] = (specific || global)?.items?.join(", ") || "";
+    });
+    return row;
+  });
+  const hasMenu = weekRows.some((r) => r.breakfast || r.lunch || r.snacks || r.dinner);
+
+  if (mealLoading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {[0, 1].map((i) => (
+          <div key={i} className={`card card-md ${i === 1 ? "lg:col-span-2" : ""}`}>
+            <div className="skeleton h-5 w-32 mb-3" />
+            {[0, 1, 2].map((j) => (
+              <div key={j} className="skeleton h-8 rounded-lg mt-2" />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!hasTiming && !hasMenu) {
+    return (
+      <div className="card card-md flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-text-primary">Meal Timings &amp; Menu</p>
+          <p className="text-xs text-text-tertiary mt-0.5">No meals configured yet for residents</p>
+        </div>
+        <Link
+          to="/admin/meal-timings"
+          className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+        >
+          <MdEdit size={14} /> Set Up Meals
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Food Timings */}
+      {hasTiming && (
+        <div className="card card-md">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <MdAccessTime className="text-amber-600" size={18} />
+              </div>
+              <p className="text-sm font-bold text-text-primary">Food Timings</p>
+            </div>
+            <Link
+              to="/admin/meal-timings"
+              className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
+            >
+              <MdEdit size={12} /> Edit
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {MEAL_ORDER.map((meal) => {
+              const entry = byMeal[meal];
+              if (!entry?.startTime) return null;
+              const time = [entry.startTime, entry.endTime].filter(Boolean).join(" – ");
+              return (
+                <div
+                  key={meal}
+                  className="flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50/60 border border-amber-200/40"
+                >
+                  <span className="text-xs font-medium text-text-primary flex items-center gap-2">
+                    <span>{MEAL_ICONS[meal]}</span> {MEAL_LABELS[meal]}
+                  </span>
+                  <span className="text-[10px] font-mono text-amber-700">{time}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Weekly Menu */}
+      {hasMenu && (
+        <div className={`${hasTiming ? "lg:col-span-2" : "lg:col-span-3"} card card-md`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <MdRestaurant className="text-emerald-600" size={18} />
+              </div>
+              <p className="text-sm font-bold text-text-primary">Weekly Menu</p>
+            </div>
+            <Link
+              to="/admin/meal-timings"
+              className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
+            >
+              <MdEdit size={12} /> Edit
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px] min-w-[460px]">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <th className="text-left py-1.5 px-2 text-[9px] font-bold text-text-tertiary uppercase w-10">
+                    Day
+                  </th>
+                  <th className="text-left py-1.5 px-2 text-[9px] font-bold text-amber-600 uppercase">
+                    🍳 Breakfast
+                  </th>
+                  <th className="text-left py-1.5 px-2 text-[9px] font-bold text-emerald-600 uppercase">
+                    🍛 Lunch
+                  </th>
+                  <th className="text-left py-1.5 px-2 text-[9px] font-bold text-primary uppercase">
+                    🌙 Dinner
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {weekRows.map(({ day, isToday, breakfast, lunch, dinner }, i) => (
+                  <tr
+                    key={day}
+                    className={`border-b border-border/20 ${
+                      isToday ? "bg-primary/[0.04]" : i % 2 === 0 ? "bg-black/[0.01]" : ""
+                    }`}
+                  >
+                    <td className="py-2 px-2">
+                      <span
+                        className={`font-bold ${isToday ? "text-primary" : "text-text-secondary"}`}
+                      >
+                        {day}
+                        {isToday && (
+                          <span className="ml-1 text-[7px] bg-primary text-white px-1 py-0.5 rounded">
+                            Today
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-text-secondary">
+                      {breakfast || <span className="text-text-tertiary/30">—</span>}
+                    </td>
+                    <td className="py-2 px-2 text-text-secondary">
+                      {lunch || <span className="text-text-tertiary/30">—</span>}
+                    </td>
+                    <td className="py-2 px-2 text-text-secondary">
+                      {dinner || <span className="text-text-tertiary/30">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Animated counter ──
 const useAnimatedNumber = (target, duration = 1000) => {
@@ -619,6 +819,22 @@ const AdminDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* ── Meal Timings & Menu Preview ── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[9px] font-bold text-text-tertiary uppercase tracking-widest">
+            Meal Schedule
+          </p>
+          <Link
+            to="/admin/meal-timings"
+            className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline"
+          >
+            Manage Meals <MdArrowForward size={12} />
+          </Link>
+        </div>
+        <MealPreview socket={socket} />
+      </div>
     </div>
   );
 };
