@@ -19,6 +19,7 @@ const LOCAL_DEV_ORIGINS = [
 
 const DEPLOYED_FRONTENDS = [
   "https://stay-sync.vercel.app",
+  "https://stay-sync-six.vercel.app",
   "https://my-hostel-client.vercel.app",
   "https://hostel-frountend.vercel.app",
   "https://hostel-frontend.vercel.app",
