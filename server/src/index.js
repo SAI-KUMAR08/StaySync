@@ -112,15 +112,14 @@ io.on("connection", (socket) => {
 // Attach io to app so controllers can use it
 app.set("io", io);
 
-// Connect to Database
-connectDB()
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+// Start listening on PORT immediately so Railway / cloud provider healthchecks pass
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  connectDB()
+    .then(() => {
       initCronJobs();
+    })
+    .catch((err) => {
+      console.error("Failed to connect to MongoDB:", err);
     });
-  })
-  .catch((err) => {
-    console.error("Failed to connect to MongoDB", err);
-    process.exit(1);
-  });
+});
