@@ -1,5 +1,4 @@
 import { Tenant, OTP } from "../../models/index.js";
-import { env } from "../../config/env.js";
 import { ACCOUNT } from "../../utils/constants.js";
 import { AppError } from "../../middleware/error.middleware.js";
 import { normalizePhone } from "../../utils/phone.js";
@@ -76,7 +75,7 @@ export async function sendTenantOtp({ phone }) {
     });
   }
 
-  return { message: "OTP sent successfully", ...(!env.SEND_REAL_EMAIL ? { otp: otpVal } : {}) };
+  return { message: "OTP sent successfully" };
 }
 
 export async function verifyTenantOtp({ phone, otp }, meta = {}) {

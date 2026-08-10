@@ -36,7 +36,7 @@
 | **Auth** | JWT (access + refresh tokens) | Stateless auth with rotation & reuse detection |
 | **Real-time** | Socket.io 4 | Bidirectional WebSocket communication per hostel room |
 | **Cron** | node-cron | Monthly rent generation, incomplete-profile checks, tenant cleanup |
-| **Email** | Nodemailer | OTP and notification emails |
+| **Email** | Resend SDK | OTP emails; no fallback — OTP requests fail with a config error without `RESEND_API_KEY` |
 | **Payments** | Payment tracking + admin-approved requests | Tenant submits a payment request; owner approves/rejects |
 | **Security** | Helmet, CORS, rate limiting, mongo-sanitize | Production-grade middleware stack |
 | **Deployment** | Vercel static SPA + Railway long-running | Client calls Railway `/api` via `VITE_API_URL`; Railway runs full Socket.IO + cron |
@@ -459,7 +459,7 @@ Single monthly cron (`0 0 3 * *`):
 - Cooldown: 15 seconds between requests
 - Storage: OTP collection with upsert per userId+mobile
 - Verification: Checks latest unverified OTP by userId
-- Dev mode: when `SEND_REAL_EMAIL=false`, the generated OTP is returned in the API response (dev only) and logged to the console — no email is sent
+- Delivery: OTPs are delivered exclusively through Resend (`sendOtpEmail` in `emailService.js`). There is no dev fallback — without `RESEND_API_KEY` the send fails with a clear config error in any environment; OTPs are never logged or echoed in API responses.
 ```
 
 ### Data Scoping & Isolation
@@ -539,7 +539,7 @@ All cron jobs run via `node-cron` and are initialized in `cronService.js`:
 Production topology: **Vercel serves the static React SPA; Railway runs the long-running backend** (REST API + Socket.IO + cron jobs).
 
 - **Vercel (static frontend)** — `vercel.json` builds `client/dist` and serves it as a static SPA (every path rewrites to `/index.html`). The client is built with `VITE_API_URL=https://<your-service>.up.railway.app`, so both axios (`/api`) and the Socket.IO client target Railway. The former serverless handler (`api/index.js`) and its `/api` rewrite were removed on 2026-08-03 — Vercel no longer runs the API.
-- **Railway (long-running backend, required)** — create a Railway service from this repo with Root Directory `server`; `server/railway.toml` drives the build (`npm start`) and the `/api/health` healthcheck. Paid Railway plans run continuously (Socket.IO + node-cron stay alive). Requires the env vars in `docs/DEPLOYMENT.md` (`SEND_REAL_EMAIL=true`, SMTP_*, ADMIN_*, distinct JWT/refresh secrets — startup fails otherwise).
+- **Railway (long-running backend, required)** — create a Railway service from this repo with Root Directory `server`; `server/railway.toml` drives the build (`npm start`) and the `/api/health` healthcheck. Paid Railway plans run continuously (Socket.IO + node-cron stay alive). Requires the env vars in `docs/DEPLOYMENT.md` (`RESEND_API_KEY`, `RESEND_FROM_EMAIL`, ADMIN_*, distinct JWT/refresh secrets — startup fails otherwise).
 
 ---
 
@@ -621,17 +621,18 @@ MONGO_DB_NAME=smart-hostel
 JWT_SECRET=...
 REFRESH_TOKEN_SECRET=...
 CLIENT_URL=http://localhost:5173
-SEND_REAL_EMAIL=false       # When false, OTPs are returned in the API response (dev only)
+RESEND_API_KEY=            # Required for any OTP delivery; without it OTP requests fail (no dev fallback, no logging)
+RESEND_FROM_EMAIL=         # Required in production (sender address for Resend)
 
 # Client (.env.development)
 VITE_DEV_PROXY_TARGET=http://localhost:5000
 ```
 
-### Dev OTP Behavior
-When `SEND_REAL_EMAIL=false` (default in dev):
-- OTPs are random 6-digit codes (crypto.randomInt)
-- The OTP is included in the API response (dev only) and logged to the console — no email is sent
-- When `SEND_REAL_EMAIL=true`, OTPs are emailed via SMTP and are never returned in the response
+### OTP Delivery Behavior
+- OTPs are random 6-digit codes (crypto.randomInt) delivered **only through Resend** (`resend.emails.send`).
+- Without `RESEND_API_KEY`, an OTP request fails with a clear config error — there is no console/log fallback in any environment (development included).
+- OTPs are never logged to the server console and never returned in API responses in any environment.
+- Production: `RESEND_API_KEY` + `RESEND_FROM_EMAIL` are required (startup fails otherwise).
 
 ---
 
@@ -709,6 +710,22 @@ When `SEND_REAL_EMAIL=false` (default in dev):
 ## 📝 Recent Changes
 
 > This section is updated every session. Newest entries at the top.
+
+### 2026-08-08 — OTP email delivery migrated from SMTP (Nodemailer) to Resend (no dev fallback/logging)
+> User-requested migration. OTP generation/expiry/verification/rate limiting/attempt limits are untouched (`services/auth/helpers.js`). OTP delivery is now Resend-only — there is no development fallback, console logging, or OTP echoing; the auth layer stays provider-agnostic.
+- **`services/emailService.js` rewritten (no SMTP)**: `createEmailService({ resendKey, fromEmail, nodeEnv, ResendClient, log })` builds a provider-bound service; the app uses the default singleton bound to `env`. Resend SDK (`resend.emails.send`) is the only provider; without `RESEND_API_KEY` sending fails with a clear error in every environment (development included) — no OTP is logged or echoed anywhere. OTP email template/purpose strings unchanged. Resend failure → sanitized ops log (never the OTP) + curated `AppError` (502) — delivery is never claimed when it failed. (A dev `[DEV OTP]` logger existed in an earlier draft of this change and was removed per user request.)
+- **`config/env.js`**: removed `SMTP_HOST/PORT/USER/PASS`, `EMAIL_FROM`, `SEND_REAL_EMAIL`; added `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (both optional so the server can boot without an email provider). The production fail-closed gate now requires **`RESEND_API_KEY` and `RESEND_FROM_EMAIL`** (was `SEND_REAL_EMAIL="true"`) — startup fails with a clear message; OTPs are never logged/echoed in production.
+- **`services/auth/ownerAuth.js` / `tenantAuth.js`**: removed the dev-only OTP echo (was `!env.SEND_REAL_EMAIL`); OTP responses now always return just the message. tenantAuth's now-unused `env` import removed. No other auth logic touched — bcrypt login, account lockout, OTP cooldown/expiry/failedAttempts, session family rotation, and other response shapes are byte-for-byte intact.
+- **Dependencies**: `nodemailer@9` removed, `resend@^6.18.1` added in **both** `server/package.json` and root `package.json` (repo-root Railway deploy) + lockfiles. `npm audit` server: 1 remaining high is pre-existing/unrelated (unrelated to email).
+- **Tests**: new `server/tests/email-service.test.js` (9 tests): no-provider rejects in dev AND production (OTP never logged/rendered), Resend success payload + sender, Resend failure → generic error + no OTP in logs, dev `RESEND_FROM_EMAIL` fallback to `onboarding@resend.dev`, production-requires-from (Resend not called), plus 3 subprocess tests proving `env.js` boot fails closed (missing `RESEND_API_KEY` / missing `RESEND_FROM_EMAIL`) and succeeds with both. Every test asserts the OTP is never logged or rendered.
+- **Config/docs**: `server/.env.example`, `docs/DEPLOYMENT.md`, `README.md`, and this CLAUDE.md updated (tech stack, OTP system, key env vars, OTP delivery behavior) to document Resend-only delivery with no dev fallback. No client changes (frontend never consumed the echoed dev OTP).
+- **Manual steps (not code)**: add `RESEND_API_KEY` + `RESEND_FROM_EMAIL` to Railway Variables and remove the stale `SMTP_HOST/PORT/USER/PASS`/`EMAIL_FROM`/`SEND_REAL_EMAIL` vars; verify the sender domain in Resend; delete leftover `node_modules` temp dirs already removed. Local `server/.env` can stay as-is (SMTP vars ignored) or be trimmed.
+- **`config/env.js`**: removed `SMTP_HOST/PORT/USER/PASS`, `EMAIL_FROM`, `SEND_REAL_EMAIL`; added `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (both optional in dev). The production fail-closed gate now requires **`RESEND_API_KEY` and `RESEND_FROM_EMAIL`** (was `SEND_REAL_EMAIL="true"`) — startup fails with a clear message; OTPs are never logged/echoed in production.
+- **`services/auth/ownerAuth.js` / `tenantAuth.js`**: dev OTP echo switched from `!env.SEND_REAL_EMAIL` to `shouldEchoDevOtp()`; tenantAuth's now-unused `env` import removed. No other auth logic touched — bcrypt login, account lockout, OTP cooldown/expiry/failedAttempts, session family rotation, and the response shapes are byte-for-byte intact (only the echo condition changed).
+- **Dependencies**: `nodemailer@9` removed, `resend@^6.18.1` added in **both** `server/package.json` and root `package.json` (repo-root Railway deploy) + lockfiles. `npm audit` server: 1 remaining high is pre-existing/unrelated (unrelated to email).
+- **Tests**: new `server/tests/email-service.test.js` (11 tests): dev OTP logging (to/OTP/expiry, `[DEV OTP]` marker), echo gating (`shouldEchoDevOtp`), Resend success payload + sender, Resend failure → sanitized error + no OTP in logs + no fallback to dev logger, production-missing-key fails loudly without logging the OTP, dev `RESEND_FROM_EMAIL` fallback to `onboarding@resend.dev`, production-requires-from, plus 3 subprocess tests proving `env.js` boot fails closed (missing `RESEND_API_KEY` / missing `RESEND_FROM_EMAIL`) and succeeds with both.
+- **Config/docs**: `server/.env.example`, `docs/DEPLOYMENT.md`, `README.md`, and this CLAUDE.md updated (tech stack, OTP system, key env vars, dev OTP behavior) to document Resend behavior: optional in dev (dev-log fallback), required in production. No client changes (frontend never consumed the echoed dev OTP).
+- **Manual steps (not code)**: add `RESEND_API_KEY` + `RESEND_FROM_EMAIL` to Railway Variables and remove the stale `SMTP_HOST/PORT/USER/PASS`/`EMAIL_FROM`/`SEND_REAL_EMAIL` vars; verify the sender domain in Resend; delete `node_modules/package-lock` diffs are committed. Local `server/.env` can stay as-is (SMTP vars ignored) or be trimmed.
 
 ### 2026-08-04 — Railway deploy fix: root `railway.toml` makes repo-root services build (client build skipped)
 > User's Railway service was rooted at the **repo root**, so Railpack ran the root `package.json` scripts: `npm run build` (= `cd client && npx vite build`) crashed with `Cannot find package 'vite'` (client deps aren't installed at the root). Root cause was a dashboard setting (Root Directory), not code; the server itself boots from the repo root because the root `package.json` already lists all server deps (Node parent-resolution from `/app/node_modules`).

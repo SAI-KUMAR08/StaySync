@@ -170,7 +170,7 @@ export async function sendOwnerOtp({ name, email, password, phone, hostelName, a
     name: name.trim(),
   });
 
-  return { message: "OTP sent successfully", ...(!env.SEND_REAL_EMAIL ? { otp: otpVal } : {}) };
+  return { message: "OTP sent successfully" };
 }
 
 /**
@@ -465,7 +465,6 @@ export async function sendOwnerForgotOtp({ email }) {
 
   return {
     message: "OTP sent to your registered email",
-    ...(!env.SEND_REAL_EMAIL ? { otp: otpVal } : {}),
   };
 }
 

@@ -19,16 +19,11 @@ const envSchema = z.object({
   // Predefined admin account. Override in production (.env) — defaults keep existing deployments working.
   ADMIN_EMAIL: z.string().default("pravitha.555@gmail.com"),
   ADMIN_PASSWORD: z.string().default("Srirama@1234"),
-  // SMTP — email delivery for OTPs
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  EMAIL_FROM: z.string().optional(),
-  SEND_REAL_EMAIL: z
-    .enum(["true", "false", "1", "0"])
-    .default("false")
-    .transform((v) => v === "true" || v === "1"),
+  // Email — OTPs are delivered through Resend. RESEND_API_KEY is optional at
+  // startup so the server can boot without an email provider, but any OTP send
+  // fails with a clear config error when it is unset (even in development).
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
   RUN_MIGRATIONS: z
     .enum(["true", "false", "1", "0"])
     .default("true")
@@ -76,11 +71,17 @@ export const env = {
 // Fail-closed production gates. Serverless (Vercel) deployments skip these so a
 // cold start can surface a clear error through the handler instead of crashing.
 if (env.NODE_ENV === "production" && !process.env.VERCEL) {
-  // SEND_REAL_EMAIL=false echoes OTPs in API responses — never acceptable in
-  // production. It must be explicitly enabled ("true") or startup fails.
-  if (process.env.SEND_REAL_EMAIL !== "true") {
+  // OTPs must be deliverable in production. Real email goes through Resend;
+  // without a key the service refuses to start instead of silently printing
+  // OTPs to the console (never acceptable in production).
+  if (!process.env.RESEND_API_KEY) {
     throw new Error(
-      'SEND_REAL_EMAIL must be explicitly set to "true" in production. When false, OTP codes are echoed in API responses — that is only acceptable for local development.'
+      "RESEND_API_KEY must be set in production. OTP emails are delivered through Resend; OTP codes are never logged or echoed when the key is missing."
+    );
+  }
+  if (!process.env.RESEND_FROM_EMAIL) {
+    throw new Error(
+      "RESEND_FROM_EMAIL must be set in production (the sender address Resend uses for OTP emails)."
     );
   }
 

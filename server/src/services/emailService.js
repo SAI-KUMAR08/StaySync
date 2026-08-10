@@ -1,68 +1,103 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { env } from "../config/env.js";
+import { AppError } from "../middleware/error.middleware.js";
 
 /**
- * Create a Nodemailer transporter from SMTP env vars.
- * Returns null if SMTP is not configured.
+ * Email delivery abstraction.
+ *
+ * Resend (official SDK) is the ONLY provider. When RESEND_API_KEY is not
+ * configured, sending fails with a clear configuration error — there is no
+ * development fallback, no OTP logging, and no OTP echoing. OTP values are
+ * never logged and never surfaced in API responses in any environment.
  */
-function createTransporter() {
-  if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS) {
-    return null;
-  }
 
-  return nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_PORT === 465,
-    auth: {
-      user: env.SMTP_USER,
-      pass: env.SMTP_PASS,
-    },
-  });
-}
-
-const transporter = createTransporter();
+/** Resend's documented test sender — dev/test fallback when RESEND_FROM_EMAIL is unset. */
+const DEV_SENDER_FALLBACK = "Sri Rama Hostel <onboarding@resend.dev>";
 
 /**
- * Send an email via SMTP.
- * Falls back to console.log when SMTP is not configured.
- * Never throws — failures are logged and swallowed.
+ * Create an email service bound to a delivery configuration.
+ *
+ * @param {Object} opts
+ * @param {string} [opts.resendKey]       - Resend API key (RESEND_API_KEY)
+ * @param {string} [opts.fromEmail]       - Resend sender address (RESEND_FROM_EMAIL)
+ * @param {string} [opts.nodeEnv]         - "development" | "test" | "production"
+ * @param {Function} [opts.ResendClient]  - Resend SDK class (injectable for tests)
+ * @param {Console} [opts.log]            - Logger (defaults to console; injectable for tests)
  */
-export async function sendEmail({ to, subject, html }) {
-  if (!transporter || !env.SEND_REAL_EMAIL) {
-    console.log(`[EMAIL][mock] To: ${to} | Subject: ${subject}`);
-    console.log(`[EMAIL][mock] Body:\n${html.replace(/<[^>]*>/g, "").trim().slice(0, 200)}...`);
-    return { sent: false, mock: true };
+export function createEmailService({
+  resendKey,
+  fromEmail,
+  nodeEnv = "development",
+  ResendClient = Resend,
+  log = console,
+}) {
+  const resend = resendKey ? new ResendClient(resendKey) : null;
+
+  /** Is the Resend provider configured? */
+  function isResendConfigured() {
+    return Boolean(resend);
   }
 
-  try {
-    await transporter.sendMail({
-      from: env.EMAIL_FROM || `"Sri Rama Hostel" <${env.SMTP_USER}>`,
+  /** Resolve the sender address Resend must use. */
+  function resolveFrom() {
+    if (fromEmail) return fromEmail;
+    if (nodeEnv === "production") {
+      throw new Error(
+        "RESEND_FROM_EMAIL is not configured. A sender address is required to deliver email in production."
+      );
+    }
+    return DEV_SENDER_FALLBACK;
+  }
+
+  async function sendViaResend({ to, subject, html }) {
+    const { data, error } = await resend.emails.send({
+      from: resolveFrom(),
       to,
       subject,
       html,
     });
-    console.log(`[EMAIL] Sent to ${to} | Subject: ${subject}`);
+
+    if (error) {
+      // Never leak the provider error (may contain request details) to the API
+      // caller and never claim delivery succeeded. Log a sanitized line only.
+      log.error(`[EMAIL] Resend delivery failed for "${to}" <${subject}>: ${error.message}`);
+      throw new AppError(
+        "Unable to send the verification email right now. Please try again in a moment.",
+        502
+      );
+    }
+
+    log.log(`[EMAIL] Sent to ${to} | Subject: ${subject} | id: ${data?.id ?? "—"}`);
     return { sent: true };
-  } catch (error) {
-    console.error(`[EMAIL] Failed to send to ${to}:`, error.message);
-    return { sent: false, error: error.message };
   }
-}
 
-/**
- * Send an OTP verification email with a branded template.
- *
- * @param {Object} options
- * @param {string} options.to       - Recipient email
- * @param {string} options.otp      - 6-digit OTP code
- * @param {string} options.purpose  - "Owner Login" | "Owner Registration" | "Password Reset"
- * @param {string} [options.name]   - Recipient name (optional)
- */
-export async function sendOtpEmail({ to, otp, purpose, name }) {
-  const subject = `Your OTP for ${purpose} — Sri Rama Hostel`;
+  /**
+   * Send an email through Resend. Without a configured provider this fails
+   * loudly in every environment — there is no logging fallback and no delivery
+   * is ever claimed when the email could not be sent.
+   */
+  async function sendEmail({ to, subject, html }) {
+    if (!resend) {
+      throw new Error(
+        "Email provider is not configured (RESEND_API_KEY is unset). Set RESEND_API_KEY to deliver OTP emails."
+      );
+    }
+    return sendViaResend({ to, subject, html });
+  }
 
-  const html = `
+  /**
+   * Send an OTP verification email with the existing branded template.
+   *
+   * @param {Object} options
+   * @param {string} options.to       - Recipient email
+   * @param {string} options.otp      - 6-digit OTP code
+   * @param {string} options.purpose  - "Owner Login" | "Owner Registration" | "Password Reset"
+   * @param {string} [options.name]   - Recipient name (optional)
+   */
+  function sendOtpEmail({ to, otp, purpose, name }) {
+    const subject = `Your OTP for ${purpose} — Sri Rama Hostel`;
+
+    const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -126,5 +161,24 @@ export async function sendOtpEmail({ to, otp, purpose, name }) {
 </body>
 </html>`;
 
-  return sendEmail({ to, subject, html });
+    return sendEmail({ to, subject, html });
+  }
+
+  return { isResendConfigured, sendEmail, sendOtpEmail };
 }
+
+/**
+ * Singleton bound to the current environment — the default export used by the
+ * rest of the application.
+ */
+const emailService = createEmailService({
+  resendKey: env.RESEND_API_KEY,
+  fromEmail: env.RESEND_FROM_EMAIL,
+  nodeEnv: env.NODE_ENV,
+});
+
+export const isResendConfigured = emailService.isResendConfigured;
+export const sendOtpEmail = emailService.sendOtpEmail;
+export const sendEmail = emailService.sendEmail;
+
+export default emailService;

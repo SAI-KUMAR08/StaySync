@@ -61,8 +61,8 @@ The backend is a persistent Railway **service** (paid plan — runs continuously
 | `MONGO_URI` | MongoDB Atlas connection string |
 | `JWT_SECRET` | 16+ character secret |
 | `REFRESH_TOKEN_SECRET` | **REQUIRED** separate refresh secret — startup fails without it |
-| `SEND_REAL_EMAIL` | **REQUIRED** `true` in production — startup fails otherwise (OTP codes are never echoed when false; that is only for local dev) |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `EMAIL_FROM` | **REQUIRED** for OTP email delivery |
+| `RESEND_API_KEY` | **REQUIRED** — Resend API key (create at https://resend.com/api-keys). Startup fails without it in production; there is no dev fallback/logging, so OTP requests also fail in development when it is unset |
+| `RESEND_FROM_EMAIL` | **REQUIRED** — verified sender address, e.g. `Sri Rama Hostel <noreply@your-domain.com>` (add & verify the sending domain in Resend; dev only falls back to Resend's `onboarding@resend.dev`) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | **REQUIRED** — override the well-known defaults (`pravitha.555@gmail.com` / `Srirama@1234`); the app warns in production when they're still defaulted |
 | `MONGO_DB_NAME` | Optional (default `smart-hostel`) |
 | `CLIENT_URL` | **Exact** frontend origin, e.g. `https://stay-sync-six.vercel.app` |
@@ -119,6 +119,6 @@ Restart `npm run dev` after any `.env` change.
 | CORS on deployed site | Set `CLIENT_URL` on Railway to the exact frontend origin; redeploy |
 | Client calls same-origin `/api` in production | `VITE_API_URL` is missing on Vercel — add it (build-time) and redeploy |
 | `favicon.ico 404` | Fixed — use `/favicon.svg` in `client/public` |
-| Tenant OTP never arrives | `SEND_REAL_EMAIL=true` requires working SMTP vars; check `SMTP_HOST/PORT/USER/PASS` |
+| Tenant OTP never arrives | `RESEND_API_KEY` / `RESEND_FROM_EMAIL` must be configured and the sender domain verified in Resend; check the server log for `[EMAIL]` errors |
 | Deploy stuck on "Building" | Confirm the repo is pushed with the root `railway.toml` (skips the client build); the build log must show `npm install --prefix server`, not a `vite` step |
 | Build fails: `Cannot find package 'vite'` / `stay-sync@1.0.0 build` | The root `railway.toml` isn't being applied yet — redeploy after the file is pushed (Railway reads config from the pushed code) |

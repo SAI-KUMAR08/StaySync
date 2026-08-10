@@ -207,10 +207,10 @@ MONGO_DB_NAME=smart-hostel
 JWT_SECRET=your_jwt_access_secret_key_minimum_16_characters
 REFRESH_TOKEN_SECRET=your_jwt_refresh_secret_key_minimum_16_characters
 CLIENT_URL=http://localhost:5173
-SEND_REAL_EMAIL=false
+RESEND_API_KEY=re_...      # required for any OTP delivery — see note below
 ```
 > [!NOTE]
-> OTPs are random 6-digit codes. When `SEND_REAL_EMAIL=false` (the default in dev), the OTP is returned in the API response and logged to the console — no email is sent. When `SEND_REAL_EMAIL=true`, OTPs are delivered by SMTP and are never returned in the response.
+> OTPs are random 6-digit codes delivered exclusively through **Resend** (`resend.emails.send`). There is no development fallback: without `RESEND_API_KEY` an OTP request fails with a clear config error (development included), and OTPs are never logged or returned in API responses in any environment. Production additionally requires `RESEND_FROM_EMAIL` — startup fails without both.
 
 Start the backend in development hot-reload mode:
 ```bash
@@ -255,7 +255,7 @@ Production topology: **Vercel serves the static React SPA; Railway runs the back
 ### Railway (long-running Node service — required)
 Create a Railway service from this repo with Root Directory `server`; `server/railway.toml` handles the build (`npm install`), start (`npm start`), and `/api/health` healthcheck. Paid Railway plans run continuously, so Socket.IO and the `node-cron` jobs stay alive.
 1.  Railway → New Project → Deploy from GitHub → select this repo → service Root Directory `server` → Generate Domain.
-2.  Set environment variables: `CLIENT_URL=https://your-frontend-app.vercel.app`, `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `SEND_REAL_EMAIL=true`, plus the SMTP_* and ADMIN_* vars (see `docs/DEPLOYMENT.md`).
+2.  Set environment variables: `CLIENT_URL=https://your-frontend-app.vercel.app`, `MONGO_URI`, `JWT_SECRET`, `REFRESH_TOKEN_SECRET`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, plus the ADMIN_* vars (see `docs/DEPLOYMENT.md`).
 
 ---
 
