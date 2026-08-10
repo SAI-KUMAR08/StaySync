@@ -58,11 +58,9 @@ export function createEmailService({
     });
 
     if (error) {
-      // Never leak the provider error (may contain request details) to the API
-      // caller and never claim delivery succeeded. Log a sanitized line only.
       log.error(`[EMAIL] Resend delivery failed for "${to}" <${subject}>: ${error.message}`);
       throw new AppError(
-        "Unable to send the verification email right now. Please try again in a moment.",
+        `Unable to send the verification email: ${error.message || "Provider error"}`,
         502
       );
     }
