@@ -63,7 +63,7 @@ The backend is a persistent Railway **service** (paid plan — runs continuously
 | `REFRESH_TOKEN_SECRET` | **REQUIRED** separate refresh secret — startup fails without it |
 | `RESEND_API_KEY` | **REQUIRED** — Resend API key (create at https://resend.com/api-keys). Startup fails without it in production; there is no dev fallback/logging, so OTP requests also fail in development when it is unset |
 | `RESEND_FROM_EMAIL` | **REQUIRED** — verified sender address, e.g. `Sri Rama Hostel <noreply@your-domain.com>` (add & verify the sending domain in Resend; dev only falls back to Resend's `onboarding@resend.dev`) |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | **REQUIRED** — override the well-known defaults (`pravitha.555@gmail.com` / `Srirama@1234`); the app warns in production when they're still defaulted |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | **REQUIRED** — override the well-known defaults (`lsk.edu13@gmail.com` / `Srirama@1234`); the app warns in production when they're still defaulted |
 | `MONGO_DB_NAME` | Optional (default `smart-hostel`) |
 | `CLIENT_URL` | **Exact** frontend origin, e.g. `https://stay-sync-six.vercel.app` |
 | `CLIENT_URLS` | Optional comma-separated preview URLs |

@@ -18,12 +18,12 @@ async function seed() {
   const db = mongoose.connection.db;
 
   // Find all owners or default admin
-  let owner = await db.collection("owners").findOne({ email: "pravitha.555@gmail.com" });
+  let owner = await db.collection("owners").findOne({ email: "lsk.edu13@gmail.com" });
   if (!owner) {
     const hashed = await bcrypt.hash("Srirama@1234", 10);
     const result = await db.collection("owners").insertOne({
       name: "Admin",
-      email: "pravitha.555@gmail.com",
+      email: "lsk.edu13@gmail.com",
       phone: "",
       password: hashed,
       role: "owner",
