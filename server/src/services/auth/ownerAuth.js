@@ -369,51 +369,10 @@ export async function loginUser({ email, password }, meta = {}) {
     };
   }
 
-  const user = await Owner.findOne({ email: normalizedEmail, isActive: true }).select("+password");
-  if (!user) {
-    throw new AppError("Invalid credentials", 401);
-  }
-
-  // ⛔ Account lockout check
-  if (user.isLocked()) {
-    const remaining = Math.ceil((user.lockUntil - new Date()) / 1000 / 60);
-    throw new AppError(`Account temporarily locked. Try again in ${remaining} minute(s).`, 429);
-  }
-
-  const valid = await user.comparePassword(password);
-  if (!valid) {
-    recordIpFailure(user._id.toString(), meta.ipAddress);
-    checkIpFailureRate(user._id.toString(), meta.ipAddress);
-    await user.incrementLoginAttempts();
-    const attemptsLeft = ACCOUNT.MAX_LOGIN_ATTEMPTS - (user.loginAttempts || 0);
-    const msg =
-      attemptsLeft > 0
-        ? `Invalid credentials. ${attemptsLeft} attempt(s) remaining before account is locked.`
-        : "Account locked due to too many failed attempts. Try again in 15 minutes.";
-    throw new AppError(msg, 401);
-  }
-
-  // ✅ Successful login — reset attempts
-  await user.resetLoginAttempts();
-  clearIpFailures(user._id.toString(), meta.ipAddress);
-
-  const { ownerId, hostelId, hostel } = await resolveOwnerHostel(user);
-  if (!hostel) throw new AppError("No active hostel found", 404);
-
-  const tokens = await issueTokens(user, user.role, {
-    ownerId,
-    hostelId,
-    ...meta,
-  });
-
-  return {
-    user: buildAuthUser(user, user.role, {
-      ownerId: ownerId.toString(),
-      hostelId: hostelId.toString(),
-      hostelName: hostel.name || hostel.hostelName || "",
-    }),
-    ...tokens,
-  };
+  // Only the account matching ADMIN_EMAIL can log in via password.
+  // There is no "regular owner" role — one admin, set by the ADMIN_EMAIL env var.
+  // If ADMIN_EMAIL changes in Railway, the previous email is automatically locked out.
+  throw new AppError("Invalid credentials", 401);
 }
 
 export async function switchOwnerHostel({ ownerId, hostelId }) {
