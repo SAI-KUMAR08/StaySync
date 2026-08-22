@@ -16,9 +16,11 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),
   REFRESH_TOKEN_SECRET: z.string().min(16).optional(),
   CLIENT_URL: z.string().default("http://localhost:5173"),
-  // Predefined admin account. Override in production (.env) — defaults keep existing deployments working.
-  ADMIN_EMAIL: z.string().default("lsk.edu13@gmail.com"),
-  ADMIN_PASSWORD: z.string().default("Srirama@1234"),
+  // Predefined admin account. Set ADMIN_EMAIL + ADMIN_PASSWORD in Railway env vars.
+  // Current testing admin: hostelsrirama@gmail.com
+  // Future real admin:     pravitha.555@gmail.com  (switch in Railway when domain is ready)
+  ADMIN_EMAIL: z.string().default("hostelsrirama@gmail.com"),
+  ADMIN_PASSWORD: z.string().default("Srirama@12345"),
   // Email — OTPs are delivered through Resend. RESEND_API_KEY is optional at
   // startup so the server can boot without an email provider, but any OTP send
   // fails with a clear config error when it is unset (even in development).
